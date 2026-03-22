@@ -1,0 +1,14 @@
+# Archive - 完了済みタスク
+
+---
+
+<!--
+完了したPhase/Workをここに移動します。
+移動時は完了日を記載してください。
+
+例:
+## Phase 1.1: React Nativeプロジェクト作成（完了: 2026-03-25）
+- [x] React Native (Expo)プロジェクト初期化
+- [x] TypeScript設定
+- [x] ESLint/Prettier設定
+-->

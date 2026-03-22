@@ -1,0 +1,148 @@
+# Manual Work - 手動作業タスク
+
+---
+
+## Work 1: Firebase設定
+
+### Work 1.1: Firebaseプロジェクト作成
+- [ ] Firebase Consoleでプロジェクト作成
+- [ ] プロジェクト名設定
+- [ ] Google Analytics設定（任意）
+
+### Work 1.2: Firebase Authentication有効化
+- [ ] Authentication有効化
+- [ ] Googleログインプロバイダ有効化
+- [ ] Appleログインプロバイダ有効化
+
+### Work 1.3: Firestore有効化
+- [ ] Cloud Firestore作成
+- [ ] セキュリティルール初期設定
+- [ ] リージョン選択（asia-northeast1推奨）
+
+### Work 1.4: Firebase Functions設定
+- [ ] Functions有効化
+- [ ] Blazeプラン（従量課金）へアップグレード
+
+### Work 1.5: Firebase Cloud Messaging設定
+- [ ] FCM有効化
+- [ ] APNs認証キー設定
+
+### Work 1.6: iOSアプリ登録
+- [ ] iOSアプリをFirebaseに登録
+- [ ] GoogleService-Info.plist ダウンロード
+- [ ] プロジェクトに配置
+
+### Work 1.7: 管理者ユーザー登録
+- [ ] adminUsersコレクション作成
+- [ ] 開発者・管理者のUIDを登録
+
+---
+
+## Work 2: Apple Developer設定
+
+### Work 2.1: Apple Developer登録
+- [ ] Apple Developer Program登録（年額$99）
+- [ ] 登録承認待ち
+
+### Work 2.2: App ID作成
+- [ ] Certificates, Identifiers & ProfilesでApp ID作成
+- [ ] Bundle ID設定
+
+### Work 2.3: Sign in with Apple設定
+- [ ] Sign in with Apple capability有効化
+- [ ] Service ID作成（Firebase連携用）
+- [ ] Firebase ConsoleでApple設定
+
+### Work 2.4: Push Notifications設定
+- [ ] Push Notifications capability有効化
+- [ ] APNs Key作成
+- [ ] Firebase ConsoleにAPNs Key登録
+
+### Work 2.5: Provisioning Profile作成
+- [ ] Development Provisioning Profile作成
+- [ ] Distribution Provisioning Profile作成
+
+### Work 2.6: App Store Connect サブスクリプション設定
+- [ ] App Store Connectでアプリ登録
+- [ ] サブスクリプショングループ作成
+- [ ] 月額プラン作成（200円）
+- [ ] 年額プラン作成（2,000円）
+- [ ] Sandbox テスターアカウント作成
+- [ ] RevenueCat使用の場合: RevenueCatプロジェクト作成・API Key取得
+
+---
+
+## Work 3: X (Twitter) Developer設定
+
+### Work 3.1: X Developer Portal登録
+- [ ] developer.twitter.com でアカウント作成
+- [ ] 開発者申請
+- [ ] 申請承認待ち
+
+### Work 3.2: プロジェクト・アプリ作成
+- [ ] プロジェクト作成
+- [ ] アプリ作成
+- [ ] Free tier選択
+
+### Work 3.3: OAuth 2.0設定
+- [ ] User authentication settings設定
+- [ ] OAuth 2.0有効化
+- [ ] Callback URL設定
+- [ ] 必要なスコープ設定（tweet.write）
+
+### Work 3.4: APIキー取得
+- [ ] Client ID取得
+- [ ] Client Secret取得
+- [ ] Firebase Functionsの環境変数に設定
+
+---
+
+## Work 4: アプリ名・UIデザイン
+
+### Work 4.1: アプリ名決定
+- [ ] アプリ名決定
+- [ ] progress.txt Phase 11のハッシュタグに反映依頼
+
+### Work 4.2: UIデザイン作成
+- [ ] ログイン画面デザイン
+- [ ] セットアップ画面デザイン
+- [ ] ホーム画面デザイン
+- [ ] スクワット計測画面デザイン
+- [ ] 設定画面デザイン
+- [ ] キャリブレーション画面デザイン
+- [ ] 課金画面デザイン
+
+### Work 4.3: アプリアイコン作成
+- [ ] 1024x1024 アイコン作成
+- [ ] 各サイズ書き出し
+
+### Work 4.4: スプラッシュ画面作成
+- [ ] スプラッシュ画像作成
+
+---
+
+## Work 5: App Store申請準備
+
+### Work 5.1: App Store Connect設定
+- [ ] バンドルID紐付け確認
+- [ ] 価格設定（無料 + アプリ内課金）
+
+### Work 5.2: アプリ情報作成
+- [ ] アプリ説明文（日本語）
+- [ ] キーワード設定
+- [ ] サポートURL準備
+- [ ] カテゴリ選択
+
+### Work 5.3: スクリーンショット作成
+- [ ] 6.7インチ（iPhone 15 Pro Max）
+- [ ] 6.5インチ（iPhone 11 Pro Max）
+- [ ] 5.5インチ（iPhone 8 Plus）
+
+### Work 5.4: プライバシーポリシー作成
+- [ ] プライバシーポリシー文書作成
+- [ ] ホスティング（Webページ公開）
+
+### Work 5.5: 審査申請
+- [ ] ビルドアップロード
+- [ ] 審査情報入力
+- [ ] 審査提出
