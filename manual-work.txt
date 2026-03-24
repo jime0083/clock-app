@@ -25,7 +25,7 @@
 
 ### Work 1.5: Firebase Cloud Messaging設定
 - [x] FCM有効化
-- [ ] APNs認証キー設定 ※Work 2.4完了後に設定
+- [x] APNs認証キー設定
 
 ### Work 1.6: iOSアプリ登録
 - [x] iOSアプリをFirebaseに登録
@@ -37,38 +37,6 @@
 - [ ] 開発者・管理者のUIDを登録 ※アプリログイン後に設定
 
 ---
-
-## Work 2: Apple Developer設定
-
-### Work 2.1: Apple Developer登録
-- [ ] Apple Developer Program登録（年額$99）
-- [ ] 登録承認待ち
-
-### Work 2.2: App ID作成
-- [ ] Certificates, Identifiers & ProfilesでApp ID作成
-- [ ] Bundle ID設定
-
-### Work 2.3: Sign in with Apple設定
-- [ ] Sign in with Apple capability有効化
-- [ ] Service ID作成（Firebase連携用）
-- [ ] Firebase ConsoleでApple設定
-
-### Work 2.4: Push Notifications設定
-- [ ] Push Notifications capability有効化
-- [ ] APNs Key作成
-- [ ] Firebase ConsoleにAPNs Key登録
-
-### Work 2.5: Provisioning Profile作成
-- [ ] Development Provisioning Profile作成
-- [ ] Distribution Provisioning Profile作成
-
-### Work 2.6: App Store Connect サブスクリプション設定
-- [ ] App Store Connectでアプリ登録
-- [ ] サブスクリプショングループ作成
-- [ ] 月額プラン作成（200円）
-- [ ] 年額プラン作成（2,000円）
-- [ ] Sandbox テスターアカウント作成
-- [ ] RevenueCat使用の場合: RevenueCatプロジェクト作成・API Key取得
 
 ---
 

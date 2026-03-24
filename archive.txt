@@ -153,3 +153,37 @@
 - [x] ログイン画面へリダイレクト
 
 ---
+
+## Work 2: Apple Developer設定（完了: 2026-03-24）
+
+### Work 2.1: Apple Developer登録
+- [x] Apple Developer Program登録（年額$99）
+- [x] 登録承認待ち
+
+### Work 2.2: App ID作成
+- [x] Certificates, Identifiers & ProfilesでApp ID作成
+- [x] Bundle ID設定
+
+### Work 2.3: Sign in with Apple設定
+- [x] Sign in with Apple capability有効化
+- [x] Service ID作成（Firebase連携用）
+- [x] Firebase ConsoleでApple設定
+
+### Work 2.4: Push Notifications設定
+- [x] Push Notifications capability有効化
+- [x] APNs Key作成
+- [x] Firebase ConsoleにAPNs Key登録
+
+### Work 2.5: Provisioning Profile作成
+- [x] Development Provisioning Profile作成
+- [x] Distribution Provisioning Profile作成
+
+### Work 2.6: App Store Connect サブスクリプション設定
+- [x] App Store Connectでアプリ登録
+- [x] サブスクリプショングループ作成
+- [x] 月額プラン作成（200円）
+- [x] 年額プラン作成（2,000円）
+- [x] Sandbox テスターアカウント作成
+- [x] RevenueCatプロジェクト作成・API Key取得
+
+---
