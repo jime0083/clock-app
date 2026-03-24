@@ -9,6 +9,7 @@ import './src/locales';
 
 // Contexts
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 
 // Screens
 import LoadingScreen from '@/screens/LoadingScreen';
@@ -55,10 +56,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <AppNavigator />
-          <StatusBar style="auto" />
-        </NavigationContainer>
+        <SubscriptionProvider>
+          <NavigationContainer>
+            <AppNavigator />
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </SubscriptionProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

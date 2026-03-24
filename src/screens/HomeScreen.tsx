@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AlarmCard } from '@/components/home/AlarmCard';
 import { StatCard } from '@/components/home/StatCard';
 import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
@@ -22,6 +23,7 @@ import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
 import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
 import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
 import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
+import PaywallScreen from '@/screens/PaywallScreen';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { signOut, deleteAccount } from '@/services/authService';
 import { UserDocument } from '@/types/firestore';
@@ -29,6 +31,7 @@ import { UserDocument } from '@/types/firestore';
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const { isSubscribed } = useSubscription();
   const [userData, setUserData] = useState<UserDocument | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -38,6 +41,7 @@ const HomeScreen: React.FC = () => {
   const [isAudioModalVisible, setIsAudioModalVisible] = useState(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
+  const [isPaywallVisible, setIsPaywallVisible] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
@@ -98,6 +102,9 @@ const HomeScreen: React.FC = () => {
           break;
         case 'deleteAccount':
           setIsDeleteAccountModalVisible(true);
+          break;
+        case 'premium':
+          setIsPaywallVisible(true);
           break;
       }
     }, 300);
@@ -238,6 +245,7 @@ const HomeScreen: React.FC = () => {
         onMenuItemPress={handleMenuItemPress}
         userEmail={user?.email}
         userName={user?.displayName}
+        isSubscribed={isSubscribed}
       />
 
       {/* Alarm Setting Modal */}
@@ -274,6 +282,16 @@ const HomeScreen: React.FC = () => {
         onClose={() => setIsDeleteAccountModalVisible(false)}
         onConfirm={handleDeleteAccount}
       />
+
+      {/* Paywall Modal */}
+      {isPaywallVisible && (
+        <View style={StyleSheet.absoluteFill}>
+          <PaywallScreen
+            onClose={() => setIsPaywallVisible(false)}
+            onSuccess={() => setIsPaywallVisible(false)}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };

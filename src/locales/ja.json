@@ -106,6 +106,32 @@
     "language": "言語設定",
     "account": "アカウント情報",
     "deleteAccount": "退会",
-    "deleteAccountConfirm": "本当に退会しますか？この操作は取り消せません。"
+    "deleteAccountConfirm": "本当に退会しますか？この操作は取り消せません。",
+    "upgrade": "すべての機能をアンロック"
+  },
+  "paywall": {
+    "title": "プレミアムプラン",
+    "subtitle": "すべての機能をアンロックして\n最高の目覚め体験を",
+    "feature1": "カスタムアラーム音の設定",
+    "feature2": "詳細なスクワット統計",
+    "feature3": "履歴データの無制限保存",
+    "feature4": "プッシュ通知のカスタマイズ",
+    "bestValue": "お得",
+    "annual": "年額プラン",
+    "monthly": "月額プラン",
+    "perYear": "/年",
+    "perMonth": "/月",
+    "save": "節約",
+    "subscribe": "今すぐ購読",
+    "restore": "購入を復元",
+    "terms": "購読は自動更新されます。キャンセルはいつでも可能です。",
+    "successTitle": "購読完了",
+    "successMessage": "プレミアムプランへようこそ！",
+    "errorTitle": "エラー",
+    "errorMessage": "購入処理中にエラーが発生しました。",
+    "restoreSuccessTitle": "復元完了",
+    "restoreSuccessMessage": "購入が復元されました！",
+    "restoreFailTitle": "復元失敗",
+    "restoreFailMessage": "復元可能な購入が見つかりませんでした。"
   }
 }

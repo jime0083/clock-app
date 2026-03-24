@@ -106,6 +106,32 @@
     "language": "Language Settings",
     "account": "Account Info",
     "deleteAccount": "Delete Account",
-    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone."
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone.",
+    "upgrade": "Unlock all features"
+  },
+  "paywall": {
+    "title": "Premium Plan",
+    "subtitle": "Unlock all features for\nthe ultimate wake-up experience",
+    "feature1": "Custom alarm sound settings",
+    "feature2": "Detailed squat statistics",
+    "feature3": "Unlimited history storage",
+    "feature4": "Push notification customization",
+    "bestValue": "Best Value",
+    "annual": "Annual Plan",
+    "monthly": "Monthly Plan",
+    "perYear": "/year",
+    "perMonth": "/month",
+    "save": "Save",
+    "subscribe": "Subscribe Now",
+    "restore": "Restore Purchases",
+    "terms": "Subscription auto-renews. Cancel anytime.",
+    "successTitle": "Subscription Complete",
+    "successMessage": "Welcome to Premium!",
+    "errorTitle": "Error",
+    "errorMessage": "An error occurred during purchase.",
+    "restoreSuccessTitle": "Restore Complete",
+    "restoreSuccessMessage": "Your purchases have been restored!",
+    "restoreFailTitle": "Restore Failed",
+    "restoreFailMessage": "No purchases found to restore."
   }
 }
