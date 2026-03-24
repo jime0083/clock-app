@@ -32,6 +32,9 @@
     "uploadSound": "音源をアップロード",
     "saveSettings": "設定を保存",
     "selectDays": "曜日を選択",
+    "defaultSound": "デフォルト音源",
+    "customSound": "カスタム音源",
+    "soundSettings": "アラーム音設定",
     "days": {
       "mon": "月",
       "tue": "火",

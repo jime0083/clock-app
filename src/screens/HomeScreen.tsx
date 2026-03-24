@@ -5,6 +5,7 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -17,15 +18,26 @@ import { AlarmCard } from '@/components/home/AlarmCard';
 import { StatCard } from '@/components/home/StatCard';
 import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
 import { AlarmSettingModal } from '@/components/modals/AlarmSettingModal';
+import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
+import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
+import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
+import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
+import { signOut, deleteAccount } from '@/services/authService';
 import { UserDocument } from '@/types/firestore';
 
 const HomeScreen: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [userData, setUserData] = useState<UserDocument | null>(null);
-  const [isAlarmModalVisible, setIsAlarmModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Modal states
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isAlarmModalVisible, setIsAlarmModalVisible] = useState(false);
+  const [isAudioModalVisible, setIsAudioModalVisible] = useState(false);
+  const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
+  const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
@@ -48,7 +60,47 @@ const HomeScreen: React.FC = () => {
   }, [fetchUserData]);
 
   const handleOpenMenu = () => {
-    // TODO: Open hamburger menu (Phase 5)
+    setIsMenuVisible(true);
+  };
+
+  const handleCloseMenu = () => {
+    setIsMenuVisible(false);
+  };
+
+  const handleMenuItemPress = (itemId: MenuItemId) => {
+    setIsMenuVisible(false);
+
+    // Small delay to allow menu close animation
+    setTimeout(() => {
+      switch (itemId) {
+        case 'alarmSettings':
+          setIsAlarmModalVisible(true);
+          break;
+        case 'soundSettings':
+          setIsAudioModalVisible(true);
+          break;
+        case 'squatCalibration':
+          // TODO: Phase 7で実装
+          Alert.alert(t('settings.squatCalibration'), 'Coming soon...');
+          break;
+        case 'snsConnection':
+          // TODO: Phase 10で実装
+          Alert.alert(t('settings.snsConnection'), 'Coming soon...');
+          break;
+        case 'language':
+          setIsLanguageModalVisible(true);
+          break;
+        case 'account':
+          // Show user info (already visible in menu)
+          break;
+        case 'logout':
+          handleLogout();
+          break;
+        case 'deleteAccount':
+          setIsDeleteAccountModalVisible(true);
+          break;
+      }
+    }, 300);
   };
 
   const handleChangeAlarm = () => {
@@ -68,9 +120,53 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  const handleSaveAudio = async (audioUrl: string | null) => {
+    if (!user?.uid) return;
+    try {
+      await updateUserSettings(user.uid, {
+        customAlarmSound: audioUrl,
+      });
+      await fetchUserData();
+    } catch (error) {
+      console.error('Error saving audio settings:', error);
+    }
+  };
+
+  const handleSaveLanguage = async (language: 'ja' | 'en') => {
+    if (!user?.uid) return;
+    try {
+      // Change app language
+      await i18n.changeLanguage(language);
+      // Save to Firestore
+      await updateUserSettings(user.uid, { language });
+      await fetchUserData();
+    } catch (error) {
+      console.error('Error saving language settings:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.uid) return;
+    try {
+      await deleteAccount(user.uid);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
+  };
+
   const stats = userData?.stats;
   const settings = userData?.settings;
   const snsConnections = userData?.snsConnections;
+  const currentLanguage = (settings?.language || 'ja') as 'ja' | 'en';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -135,12 +231,48 @@ const HomeScreen: React.FC = () => {
         />
       </ScrollView>
 
+      {/* Menu Drawer */}
+      <MenuDrawer
+        visible={isMenuVisible}
+        onClose={handleCloseMenu}
+        onMenuItemPress={handleMenuItemPress}
+        userEmail={user?.email}
+        userName={user?.displayName}
+      />
+
+      {/* Alarm Setting Modal */}
       <AlarmSettingModal
         visible={isAlarmModalVisible}
         onClose={() => setIsAlarmModalVisible(false)}
         onSave={handleSaveAlarm}
         initialTime={settings?.alarmTime ?? null}
         initialDays={settings?.alarmDays ?? []}
+      />
+
+      {/* Audio Setting Modal */}
+      {user?.uid && (
+        <AudioSettingModal
+          visible={isAudioModalVisible}
+          onClose={() => setIsAudioModalVisible(false)}
+          onSave={handleSaveAudio}
+          currentAudioUrl={settings?.customAlarmSound ?? null}
+          uid={user.uid}
+        />
+      )}
+
+      {/* Language Setting Modal */}
+      <LanguageSettingModal
+        visible={isLanguageModalVisible}
+        onClose={() => setIsLanguageModalVisible(false)}
+        onSave={handleSaveLanguage}
+        currentLanguage={currentLanguage}
+      />
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        visible={isDeleteAccountModalVisible}
+        onClose={() => setIsDeleteAccountModalVisible(false)}
+        onConfirm={handleDeleteAccount}
       />
     </SafeAreaView>
   );

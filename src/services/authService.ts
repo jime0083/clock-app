@@ -5,8 +5,18 @@ import {
   User as FirebaseUser,
   GoogleAuthProvider,
   OAuthProvider,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { AppUser } from '@/types/auth';
 
@@ -126,4 +136,22 @@ export const subscribeToAuthState = (
   callback: (user: FirebaseUser | null) => void
 ): (() => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+// Delete user account and all associated data
+export const deleteAccount = async (uid: string): Promise<void> => {
+  try {
+    // Delete user document from Firestore
+    const userRef = doc(db, 'users', uid);
+    await deleteDoc(userRef);
+
+    // Delete the Firebase Auth user
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.uid === uid) {
+      await deleteUser(currentUser);
+    }
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    throw error;
+  }
 };

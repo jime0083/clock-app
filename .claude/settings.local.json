@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(npx expo install:*)",
       "Bash(npx tsc:*)",
-      "Skill(example-skills:frontend-design)"
+      "Skill(example-skills:frontend-design)",
+      "Bash(grep:*)"
     ]
   }
 }

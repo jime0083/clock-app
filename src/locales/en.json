@@ -32,6 +32,9 @@
     "uploadSound": "Upload sound",
     "saveSettings": "Save Settings",
     "selectDays": "Select days",
+    "defaultSound": "Default sound",
+    "customSound": "Custom sound",
+    "soundSettings": "Alarm Sound Settings",
     "days": {
       "mon": "Mon",
       "tue": "Tue",
