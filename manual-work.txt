@@ -5,36 +5,36 @@
 ## Work 1: Firebase設定
 
 ### Work 1.1: Firebaseプロジェクト作成
-- [ ] Firebase Consoleでプロジェクト作成
-- [ ] プロジェクト名設定
-- [ ] Google Analytics設定（任意）
+- [x] Firebase Consoleでプロジェクト作成
+- [x] プロジェクト名設定
+- [x] Google Analytics設定（任意）
 
 ### Work 1.2: Firebase Authentication有効化
-- [ ] Authentication有効化
-- [ ] Googleログインプロバイダ有効化
-- [ ] Appleログインプロバイダ有効化
+- [x] Authentication有効化
+- [x] Googleログインプロバイダ有効化
+- [x] Appleログインプロバイダ有効化
 
 ### Work 1.3: Firestore有効化
-- [ ] Cloud Firestore作成
-- [ ] セキュリティルール初期設定
-- [ ] リージョン選択（asia-northeast1推奨）
+- [x] Cloud Firestore作成
+- [x] セキュリティルール初期設定
+- [x] リージョン選択（asia-northeast1推奨）
 
 ### Work 1.4: Firebase Functions設定
-- [ ] Functions有効化
-- [ ] Blazeプラン（従量課金）へアップグレード
+- [x] Functions有効化
+- [x] Blazeプラン（従量課金）へアップグレード
 
 ### Work 1.5: Firebase Cloud Messaging設定
-- [ ] FCM有効化
-- [ ] APNs認証キー設定
+- [x] FCM有効化
+- [ ] APNs認証キー設定 ※Work 2.4完了後に設定
 
 ### Work 1.6: iOSアプリ登録
-- [ ] iOSアプリをFirebaseに登録
-- [ ] GoogleService-Info.plist ダウンロード
-- [ ] プロジェクトに配置
+- [x] iOSアプリをFirebaseに登録
+- [x] GoogleService-Info.plist ダウンロード
+- [x] プロジェクトに配置
 
 ### Work 1.7: 管理者ユーザー登録
-- [ ] adminUsersコレクション作成
-- [ ] 開発者・管理者のUIDを登録
+- [x] adminUsersコレクション作成
+- [ ] 開発者・管理者のUIDを登録 ※アプリログイン後に設定
 
 ---
 
@@ -100,8 +100,8 @@
 ## Work 4: アプリ名・UIデザイン
 
 ### Work 4.1: アプリ名決定
-- [ ] アプリ名決定
-- [ ] progress.txt Phase 11のハッシュタグに反映依頼
+- [x] アプリ名決定（日本語: オキロヤ / 英語: Wake or Shame）
+- [x] progress.txt Phase 11のハッシュタグに反映依頼
 
 ### Work 4.2: UIデザイン作成
 - [ ] ログイン画面デザイン
@@ -129,7 +129,9 @@
 
 ### Work 5.2: アプリ情報作成
 - [ ] アプリ説明文（日本語）
-- [ ] キーワード設定
+- [ ] アプリ説明文（英語）
+- [ ] キーワード設定（日本語）
+- [ ] キーワード設定（英語）
 - [ ] サポートURL準備
 - [ ] カテゴリ選択
 

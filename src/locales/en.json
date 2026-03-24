@@ -1,0 +1,108 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "close": "Close"
+  },
+  "language": {
+    "title": "言語を選択してください",
+    "subtitle": "Please select a language",
+    "placeholder": "Select language",
+    "japanese": "日本語",
+    "english": "English"
+  },
+  "auth": {
+    "tagline1": "Prevent oversleeping with squats",
+    "tagline2": "Your followers are watching!",
+    "tagline3": "The alarm app that guarantees you wake up",
+    "loginWithGoogle": "Sign in with Google",
+    "loginWithApple": "Sign in with Apple",
+    "logout": "Log out"
+  },
+  "alarm": {
+    "title": "Set your wake-up time",
+    "currentTime": "Current alarm time",
+    "changeAlarm": "Change Alarm",
+    "uploadSound": "Upload sound",
+    "saveSettings": "Save Settings",
+    "selectDays": "Select days",
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "sns": {
+    "title": "Connect with X",
+    "subtitle": "to prevent oversleeping",
+    "description": "If you oversleep, a post will be automatically made on X\nAll your followers will know you overslept",
+    "connectX": "Connect with X",
+    "connected": "Connected",
+    "disconnect": "Disconnect",
+    "connectionStatus": "Connection Status"
+  },
+  "squat": {
+    "title": "Squat Test",
+    "instruction": "Do 10 squats",
+    "description": "We are measuring your squat form\nHold your phone in your right hand and cross your arms in front of your chest while squatting",
+    "count": "{{count}} times",
+    "remaining": "{{count}} remaining",
+    "complete": "Complete!"
+  },
+  "pay": {
+    "tagline1": "Prevent oversleeping with squats",
+    "tagline2": "Your followers are watching!",
+    "tagline3": "The alarm app that guarantees you wake up",
+    "plan": "Plan",
+    "yearly": "12 months",
+    "monthly": "1 month",
+    "yearlyPrice": "¥2000",
+    "monthlyPrice": "¥200/mo",
+    "yearlyOriginal": "¥2400",
+    "yearlyPerMonth": "¥166.6/mo",
+    "discount": "16.6% OFF",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "home": {
+    "totalOversleepDays": "Total oversleep days",
+    "monthlyOversleepDays": "This month's oversleep days",
+    "totalSquats": "Total squats",
+    "monthlySquats": "This month's squats",
+    "day": " days",
+    "times": " times"
+  },
+  "wakeup": {
+    "successTitle": "Wake up success!",
+    "successMessage": "Good morning! You woke up successfully! Have a great day!",
+    "failureTitle": "Wake up failed",
+    "timeRemaining": "Time remaining",
+    "squatCount": "Squat count"
+  },
+  "penalty": {
+    "postText": "I overslept...\nI am a foolish person who cannot wake up on time and easily oversleeps.\n#WakeOrShame"
+  },
+  "weekly": {
+    "summary": "Last week you woke up successfully {{successCount}} times and did {{squatCount}} squats"
+  },
+  "settings": {
+    "title": "Settings",
+    "alarmSettings": "Alarm Settings",
+    "squatCalibration": "Squat Recalibration",
+    "snsConnection": "SNS Connection Settings",
+    "language": "Language Settings",
+    "account": "Account Info",
+    "deleteAccount": "Delete Account",
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone."
+  }
+}

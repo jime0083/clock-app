@@ -68,6 +68,17 @@
 
 ---
 
+## アプリ情報
+
+| 項目 | 内容 |
+|------|------|
+| アプリ名（日本語） | オキロヤ |
+| アプリ名（英語） | Wake or Shame |
+| ハッシュタグ（日本語） | #オキロヤ |
+| ハッシュタグ（英語） | #WakeOrShame |
+
+---
+
 ## 技術スタック
 
 - フロントエンド: React Native (Expo)
@@ -78,3 +89,4 @@
 - センサー: Core Motion（加速度センサー）
 - SNS連携: X API v2（Instagram Graph APIは将来対応）
 - 課金: RevenueCat または expo-in-app-purchases
+- 多言語化: react-i18next / expo-localization（日本語・英語対応）
