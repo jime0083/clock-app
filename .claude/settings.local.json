@@ -4,7 +4,8 @@
       "WebSearch",
       "Bash(npm install:*)",
       "Bash(npx expo install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Skill(example-skills:frontend-design)"
     ]
   }
 }

@@ -1,0 +1,129 @@
+import {
+  signInWithCredential,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  OAuthProvider,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from './firebase';
+import { AppUser } from '@/types/auth';
+
+// Check if user is admin
+export const checkIsAdmin = async (uid: string): Promise<boolean> => {
+  try {
+    const adminUsersRef = collection(db, 'adminUsers');
+    const q = query(adminUsersRef, where('uid', '==', uid));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+};
+
+// Convert Firebase User to App User
+export const convertToAppUser = async (firebaseUser: FirebaseUser): Promise<AppUser> => {
+  const isAdmin = await checkIsAdmin(firebaseUser.uid);
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName,
+    photoURL: firebaseUser.photoURL,
+    isAdmin,
+  };
+};
+
+// Create or update user profile in Firestore
+export const createOrUpdateUserProfile = async (user: AppUser): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      // Create new user profile
+      await setDoc(userRef, {
+        profile: {
+          createdAt: new Date(),
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+        },
+        settings: {
+          alarmTime: null,
+          alarmDays: [],
+          customAlarmSound: null,
+          calibrationData: null,
+          language: 'ja',
+        },
+        snsConnections: {
+          x: {
+            connected: false,
+            accessToken: null,
+            connectedAt: null,
+          },
+        },
+        stats: {
+          totalFailures: 0,
+          monthlyFailures: 0,
+          currentMonth: new Date().toISOString().slice(0, 7),
+          totalSquats: 0,
+        },
+      });
+    } else {
+      // Update existing profile
+      await setDoc(
+        userRef,
+        {
+          profile: {
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          },
+        },
+        { merge: true }
+      );
+    }
+  } catch (error) {
+    console.error('Error creating/updating user profile:', error);
+    throw error;
+  }
+};
+
+// Sign in with Google credential
+export const signInWithGoogle = async (idToken: string): Promise<AppUser> => {
+  const credential = GoogleAuthProvider.credential(idToken);
+  const result = await signInWithCredential(auth, credential);
+  const appUser = await convertToAppUser(result.user);
+  await createOrUpdateUserProfile(appUser);
+  return appUser;
+};
+
+// Sign in with Apple credential
+export const signInWithApple = async (
+  identityToken: string,
+  nonce: string
+): Promise<AppUser> => {
+  const provider = new OAuthProvider('apple.com');
+  const credential = provider.credential({
+    idToken: identityToken,
+    rawNonce: nonce,
+  });
+  const result = await signInWithCredential(auth, credential);
+  const appUser = await convertToAppUser(result.user);
+  await createOrUpdateUserProfile(appUser);
+  return appUser;
+};
+
+// Sign out
+export const signOut = async (): Promise<void> => {
+  await firebaseSignOut(auth);
+};
+
+// Subscribe to auth state changes
+export const subscribeToAuthState = (
+  callback: (user: FirebaseUser | null) => void
+): (() => void) => {
+  return onAuthStateChanged(auth, callback);
+};

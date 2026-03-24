@@ -7,8 +7,13 @@ import { StatusBar } from 'expo-status-bar';
 // i18n initialization
 import './src/locales';
 
-// Screens (placeholder for now)
-import LoadingScreen from '@screens/LoadingScreen';
+// Contexts
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+
+// Screens
+import LoadingScreen from '@/screens/LoadingScreen';
+import LoginScreen from '@/screens/LoginScreen';
+import HomeScreen from '@/screens/HomeScreen';
 
 export type RootStackParamList = {
   Loading: undefined;
@@ -20,21 +25,41 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const AppNavigator: React.FC = () => {
+  const { isInitialized, isAuthenticated, isLoading } = useAuth();
+
+  // Show loading screen while initializing
+  if (!isInitialized || isLoading) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+      }}
+    >
+      {!isAuthenticated ? (
+        // Not authenticated - show login
+        <Stack.Screen name="Login" component={LoginScreen} />
+      ) : (
+        // Authenticated - show main app
+        <Stack.Screen name="Home" component={HomeScreen} />
+      )}
+    </Stack.Navigator>
+  );
+};
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Loading"
-          screenOptions={{
-            headerShown: false,
-            animation: 'fade',
-          }}
-        >
-          <Stack.Screen name="Loading" component={LoadingScreen} />
-        </Stack.Navigator>
-        <StatusBar style="auto" />
-      </NavigationContainer>
+      <AuthProvider>
+        <NavigationContainer>
+          <AppNavigator />
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
