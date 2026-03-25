@@ -2,25 +2,25 @@
 
 ---
 
-## 【緊急】Work 0: Firebase APIキー再生成（セキュリティ対応）
+## 【完了】Work 0: Firebase APIキー再生成（セキュリティ対応）（完了: 2026-03-25）
 ※ GitHubリポジトリでAPIキーが露出したため、緊急で再生成が必要
 
 ### Work 0.1: 既存APIキーの無効化と再生成
-- [ ] Google Cloud Console (console.cloud.google.com) にアクセス
-- [ ] プロジェクト「okiroya-9af3f」を選択
-- [ ] 「APIとサービス」→「認証情報」に移動
-- [ ] 露出したAPIキー「AIzaSyAvf1uARsUn0zNo3JTA7yTNwTbz7Y7woZo」を特定
-- [ ] 「キーを再生成」または新しいキーを作成
-- [ ] 古いキーを削除または制限を設定
+- [x] Google Cloud Console (console.cloud.google.com) にアクセス
+- [x] プロジェクト「okiroya-9af3f」を選択
+- [x] 「APIとサービス」→「認証情報」に移動
+- [x] 露出したAPIキー「AIzaSyAvf1uARsUn0zNo3JTA7yTNwTbz7Y7woZo」を特定
+- [x] 「キーを再生成」または新しいキーを作成
+- [x] 古いキーを削除または制限を設定
 
 ### Work 0.2: 新しいAPIキーの設定
-- [ ] `.env`ファイルの`FIREBASE_API_KEY`を新しい値に更新
-- [ ] アプリが正常に動作することを確認
+- [x] `.env`ファイルの`FIREBASE_API_KEY`を新しい値に更新
+- [x] アプリが正常に動作することを確認
 
 ### Work 0.3: APIキーの制限設定（推奨）
-- [ ] Google Cloud Consoleでキーを選択
-- [ ] 「アプリケーションの制限」でiOSアプリに制限
-- [ ] 「APIの制限」で必要なAPIのみに制限
+- [x] Google Cloud Consoleでキーを選択
+- [x] 「アプリケーションの制限」でiOSアプリに制限
+- [x] 「APIの制限」で必要なAPIのみに制限
 
 ---
 
@@ -62,28 +62,28 @@
 
 ---
 
-## Work 3: X (Twitter) Developer設定
+## Work 3: X (Twitter) Developer設定（完了: 2026-03-25）
 
 ### Work 3.1: X Developer Portal登録
-- [ ] developer.twitter.com でアカウント作成
-- [ ] 開発者申請
-- [ ] 申請承認待ち
+- [x] developer.twitter.com でアカウント作成
+- [x] 開発者申請
+- [x] 申請承認待ち
 
 ### Work 3.2: プロジェクト・アプリ作成
-- [ ] プロジェクト作成
-- [ ] アプリ作成
-- [ ] Free tier選択
+- [x] プロジェクト作成
+- [x] アプリ作成
+- [x] Free tier選択
 
 ### Work 3.3: OAuth 2.0設定
-- [ ] User authentication settings設定
-- [ ] OAuth 2.0有効化
-- [ ] Callback URL設定
-- [ ] 必要なスコープ設定（tweet.write）
+- [x] User authentication settings設定
+- [x] OAuth 2.0有効化
+- [x] Callback URL設定（okiroya://oauth-callback）
+- [x] 必要なスコープ設定（読み取りと書き込み）
 
 ### Work 3.4: APIキー取得
-- [ ] Client ID取得
-- [ ] Client Secret取得
-- [ ] Firebase Functionsの環境変数に設定
+- [x] Client ID取得
+- [x] Client Secret取得
+- [x] .envファイルに設定
 
 ---
 
