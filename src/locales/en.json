@@ -58,7 +58,16 @@
     "connectX": "Connect with X",
     "connected": "Connected",
     "disconnect": "Disconnect",
-    "connectionStatus": "Connection Status"
+    "connectionStatus": "Connection Status",
+    "connecting": "Connecting...",
+    "disconnecting": "Disconnecting...",
+    "connectSuccess": "Connected to X",
+    "connectError": "Failed to connect",
+    "disconnectSuccess": "Disconnected from X",
+    "disconnectError": "Failed to disconnect",
+    "disconnectConfirm": "Disconnect from X?",
+    "disconnectConfirmMessage": "If you disconnect, automatic posting when you oversleep will be disabled",
+    "connectedAs": "Connected as @{{username}}"
   },
   "squat": {
     "title": "Squat Test",

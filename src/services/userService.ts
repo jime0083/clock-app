@@ -12,6 +12,7 @@ import {
   UserProfile,
   UserSettings,
   UserStats,
+  SNSConnection,
   SNSConnections,
   SubscriptionStatus,
   defaultUserSettings,
@@ -218,6 +219,22 @@ export const incrementFailureCount = async (uid: string): Promise<void> => {
 };
 
 // ===== SNS Connections =====
+
+export const updateSNSConnection = async (
+  uid: string,
+  platform: 'x' | 'instagram',
+  connection: SNSConnection
+): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+      [`snsConnections.${platform}`]: connection,
+    });
+  } catch (error) {
+    console.error(`Error updating ${platform} connection:`, error);
+    throw error;
+  }
+};
 
 export const updateXConnection = async (
   uid: string,

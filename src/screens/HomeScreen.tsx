@@ -22,6 +22,7 @@ import { AlarmSettingModal } from '@/components/modals/AlarmSettingModal';
 import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
 import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
 import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
+import { SNSConnectionModal } from '@/components/modals/SNSConnectionModal';
 import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
 import PaywallScreen from '@/screens/PaywallScreen';
 import CalibrationScreen from '@/screens/CalibrationScreen';
@@ -45,6 +46,7 @@ const HomeScreen: React.FC = () => {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
   const [isCalibrationVisible, setIsCalibrationVisible] = useState(false);
+  const [isSNSModalVisible, setIsSNSModalVisible] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
@@ -90,8 +92,7 @@ const HomeScreen: React.FC = () => {
           setIsCalibrationVisible(true);
           break;
         case 'snsConnection':
-          // TODO: Phase 10で実装
-          Alert.alert(t('settings.snsConnection'), 'Coming soon...');
+          setIsSNSModalVisible(true);
           break;
         case 'language':
           setIsLanguageModalVisible(true);
@@ -323,6 +324,14 @@ const HomeScreen: React.FC = () => {
           />
         </View>
       )}
+
+      {/* SNS Connection Modal */}
+      <SNSConnectionModal
+        visible={isSNSModalVisible}
+        onClose={() => setIsSNSModalVisible(false)}
+        currentConnection={snsConnections?.x ?? null}
+        onConnectionChange={fetchUserData}
+      />
     </SafeAreaView>
   );
 };

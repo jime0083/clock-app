@@ -58,7 +58,16 @@
     "connectX": "Xと連携",
     "connected": "連携済み",
     "disconnect": "連携解除",
-    "connectionStatus": "連携状態"
+    "connectionStatus": "連携状態",
+    "connecting": "連携中...",
+    "disconnecting": "解除中...",
+    "connectSuccess": "Xと連携しました",
+    "connectError": "連携に失敗しました",
+    "disconnectSuccess": "連携を解除しました",
+    "disconnectError": "連携解除に失敗しました",
+    "disconnectConfirm": "X連携を解除しますか？",
+    "disconnectConfirmMessage": "連携を解除すると、寝坊時の自動投稿ができなくなります",
+    "connectedAs": "@{{username}} で連携中"
   },
   "squat": {
     "title": "スクワットテスト",

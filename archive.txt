@@ -293,3 +293,65 @@
 - [x] ペナルティ投稿トリガー
 
 ---
+
+## Work 0: Firebase APIキー再生成（完了: 2026-03-25）
+※ セキュリティ対応
+
+### Work 0.1: 既存APIキーの無効化と再生成
+- [x] Google Cloud Consoleでキーをローテーション
+- [x] 新しいAPIキーを取得
+
+### Work 0.2: 新しいAPIキーの設定
+- [x] .envファイルのFIREBASE_API_KEYを更新
+- [x] アプリ動作確認
+
+### Work 0.3: APIキーの制限設定
+- [x] iOSアプリに制限
+- [x] 必要なAPIのみに制限
+
+---
+
+## Work 3: X (Twitter) Developer設定（完了: 2026-03-25）
+
+### Work 3.1: X Developer Portal登録
+- [x] developer.twitter.com でアカウント作成
+- [x] 開発者申請
+
+### Work 3.2: プロジェクト・アプリ作成
+- [x] プロジェクト作成
+- [x] アプリ作成
+- [x] Free tier選択
+
+### Work 3.3: OAuth 2.0設定
+- [x] User authentication settings設定
+- [x] OAuth 2.0有効化
+- [x] Callback URL設定（okiroya://oauth-callback）
+- [x] 必要なスコープ設定（読み取りと書き込み）
+
+### Work 3.4: APIキー取得
+- [x] Client ID取得
+- [x] Client Secret取得
+- [x] .envファイルに設定
+
+---
+
+## Phase 10: SNS連携（X）（完了: 2026-03-25）
+
+### Phase 10.1: X OAuth認証フロー
+- [x] OAuth 2.0 PKCE実装
+- [x] 認証画面表示
+- [x] コールバック処理
+
+### Phase 10.2: アクセストークン管理
+- [x] トークン暗号化保存
+- [x] トークンリフレッシュ処理
+
+### Phase 10.3: 投稿機能実装
+- [x] Firebase Functions経由の投稿API
+- [x] 投稿処理実装
+
+### Phase 10.4: 連携解除機能
+- [x] トークン削除処理
+- [x] 再連携導線
+
+---

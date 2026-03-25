@@ -42,6 +42,10 @@ interface ExtendedExpoConfig {
       messagingSenderId: string | undefined;
       appId: string | undefined;
     };
+    x: {
+      clientId: string | undefined;
+      clientSecret: string | undefined;
+    };
   };
 }
 
@@ -74,7 +78,7 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
   web: {
     favicon: './assets/images/okiroya-icon.png',
   },
-  plugins: ['expo-localization', 'expo-web-browser'],
+  plugins: ['expo-localization', 'expo-web-browser', 'expo-secure-store'],
   extra: {
     eas: {
       projectId: '',
@@ -86,6 +90,10 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
       appId: process.env.FIREBASE_APP_ID,
+    },
+    x: {
+      clientId: process.env.X_CLIENT_ID,
+      clientSecret: process.env.X_CLIENT_SECRET,
     },
   },
 });
