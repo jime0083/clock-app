@@ -114,8 +114,8 @@ export const updateUserSettings = async (
     if (settings.customAlarmSound !== undefined) {
       updates['settings.customAlarmSound'] = settings.customAlarmSound;
     }
-    if (settings.calibrationData !== undefined) {
-      updates['settings.calibrationData'] = settings.calibrationData;
+    if (settings.calibration !== undefined) {
+      updates['settings.calibration'] = settings.calibration;
     }
     if (settings.language !== undefined) {
       updates['settings.language'] = settings.language;

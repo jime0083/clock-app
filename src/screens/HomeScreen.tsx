@@ -24,7 +24,9 @@ import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
 import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
 import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
 import PaywallScreen from '@/screens/PaywallScreen';
+import CalibrationScreen from '@/screens/CalibrationScreen';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
+import { SquatDetectionConfig } from '@/services/accelerometerService';
 import { signOut, deleteAccount } from '@/services/authService';
 import { UserDocument } from '@/types/firestore';
 
@@ -42,6 +44,7 @@ const HomeScreen: React.FC = () => {
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
+  const [isCalibrationVisible, setIsCalibrationVisible] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
@@ -84,8 +87,7 @@ const HomeScreen: React.FC = () => {
           setIsAudioModalVisible(true);
           break;
         case 'squatCalibration':
-          // TODO: Phase 7で実装
-          Alert.alert(t('settings.squatCalibration'), 'Coming soon...');
+          setIsCalibrationVisible(true);
           break;
         case 'snsConnection':
           // TODO: Phase 10で実装
@@ -167,6 +169,25 @@ const HomeScreen: React.FC = () => {
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;
+    }
+  };
+
+  const handleCalibrationComplete = async (config: SquatDetectionConfig) => {
+    if (!user?.uid) return;
+    try {
+      await updateUserSettings(user.uid, {
+        calibration: {
+          peakThreshold: config.peakThreshold,
+          minSquatDuration: config.minSquatDuration,
+          maxSquatDuration: config.maxSquatDuration,
+          calibratedAt: new Date().toISOString(),
+        },
+      });
+      setIsCalibrationVisible(false);
+      await fetchUserData();
+    } catch (error) {
+      console.error('Error saving calibration:', error);
+      Alert.alert(t('common.error'), t('common.error'));
     }
   };
 
@@ -289,6 +310,16 @@ const HomeScreen: React.FC = () => {
           <PaywallScreen
             onClose={() => setIsPaywallVisible(false)}
             onSuccess={() => setIsPaywallVisible(false)}
+          />
+        </View>
+      )}
+
+      {/* Calibration Screen */}
+      {isCalibrationVisible && (
+        <View style={StyleSheet.absoluteFill}>
+          <CalibrationScreen
+            onComplete={handleCalibrationComplete}
+            onClose={() => setIsCalibrationVisible(false)}
           />
         </View>
       )}

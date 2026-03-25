@@ -16,29 +16,17 @@ export interface AlarmSettings {
 }
 
 export interface CalibrationData {
-  patterns: SquatPattern[];
-  threshold: number;
-  calibratedAt: Timestamp;
-}
-
-export interface SquatPattern {
-  type: 'normal' | 'slow' | 'shallow';
-  accelerationData: AccelerationPoint[];
-  duration: number; // milliseconds
-}
-
-export interface AccelerationPoint {
-  x: number;
-  y: number;
-  z: number;
-  timestamp: number;
+  peakThreshold: number;
+  minSquatDuration: number;
+  maxSquatDuration: number;
+  calibratedAt: string; // ISO string
 }
 
 export interface UserSettings {
   alarmTime: string | null;
   alarmDays: number[];
   customAlarmSound: string | null;
-  calibrationData: CalibrationData | null;
+  calibration: CalibrationData | null;
   language: 'ja' | 'en';
 }
 
@@ -119,7 +107,7 @@ export const defaultUserSettings: UserSettings = {
   alarmTime: null,
   alarmDays: [],
   customAlarmSound: null,
-  calibrationData: null,
+  calibration: null,
   language: 'ja',
 };
 

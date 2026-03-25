@@ -2,15 +2,16 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import Constants from 'expo-constants';
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyAvf1uARsUn0zNo3JTA7yTNwTbz7Y7woZo',
-  authDomain: 'okiroya-9af3f.firebaseapp.com',
-  projectId: 'okiroya-9af3f',
-  storageBucket: 'okiroya-9af3f.firebasestorage.app',
-  messagingSenderId: '385341847803',
-  appId: '1:385341847803:ios:b07cd453b00fcf97b0585e',
-};
+// Get Firebase config from environment variables via app.config.ts
+const firebaseConfig = Constants.expoConfig?.extra?.firebase;
+
+if (!firebaseConfig || !firebaseConfig.apiKey) {
+  throw new Error(
+    'Firebase configuration is missing. Please ensure environment variables are set in .env file.'
+  );
+}
 
 // Initialize Firebase (only if not already initialized)
 let app: FirebaseApp;

@@ -2,6 +2,28 @@
 
 ---
 
+## 【緊急】Work 0: Firebase APIキー再生成（セキュリティ対応）
+※ GitHubリポジトリでAPIキーが露出したため、緊急で再生成が必要
+
+### Work 0.1: 既存APIキーの無効化と再生成
+- [ ] Google Cloud Console (console.cloud.google.com) にアクセス
+- [ ] プロジェクト「okiroya-9af3f」を選択
+- [ ] 「APIとサービス」→「認証情報」に移動
+- [ ] 露出したAPIキー「AIzaSyAvf1uARsUn0zNo3JTA7yTNwTbz7Y7woZo」を特定
+- [ ] 「キーを再生成」または新しいキーを作成
+- [ ] 古いキーを削除または制限を設定
+
+### Work 0.2: 新しいAPIキーの設定
+- [ ] `.env`ファイルの`FIREBASE_API_KEY`を新しい値に更新
+- [ ] アプリが正常に動作することを確認
+
+### Work 0.3: APIキーの制限設定（推奨）
+- [ ] Google Cloud Consoleでキーを選択
+- [ ] 「アプリケーションの制限」でiOSアプリに制限
+- [ ] 「APIの制限」で必要なAPIのみに制限
+
+---
+
 ## Work 1: Firebase設定
 
 ### Work 1.1: Firebaseプロジェクト作成

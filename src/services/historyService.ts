@@ -10,6 +10,7 @@ import {
   orderBy,
   limit,
   Timestamp,
+  increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { WakeUpHistory } from '@/types/firestore';
@@ -121,6 +122,73 @@ export const updatePenaltyPostStatus = async (
     });
   } catch (error) {
     console.error('Error updating penalty post status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Record wake-up history and update user stats
+ */
+export const recordWakeUpHistory = async (
+  uid: string,
+  data: {
+    success: boolean;
+    squatCount: number;
+  }
+): Promise<string> => {
+  try {
+    const now = new Date();
+    const dateString = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const timeString = now.toTimeString().slice(0, 5); // "HH:mm"
+    const currentMonth = now.toISOString().slice(0, 7); // "YYYY-MM"
+
+    // Create history document
+    const history: WakeUpHistory = {
+      date: dateString,
+      alarmTime: timeString,
+      success: data.success,
+      squatCount: data.squatCount,
+      completedAt: data.success ? Timestamp.now() : null,
+      penaltyPosted: false,
+      penaltyPostId: null,
+    };
+
+    await createWakeUpHistory(uid, history);
+
+    // Update user stats
+    const userRef = doc(db, 'users', uid);
+    const userDoc = await getDoc(userRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const statsUpdate: Record<string, any> = {
+        'stats.totalSquats': increment(data.squatCount),
+      };
+
+      // Check if we need to reset monthly stats
+      if (userData.stats?.currentMonth !== currentMonth) {
+        // New month - reset monthly stats
+        statsUpdate['stats.currentMonth'] = currentMonth;
+        statsUpdate['stats.monthlyFailures'] = data.success ? 0 : 1;
+        statsUpdate['stats.monthlySquats'] = data.squatCount;
+      } else {
+        // Same month - increment
+        statsUpdate['stats.monthlySquats'] = increment(data.squatCount);
+        if (!data.success) {
+          statsUpdate['stats.monthlyFailures'] = increment(1);
+        }
+      }
+
+      if (!data.success) {
+        statsUpdate['stats.totalFailures'] = increment(1);
+      }
+
+      await updateDoc(userRef, statsUpdate);
+    }
+
+    return dateString;
+  } catch (error) {
+    console.error('Error recording wake-up history:', error);
     throw error;
   }
 };

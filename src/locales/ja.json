@@ -27,6 +27,8 @@
   },
   "alarm": {
     "title": "起きる時間を設定してください",
+    "notificationTitle": "起床時間です！",
+    "notificationBody": "スクワットを10回して目を覚ましましょう",
     "currentTime": "現在のアラーム設定時間",
     "changeAlarm": "アラームを変更",
     "uploadSound": "音源をアップロード",
@@ -35,6 +37,10 @@
     "defaultSound": "デフォルト音源",
     "customSound": "カスタム音源",
     "soundSettings": "アラーム音設定",
+    "snooze": "スヌーズ",
+    "dismiss": "解除",
+    "permissionRequired": "通知許可が必要です",
+    "permissionMessage": "アラームを設定するには通知を許可してください",
     "days": {
       "mon": "月",
       "tue": "火",
@@ -108,6 +114,28 @@
     "deleteAccount": "退会",
     "deleteAccountConfirm": "本当に退会しますか？この操作は取り消せません。",
     "upgrade": "すべての機能をアンロック"
+  },
+  "calibration": {
+    "title": "スクワットキャリブレーション",
+    "subtitle": "あなたのスクワットを学習します",
+    "instruction": "スマホを右手に持ち\n胸の前で腕を組んでください",
+    "ready": "準備ができたら開始",
+    "start": "開始",
+    "phaseNormal": "通常スクワット",
+    "phaseNormalDesc": "普段通りのスクワットを5回行ってください",
+    "phaseSlow": "ゆっくりスクワット",
+    "phaseSlowDesc": "ゆっくりとしたスクワットを3回行ってください",
+    "phaseShallow": "浅めスクワット",
+    "phaseShallowDesc": "浅めのスクワットを3回行ってください",
+    "progress": "{{current}}/{{total}}",
+    "detecting": "検知中...",
+    "detected": "検知しました！",
+    "nextPhase": "次のステップへ",
+    "complete": "キャリブレーション完了！",
+    "completeDesc": "スクワット検知の設定が完了しました",
+    "finish": "完了",
+    "sensorError": "加速度センサーが利用できません",
+    "holdPosition": "この姿勢をキープしてください"
   },
   "paywall": {
     "title": "プレミアムプラン",

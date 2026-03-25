@@ -27,6 +27,8 @@
   },
   "alarm": {
     "title": "Set your wake-up time",
+    "notificationTitle": "Time to wake up!",
+    "notificationBody": "Do 10 squats to wake yourself up",
     "currentTime": "Current alarm time",
     "changeAlarm": "Change Alarm",
     "uploadSound": "Upload sound",
@@ -35,6 +37,10 @@
     "defaultSound": "Default sound",
     "customSound": "Custom sound",
     "soundSettings": "Alarm Sound Settings",
+    "snooze": "Snooze",
+    "dismiss": "Dismiss",
+    "permissionRequired": "Notification permission required",
+    "permissionMessage": "Please allow notifications to set alarms",
     "days": {
       "mon": "Mon",
       "tue": "Tue",
@@ -108,6 +114,28 @@
     "deleteAccount": "Delete Account",
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone.",
     "upgrade": "Unlock all features"
+  },
+  "calibration": {
+    "title": "Squat Calibration",
+    "subtitle": "Learning your squat pattern",
+    "instruction": "Hold your phone in your right hand\nand cross your arms in front of your chest",
+    "ready": "Start when ready",
+    "start": "Start",
+    "phaseNormal": "Normal Squats",
+    "phaseNormalDesc": "Do 5 normal squats at your usual pace",
+    "phaseSlow": "Slow Squats",
+    "phaseSlowDesc": "Do 3 slow squats",
+    "phaseShallow": "Shallow Squats",
+    "phaseShallowDesc": "Do 3 shallow squats",
+    "progress": "{{current}}/{{total}}",
+    "detecting": "Detecting...",
+    "detected": "Detected!",
+    "nextPhase": "Next Step",
+    "complete": "Calibration Complete!",
+    "completeDesc": "Squat detection is now configured",
+    "finish": "Finish",
+    "sensorError": "Accelerometer not available",
+    "holdPosition": "Hold this position"
   },
   "paywall": {
     "title": "Premium Plan",
