@@ -1,7 +1,9 @@
-import { postTweet } from './xAuthService';
+import { postTweet, uploadMedia } from './xAuthService';
 import { getXTokens, isXTokenExpired, clearXTokens } from './secureTokenService';
 import { refreshXToken } from './xAuthService';
 import { saveXTokens } from './secureTokenService';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 import i18n from '@/locales';
 
 interface PostResult {
@@ -13,6 +15,17 @@ interface PostResult {
 
 // Token refresh buffer: refresh 5 minutes before expiry
 const TOKEN_REFRESH_BUFFER_SECONDS = 300;
+
+// Penalty images for random selection
+const PENALTY_IMAGES = [
+  require('@/assets/images/日本人男性.png'),
+  require('@/assets/images/日本人女性.png'),
+  require('@/assets/images/日本人女性2.png'),
+  require('@/assets/images/黒人男性.png'),
+  require('@/assets/images/黒人女性.png'),
+  require('@/assets/images/白人男性.png'),
+  require('@/assets/images/白人女性.png'),
+];
 
 /**
  * Get a valid access token, refreshing if necessary
@@ -51,7 +64,36 @@ const getValidToken = async (): Promise<string | null> => {
 };
 
 /**
- * Post a penalty tweet when user fails to wake up
+ * Get a random penalty image as base64
+ */
+const getRandomPenaltyImageBase64 = async (): Promise<string | null> => {
+  try {
+    // Select random image
+    const randomIndex = Math.floor(Math.random() * PENALTY_IMAGES.length);
+    const imageSource = PENALTY_IMAGES[randomIndex];
+
+    // Load asset
+    const asset = Asset.fromModule(imageSource);
+    await asset.downloadAsync();
+
+    if (!asset.localUri) {
+      return null;
+    }
+
+    // Read as base64
+    const base64 = await FileSystem.readAsStringAsync(asset.localUri, {
+      encoding: 'base64',
+    });
+
+    return base64;
+  } catch (error) {
+    console.error('Error loading penalty image:', error);
+    return null;
+  }
+};
+
+/**
+ * Post a penalty tweet with image when user fails to wake up
  */
 export const postPenaltyTweet = async (): Promise<PostResult> => {
   try {
@@ -69,8 +111,21 @@ export const postPenaltyTweet = async (): Promise<PostResult> => {
     // Get penalty text from translations
     const penaltyText = i18n.t('penalty.postText');
 
-    // Post the tweet
-    const result = await postTweet(accessToken, penaltyText);
+    // Get random penalty image
+    const imageBase64 = await getRandomPenaltyImageBase64();
+
+    let mediaId: string | undefined;
+
+    // Upload image if available
+    if (imageBase64) {
+      const uploadResult = await uploadMedia(accessToken, imageBase64, 'image/png');
+      if (uploadResult.success && uploadResult.mediaId) {
+        mediaId = uploadResult.mediaId;
+      }
+    }
+
+    // Post the tweet with image
+    const result = await postTweet(accessToken, penaltyText, mediaId);
 
     if (!result.success) {
       // Check if error indicates auth issue

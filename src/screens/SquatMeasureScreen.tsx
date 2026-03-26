@@ -27,7 +27,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAccelerometer } from '@/hooks/useAccelerometer';
 import { audioService } from '@/services/audioService';
-import { recordWakeUpHistory } from '@/services/historyService';
+import { recordWakeUpHistoryOfflineAware } from '@/services/offlineService';
+import { postPenaltyWithRetry } from '@/services/penaltyRetryService';
 import { useAuth } from '@/contexts/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -162,16 +163,26 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
     stopListening();
     await audioService.stopAlarmSound();
 
-    // Record failure
+    // Record failure (offline-aware)
     if (user?.uid) {
       try {
-        await recordWakeUpHistory(user.uid, {
+        await recordWakeUpHistoryOfflineAware(user.uid, {
           success: false,
           squatCount,
         });
       } catch (error) {
         console.error('Failed to record history:', error);
       }
+    }
+
+    // Post penalty tweet with retry support (X連携は必須)
+    try {
+      const result = await postPenaltyWithRetry();
+      if (!result.success) {
+        console.error('Failed to post penalty tweet (will retry):', result.error);
+      }
+    } catch (error) {
+      console.error('Error posting penalty tweet:', error);
     }
 
     setScreenState('failure');
@@ -194,10 +205,10 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
     stopListening();
     await audioService.stopAlarmSound();
 
-    // Record success
+    // Record success (offline-aware)
     if (user?.uid) {
       try {
-        await recordWakeUpHistory(user.uid, {
+        await recordWakeUpHistoryOfflineAware(user.uid, {
           success: true,
           squatCount: TARGET_SQUATS,
         });

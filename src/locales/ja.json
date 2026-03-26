@@ -146,6 +146,21 @@
     "sensorError": "加速度センサーが利用できません",
     "holdPosition": "この姿勢をキープしてください"
   },
+  "setup": {
+    "title": "初期設定",
+    "welcome": "オキロヤへようこそ",
+    "step": "ステップ {{current}}/{{total}}",
+    "step1Title": "起床時間の設定",
+    "step1Description": "毎日起きたい時間と曜日を設定してください",
+    "step2Title": "X連携",
+    "step2Description": "寝坊するとXに自動投稿されます\nこれがあなたの起床を助けます",
+    "step3Title": "設定完了！",
+    "step3Description": "準備が整いました\n明日から早起き生活を始めましょう！",
+    "next": "次へ",
+    "skip": "スキップ",
+    "start": "始める",
+    "connectRequired": "X連携は必須です"
+  },
   "paywall": {
     "title": "プレミアムプラン",
     "subtitle": "すべての機能をアンロックして\n最高の目覚め体験を",

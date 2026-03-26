@@ -23,12 +23,18 @@ import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
 import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
 import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
 import { SNSConnectionModal } from '@/components/modals/SNSConnectionModal';
+import { WeeklySummaryModal } from '@/components/modals/WeeklySummaryModal';
 import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
 import PaywallScreen from '@/screens/PaywallScreen';
 import CalibrationScreen from '@/screens/CalibrationScreen';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { SquatDetectionConfig } from '@/services/accelerometerService';
 import { signOut, deleteAccount } from '@/services/authService';
+import {
+  shouldShowWeeklySummary,
+  getWeeklySummary,
+  markWeeklySummaryShown,
+} from '@/services/weeklySummaryService';
 import { UserDocument } from '@/types/firestore';
 
 const HomeScreen: React.FC = () => {
@@ -47,6 +53,11 @@ const HomeScreen: React.FC = () => {
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
   const [isCalibrationVisible, setIsCalibrationVisible] = useState(false);
   const [isSNSModalVisible, setIsSNSModalVisible] = useState(false);
+  const [isWeeklySummaryVisible, setIsWeeklySummaryVisible] = useState(false);
+  const [weeklySummaryData, setWeeklySummaryData] = useState<{
+    successCount: number;
+    squatCount: number;
+  } | null>(null);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
@@ -61,6 +72,31 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
+
+  // Check for weekly summary on mount
+  useEffect(() => {
+    const checkWeeklySummary = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const shouldShow = await shouldShowWeeklySummary();
+        if (shouldShow) {
+          const summary = await getWeeklySummary(user.uid);
+          if (summary) {
+            setWeeklySummaryData({
+              successCount: summary.successCount,
+              squatCount: summary.squatCount,
+            });
+            setIsWeeklySummaryVisible(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking weekly summary:', error);
+      }
+    };
+
+    checkWeeklySummary();
+  }, [user?.uid]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -171,6 +207,11 @@ const HomeScreen: React.FC = () => {
       console.error('Error deleting account:', error);
       throw error;
     }
+  };
+
+  const handleWeeklySummaryClose = async () => {
+    setIsWeeklySummaryVisible(false);
+    await markWeeklySummaryShown();
   };
 
   const handleCalibrationComplete = async (config: SquatDetectionConfig) => {
@@ -332,6 +373,16 @@ const HomeScreen: React.FC = () => {
         currentConnection={snsConnections?.x ?? null}
         onConnectionChange={fetchUserData}
       />
+
+      {/* Weekly Summary Modal */}
+      {weeklySummaryData && (
+        <WeeklySummaryModal
+          visible={isWeeklySummaryVisible}
+          onClose={handleWeeklySummaryClose}
+          successCount={weeklySummaryData.successCount}
+          squatCount={weeklySummaryData.squatCount}
+        />
+      )}
     </SafeAreaView>
   );
 };

@@ -28,6 +28,7 @@ export interface UserSettings {
   customAlarmSound: string | null;
   calibration: CalibrationData | null;
   language: 'ja' | 'en';
+  setupCompleted: boolean;
 }
 
 export interface SNSConnection {
@@ -109,6 +110,7 @@ export const defaultUserSettings: UserSettings = {
   customAlarmSound: null,
   calibration: null,
   language: 'ja',
+  setupCompleted: false,
 };
 
 export const defaultSNSConnection: SNSConnection = {

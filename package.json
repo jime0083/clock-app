@@ -6,15 +6,21 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "^9.1.0",
+    "@react-native-community/netinfo": "11.5.2",
     "@react-navigation/native": "^7.2.0",
     "@react-navigation/native-stack": "^7.14.7",
     "expo": "~55.0.8",
     "expo-apple-authentication": "~55.0.9",
+    "expo-asset": "~55.0.10",
     "expo-auth-session": "~55.0.9",
     "expo-av": "^16.0.8",
     "expo-background-fetch": "~55.0.10",
@@ -43,17 +49,25 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
     "babel-plugin-module-resolver": "^5.0.3",
+    "babel-preset-expo": "^55.0.12",
     "dotenv": "^17.3.1",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "jest": "^30.3.0",
+    "jest-expo": "^55.0.11",
     "prettier": "^3.8.1",
+    "react-native-worklets": "^0.8.1",
+    "ts-jest": "^29.4.6",
     "typescript": "~5.9.2"
   },
   "private": true

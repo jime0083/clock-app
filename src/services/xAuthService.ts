@@ -323,20 +323,64 @@ export const revokeXToken = async (accessToken: string): Promise<boolean> => {
 };
 
 /**
+ * Upload media to X API
+ */
+export const uploadMedia = async (
+  accessToken: string,
+  base64Data: string,
+  mediaType: string = 'image/png'
+): Promise<{ success: boolean; mediaId?: string; error?: string }> => {
+  try {
+    const response = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `media_data=${encodeURIComponent(base64Data)}`,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.errors?.[0]?.message || 'Failed to upload media',
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      mediaId: data.media_id_string,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
  * Post a tweet using the X API
  */
 export const postTweet = async (
   accessToken: string,
-  text: string
+  text: string,
+  mediaId?: string
 ): Promise<{ success: boolean; tweetId?: string; error?: string }> => {
   try {
+    const body: { text: string; media?: { media_ids: string[] } } = { text };
+
+    if (mediaId) {
+      body.media = { media_ids: [mediaId] };
+    }
+
     const response = await fetch('https://api.twitter.com/2/tweets', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

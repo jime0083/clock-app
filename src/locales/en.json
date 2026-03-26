@@ -146,6 +146,21 @@
     "sensorError": "Accelerometer not available",
     "holdPosition": "Hold this position"
   },
+  "setup": {
+    "title": "Initial Setup",
+    "welcome": "Welcome to Wake or Shame",
+    "step": "Step {{current}}/{{total}}",
+    "step1Title": "Set Wake-up Time",
+    "step1Description": "Set the time and days you want to wake up",
+    "step2Title": "Connect with X",
+    "step2Description": "If you oversleep, a post will be automatically made on X\nThis will help you wake up",
+    "step3Title": "Setup Complete!",
+    "step3Description": "You're all set\nStart your early morning life from tomorrow!",
+    "next": "Next",
+    "skip": "Skip",
+    "start": "Start",
+    "connectRequired": "X connection is required"
+  },
   "paywall": {
     "title": "Premium Plan",
     "subtitle": "Unlock all features for\nthe ultimate wake-up experience",
