@@ -1,9 +1,13 @@
-import { Audio, AVPlaybackStatus } from 'expo-av';
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  AudioPlayer,
+} from 'expo-audio';
 
 // Default alarm sound (bundled with app)
 // Note: Add a default-alarm.mp3 file to src/assets/sounds/
 // For now, we'll use a system default if not available
-let DEFAULT_ALARM_SOUND: any = null;
+let DEFAULT_ALARM_SOUND: number | null = null;
 try {
   DEFAULT_ALARM_SOUND = require('@/assets/sounds/default-alarm.mp3');
 } catch {
@@ -11,7 +15,7 @@ try {
 }
 
 class AudioService {
-  private sound: Audio.Sound | null = null;
+  private player: AudioPlayer | null = null;
   private isPlaying = false;
   private isLooping = false;
 
@@ -21,12 +25,10 @@ class AudioService {
    */
   async initializeAudioMode(): Promise<void> {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+        interruptionMode: 'doNotMix',
       });
     } catch (error) {
       console.error('Error initializing audio mode:', error);
@@ -38,7 +40,10 @@ class AudioService {
    * @param customSoundUrl - Optional URL to custom alarm sound from Firebase Storage
    * @param loop - Whether to loop the sound
    */
-  async playAlarmSound(customSoundUrl?: string | null, loop = true): Promise<void> {
+  async playAlarmSound(
+    customSoundUrl?: string | null,
+    loop = true
+  ): Promise<void> {
     try {
       // Stop any existing sound
       await this.stopAlarmSound();
@@ -46,12 +51,12 @@ class AudioService {
       // Initialize audio mode
       await this.initializeAudioMode();
 
-      // Create sound object
-      let soundSource: any;
+      // Determine sound source
+      let soundSource: string | number | null = null;
 
       if (customSoundUrl) {
         // Use custom sound from URL
-        soundSource = { uri: customSoundUrl };
+        soundSource = customSoundUrl;
       } else if (DEFAULT_ALARM_SOUND) {
         // Use default bundled sound
         soundSource = DEFAULT_ALARM_SOUND;
@@ -61,17 +66,16 @@ class AudioService {
         return;
       }
 
-      const { sound } = await Audio.Sound.createAsync(
-        soundSource,
-        {
-          shouldPlay: true,
-          isLooping: loop,
-          volume: 1.0,
-        },
-        this.onPlaybackStatusUpdate
-      );
+      // Create audio player
+      this.player = createAudioPlayer(soundSource);
 
-      this.sound = sound;
+      // Configure player
+      this.player.loop = loop;
+      this.player.volume = 1.0;
+
+      // Start playback
+      this.player.play();
+
       this.isPlaying = true;
       this.isLooping = loop;
     } catch (error) {
@@ -84,34 +88,17 @@ class AudioService {
   }
 
   /**
-   * Callback for playback status updates
-   */
-  private onPlaybackStatusUpdate = (status: AVPlaybackStatus): void => {
-    if (!status.isLoaded) {
-      // Handle error
-      if (status.error) {
-        console.error('Playback error:', status.error);
-      }
-      return;
-    }
-
-    if (status.didJustFinish && !status.isLooping) {
-      this.isPlaying = false;
-    }
-  };
-
-  /**
    * Stop alarm sound
    */
   async stopAlarmSound(): Promise<void> {
-    if (this.sound) {
+    if (this.player) {
       try {
-        await this.sound.stopAsync();
-        await this.sound.unloadAsync();
+        this.player.pause();
+        this.player.remove();
       } catch (error) {
         console.error('Error stopping alarm sound:', error);
       } finally {
-        this.sound = null;
+        this.player = null;
         this.isPlaying = false;
         this.isLooping = false;
       }
@@ -122,9 +109,9 @@ class AudioService {
    * Pause alarm sound
    */
   async pauseAlarmSound(): Promise<void> {
-    if (this.sound && this.isPlaying) {
+    if (this.player && this.isPlaying) {
       try {
-        await this.sound.pauseAsync();
+        this.player.pause();
         this.isPlaying = false;
       } catch (error) {
         console.error('Error pausing alarm sound:', error);
@@ -136,9 +123,9 @@ class AudioService {
    * Resume alarm sound
    */
   async resumeAlarmSound(): Promise<void> {
-    if (this.sound && !this.isPlaying) {
+    if (this.player && !this.isPlaying) {
       try {
-        await this.sound.playAsync();
+        this.player.play();
         this.isPlaying = true;
       } catch (error) {
         console.error('Error resuming alarm sound:', error);
@@ -151,9 +138,9 @@ class AudioService {
    * @param volume - Volume level from 0.0 to 1.0
    */
   async setVolume(volume: number): Promise<void> {
-    if (this.sound) {
+    if (this.player) {
       try {
-        await this.sound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
+        this.player.volume = Math.max(0, Math.min(1, volume));
       } catch (error) {
         console.error('Error setting volume:', error);
       }

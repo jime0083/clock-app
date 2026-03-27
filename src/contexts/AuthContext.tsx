@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User as FirebaseUser } from 'firebase/auth';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import {
   subscribeToAuthState,
   convertToAppUser,
   signOut as authSignOut,
 } from '@/services/authService';
+
+type FirebaseUser = FirebaseAuthTypes.User;
 import { AppUser, AuthState } from '@/types/auth';
 
 interface AuthContextType extends AuthState {

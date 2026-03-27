@@ -1,4 +1,4 @@
-import { User as FirebaseUser } from 'firebase/auth';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 export interface AppUser {
   uid: string;
@@ -10,7 +10,7 @@ export interface AppUser {
 
 export interface AuthState {
   user: AppUser | null;
-  firebaseUser: FirebaseUser | null;
+  firebaseUser: FirebaseAuthTypes.User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isInitialized: boolean;

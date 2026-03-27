@@ -65,27 +65,22 @@ jest.mock('expo-sensors', () => ({
   },
 }));
 
-// Mock expo-av for alarm sound
-const mockPlayAsync = jest.fn();
-const mockStopAsync = jest.fn();
-const mockUnloadAsync = jest.fn();
+// Mock expo-audio for alarm sound
+const mockPlay = jest.fn();
+const mockPause = jest.fn();
+const mockRemove = jest.fn();
 
-jest.mock('expo-av', () => ({
-  Audio: {
-    Sound: {
-      createAsync: jest.fn(() =>
-        Promise.resolve({
-          sound: {
-            playAsync: mockPlayAsync,
-            stopAsync: mockStopAsync,
-            unloadAsync: mockUnloadAsync,
-            setIsLoopingAsync: jest.fn(),
-          },
-        })
-      ),
-    },
-    setAudioModeAsync: jest.fn(),
-  },
+const mockAudioPlayer = {
+  play: mockPlay,
+  pause: mockPause,
+  remove: mockRemove,
+  loop: false,
+  volume: 1.0,
+};
+
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => mockAudioPlayer),
+  setAudioModeAsync: jest.fn(),
 }));
 
 // Mock react-i18next
@@ -278,19 +273,19 @@ describe('E2E: Alarm to Wake-up Judgment Flow', () => {
 
   describe('Success Flow', () => {
     it('should stop alarm sound on successful completion', async () => {
-      const { Audio } = require('expo-av');
+      const { createAudioPlayer } = require('expo-audio');
 
       // Start alarm
-      const { sound } = await Audio.Sound.createAsync({});
-      await sound.playAsync();
+      const player = createAudioPlayer({});
+      player.play();
 
       // Stop on success
-      await sound.stopAsync();
-      await sound.unloadAsync();
+      player.pause();
+      player.remove();
 
-      expect(mockPlayAsync).toHaveBeenCalled();
-      expect(mockStopAsync).toHaveBeenCalled();
-      expect(mockUnloadAsync).toHaveBeenCalled();
+      expect(mockPlay).toHaveBeenCalled();
+      expect(mockPause).toHaveBeenCalled();
+      expect(mockRemove).toHaveBeenCalled();
     });
 
     it('should record success history', async () => {
@@ -385,9 +380,9 @@ describe('E2E: Alarm to Wake-up Judgment Flow', () => {
       let statsUpdated = false;
 
       // 1. Alarm triggers (simulated)
-      const { Audio } = require('expo-av');
-      const { sound } = await Audio.Sound.createAsync({});
-      await sound.playAsync();
+      const { createAudioPlayer } = require('expo-audio');
+      const player = createAudioPlayer({});
+      player.play();
 
       // 2. User completes squats
       for (let i = 0; i < requiredSquats; i++) {
@@ -397,7 +392,7 @@ describe('E2E: Alarm to Wake-up Judgment Flow', () => {
       // 3. Check completion
       if (currentSquats >= requiredSquats) {
         // Stop alarm
-        await sound.stopAsync();
+        player.pause();
         alarmStopped = true;
 
         // Record history

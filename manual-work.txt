@@ -59,9 +59,12 @@
 - [ ] 6.5インチ（iPhone 11 Pro Max）
 - [ ] 5.5インチ（iPhone 8 Plus）
 
-### Work 5.4: プライバシーポリシー作成
-- [ ] プライバシーポリシー文書作成
-- [ ] ホスティング（Webページ公開）
+### Work 5.4: プライバシーポリシー・利用規約作成
+- [x] プライバシーポリシー文書作成
+- [x] 利用規約文書作成
+- [x] ホスティング（GitHub Pages公開）
+  - 利用規約: https://jime0083.github.io/okiroya-support/terms-of-service.html
+  - プライバシーポリシー: https://jime0083.github.io/okiroya-support/privacy-policy.html
 
 ### Work 5.5: 審査申請
 - [ ] ビルドアップロード

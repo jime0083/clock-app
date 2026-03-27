@@ -29,7 +29,7 @@ interface ExtendedExpoConfig {
   web: {
     favicon: string;
   };
-  plugins: string[];
+  plugins: (string | [string, Record<string, unknown>])[];
   extra: {
     eas: {
       projectId: string;
@@ -57,7 +57,7 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/images/okiroya-icon.png',
   userInterfaceStyle: 'light',
-  newArchEnabled: true,
+  newArchEnabled: false,
   splash: {
     image: './assets/images/okiroya-icon.png',
     resizeMode: 'contain',
@@ -78,7 +78,20 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
   web: {
     favicon: './assets/images/okiroya-icon.png',
   },
-  plugins: ['expo-localization', 'expo-web-browser', 'expo-secure-store'],
+  plugins: [
+    'expo-localization',
+    'expo-web-browser',
+    'expo-secure-store',
+    'expo-audio',
+    '@react-native-firebase/app',
+    '@react-native-firebase/auth',
+    [
+      '@react-native-google-signin/google-signin',
+      {
+        iosUrlScheme: 'com.googleusercontent.apps.385341847803-kj8ofskj97uaer269k1kfq4tn88ngf8r',
+      },
+    ],
+  ],
   extra: {
     eas: {
       projectId: '',
