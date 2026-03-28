@@ -6,6 +6,7 @@
     "delete": "削除",
     "confirm": "確認",
     "loading": "読み込み中...",
+    "uploading": "アップロード中...",
     "error": "エラーが発生しました",
     "retry": "再試行",
     "close": "閉じる"
@@ -159,7 +160,15 @@
     "next": "次へ",
     "skip": "スキップ",
     "start": "始める",
-    "connectRequired": "X連携は必須です"
+    "connectRequired": "X連携は必須です",
+    "setWakeUpTime": "起きる時間を設定してください",
+    "uploadSound": "音源をアップロード",
+    "saveSettings": "設定を保存",
+    "connectXTitle": "Xと連携してください",
+    "connectXDescription": "寝坊するとXで自動的に投稿され\n寝坊したことが全フォロワーにバレます",
+    "calibrationTitle": "スクワットの計測を開始",
+    "calibrationDescription": "あなたのスクワットを学習します\nスマホを右手に持ち胸の前で腕を組んでください",
+    "startCalibration": "計測を開始"
   },
   "paywall": {
     "title": "プレミアムプラン",

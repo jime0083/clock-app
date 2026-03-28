@@ -1,4 +1,11 @@
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import {
+  signInWithCredential,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User,
+} from 'firebase/auth';
 import {
   doc,
   getDoc,
@@ -9,7 +16,7 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import { AppUser } from '@/types/auth';
 
 // Check if user is admin
@@ -26,9 +33,7 @@ export const checkIsAdmin = async (uid: string): Promise<boolean> => {
 };
 
 // Convert Firebase User to App User
-export const convertToAppUser = async (
-  firebaseUser: FirebaseAuthTypes.User
-): Promise<AppUser> => {
+export const convertToAppUser = async (firebaseUser: User): Promise<AppUser> => {
   const isAdmin = await checkIsAdmin(firebaseUser.uid);
   return {
     uid: firebaseUser.uid,
@@ -95,13 +100,13 @@ export const createOrUpdateUserProfile = async (user: AppUser): Promise<void> =>
   }
 };
 
-// Sign in with Google credential using React Native Firebase
+// Sign in with Google credential using Firebase JS SDK
 export const signInWithGoogle = async (idToken: string): Promise<AppUser> => {
   // Create a Google credential with the token
-  const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+  const googleCredential = GoogleAuthProvider.credential(idToken);
 
   // Sign-in the user with the credential
-  const result = await auth().signInWithCredential(googleCredential);
+  const result = await signInWithCredential(auth, googleCredential);
 
   if (!result.user) {
     throw new Error('No user returned from Google sign in');
@@ -112,16 +117,20 @@ export const signInWithGoogle = async (idToken: string): Promise<AppUser> => {
   return appUser;
 };
 
-// Sign in with Apple credential using React Native Firebase
+// Sign in with Apple credential using Firebase JS SDK
 export const signInWithApple = async (
   identityToken: string,
   nonce: string
 ): Promise<AppUser> => {
   // Create an Apple credential with the token
-  const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
+  const provider = new OAuthProvider('apple.com');
+  const appleCredential = provider.credential({
+    idToken: identityToken,
+    rawNonce: nonce,
+  });
 
   // Sign-in the user with the credential
-  const result = await auth().signInWithCredential(appleCredential);
+  const result = await signInWithCredential(auth, appleCredential);
 
   if (!result.user) {
     throw new Error('No user returned from Apple sign in');
@@ -134,14 +143,14 @@ export const signInWithApple = async (
 
 // Sign out
 export const signOut = async (): Promise<void> => {
-  await auth().signOut();
+  await firebaseSignOut(auth);
 };
 
 // Subscribe to auth state changes
 export const subscribeToAuthState = (
-  callback: (user: FirebaseAuthTypes.User | null) => void
+  callback: (user: User | null) => void
 ): (() => void) => {
-  return auth().onAuthStateChanged(callback);
+  return onAuthStateChanged(auth, callback);
 };
 
 // Delete user account and all associated data
@@ -152,7 +161,7 @@ export const deleteAccount = async (uid: string): Promise<void> => {
     await deleteDoc(userRef);
 
     // Delete the Firebase Auth user
-    const currentUser = auth().currentUser;
+    const currentUser = auth.currentUser;
     if (currentUser && currentUser.uid === uid) {
       await currentUser.delete();
     }
@@ -163,6 +172,6 @@ export const deleteAccount = async (uid: string): Promise<void> => {
 };
 
 // Get current user
-export const getCurrentUser = (): FirebaseAuthTypes.User | null => {
-  return auth().currentUser;
+export const getCurrentUser = (): User | null => {
+  return auth.currentUser;
 };

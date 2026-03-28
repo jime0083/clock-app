@@ -29,7 +29,8 @@
       "Bash(npm ls:*)",
       "WebFetch(domain:docs.expo.dev)",
       "Bash(npx expo uninstall:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(pod install:*)"
     ]
   }
 }

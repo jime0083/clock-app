@@ -83,8 +83,6 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
     'expo-web-browser',
     'expo-secure-store',
     'expo-audio',
-    '@react-native-firebase/app',
-    '@react-native-firebase/auth',
     [
       '@react-native-google-signin/google-signin',
       {

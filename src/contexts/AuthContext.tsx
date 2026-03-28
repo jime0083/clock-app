@@ -1,12 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { User } from 'firebase/auth';
 import {
   subscribeToAuthState,
   convertToAppUser,
   signOut as authSignOut,
 } from '@/services/authService';
-
-type FirebaseUser = FirebaseAuthTypes.User;
 import { AppUser, AuthState } from '@/types/auth';
 
 interface AuthContextType extends AuthState {
@@ -28,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, setState] = useState<AuthState>(initialState);
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuthState(async (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = subscribeToAuthState(async (firebaseUser: User | null) => {
       if (firebaseUser) {
         try {
           const appUser = await convertToAppUser(firebaseUser);

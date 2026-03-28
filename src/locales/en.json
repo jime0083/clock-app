@@ -6,6 +6,7 @@
     "delete": "Delete",
     "confirm": "Confirm",
     "loading": "Loading...",
+    "uploading": "Uploading...",
     "error": "An error occurred",
     "retry": "Retry",
     "close": "Close"
@@ -159,7 +160,15 @@
     "next": "Next",
     "skip": "Skip",
     "start": "Start",
-    "connectRequired": "X connection is required"
+    "connectRequired": "X connection is required",
+    "setWakeUpTime": "Set your wake-up time",
+    "uploadSound": "Upload sound",
+    "saveSettings": "Save Settings",
+    "connectXTitle": "Connect with X",
+    "connectXDescription": "If you oversleep, a post will be automatically made on X\nAll your followers will know you overslept",
+    "calibrationTitle": "Start Squat Calibration",
+    "calibrationDescription": "We'll learn your squat pattern\nHold your phone in your right hand and cross your arms in front of your chest",
+    "startCalibration": "Start Calibration"
   },
   "paywall": {
     "title": "Premium Plan",

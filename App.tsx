@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 
 // i18n initialization
 import './src/locales';
+import { loadSavedLanguage, hasLanguageBeenSelected } from '@/locales';
 
 // Services
 import { initializeOfflineService } from '@/services/offlineService';
@@ -17,12 +18,14 @@ import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 
 // Screens
 import LoadingScreen from '@/screens/LoadingScreen';
+import LanguageSelectionScreen from '@/screens/LanguageSelectionScreen';
 import LoginScreen from '@/screens/LoginScreen';
 import SetupScreen from '@/screens/SetupScreen';
 import HomeScreen from '@/screens/HomeScreen';
 
 export type RootStackParamList = {
   Loading: undefined;
+  LanguageSelection: undefined;
   Login: undefined;
   Setup: undefined;
   Home: undefined;
@@ -31,10 +34,42 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// App initialization state
+type AppInitState = 'loading' | 'language_selection' | 'ready';
+
 const AppNavigator: React.FC = () => {
   const { isInitialized, isAuthenticated, isLoading, user } = useAuth();
   const [isSetupCompleted, setIsSetupCompleted] = useState<boolean | null>(null);
   const [isCheckingSetup, setIsCheckingSetup] = useState(false);
+  const [appInitState, setAppInitState] = useState<AppInitState>('loading');
+
+  // Initialize app (check language selection)
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Load saved language preference
+        await loadSavedLanguage();
+
+        // Check if language has been selected before
+        const languageSelected = await hasLanguageBeenSelected();
+
+        if (!languageSelected) {
+          setAppInitState('language_selection');
+        } else {
+          setAppInitState('ready');
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        setAppInitState('ready');
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  const handleLanguageSelectionComplete = useCallback(() => {
+    setAppInitState('ready');
+  }, []);
 
   const checkSetupStatus = useCallback(async () => {
     if (!user?.uid) {
@@ -66,7 +101,17 @@ const AppNavigator: React.FC = () => {
     setIsSetupCompleted(true);
   }, []);
 
-  // Show loading screen while initializing
+  // Show loading screen during app initialization
+  if (appInitState === 'loading') {
+    return <LoadingScreen />;
+  }
+
+  // Show language selection screen (first launch only)
+  if (appInitState === 'language_selection') {
+    return <LanguageSelectionScreen onComplete={handleLanguageSelectionComplete} />;
+  }
+
+  // Show loading screen while auth is initializing
   if (!isInitialized || isLoading || (isAuthenticated && isCheckingSetup)) {
     return <LoadingScreen />;
   }
