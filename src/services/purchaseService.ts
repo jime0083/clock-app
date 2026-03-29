@@ -7,11 +7,11 @@ import { Platform } from 'react-native';
 import { checkIsAdmin } from './authService';
 
 // RevenueCat API Keys
-const REVENUECAT_API_KEY_IOS = 'appl_xxxxxxxxxxxxxxxxxxxxxxxx'; // TODO: RevenueCatダッシュボードから取得したキーに置き換え
+const REVENUECAT_API_KEY_IOS = 'appl_wdBdrDBwUZtVlOFZxKnuGKoJfNS';
 const REVENUECAT_API_KEY_ANDROID = 'goog_xxxxxxxxxxxxxxxxxxxxxxxx'; // Android用（将来対応）
 
 // Entitlement ID (RevenueCatで設定したもの)
-const ENTITLEMENT_ID = 'pro';
+const ENTITLEMENT_ID = 'Okiroya Pro';
 
 // Product IDs
 export const PRODUCT_IDS = {

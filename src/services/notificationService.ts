@@ -236,3 +236,41 @@ export const getExpoPushToken = async (): Promise<string | null> => {
     return null;
   }
 };
+
+/**
+ * Schedule a success notification (squats completed)
+ */
+export const scheduleSuccessNotification = async (
+  title: string,
+  body: string
+): Promise<void> => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: true,
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+      data: { type: 'success' },
+    },
+    trigger: null, // Immediate notification
+  });
+};
+
+/**
+ * Schedule a failure notification (squats not completed)
+ */
+export const scheduleFailureNotification = async (
+  title: string,
+  body: string
+): Promise<void> => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: true,
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+      data: { type: 'failure' },
+    },
+    trigger: null, // Immediate notification
+  });
+};

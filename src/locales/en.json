@@ -108,6 +108,12 @@
     "timeRemaining": "Time remaining",
     "squatCount": "Squat count"
   },
+  "notification": {
+    "alarmTitle": "Wake up time!",
+    "alarmBody": "It's time to wake up. Please do 10 squats within 5 minutes",
+    "squatConfirmed": "Squats confirmed",
+    "oversleepPosted": "Oversleep post has been posted to X"
+  },
   "penalty": {
     "postText": "I overslept...\nI am a foolish person who cannot wake up on time and easily oversleeps.\n#WakeOrShame"
   },

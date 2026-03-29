@@ -166,8 +166,8 @@ class AlarmService {
     }
 
     try {
-      const title = i18n.t('alarm.title');
-      const body = i18n.t('squat.instruction');
+      const title = i18n.t('notification.alarmTitle');
+      const body = i18n.t('notification.alarmBody');
 
       await scheduleAlarmNotification(
         config.alarmTime,

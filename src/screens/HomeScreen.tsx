@@ -18,7 +18,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AlarmCard } from '@/components/home/AlarmCard';
 import { StatCard } from '@/components/home/StatCard';
 import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
-import { AlarmSettingModal } from '@/components/modals/AlarmSettingModal';
+import AlarmSettingScreen from '@/screens/AlarmSettingScreen';
 import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
 import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
 import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
@@ -35,6 +35,9 @@ import {
   getWeeklySummary,
   markWeeklySummaryShown,
 } from '@/services/weeklySummaryService';
+import { alarmService } from '@/services/alarmService';
+import { scheduleSuccessNotification, scheduleFailureNotification } from '@/services/notificationService';
+import SquatMeasureScreen from '@/screens/SquatMeasureScreen';
 import { UserDocument } from '@/types/firestore';
 
 const HomeScreen: React.FC = () => {
@@ -46,7 +49,7 @@ const HomeScreen: React.FC = () => {
 
   // Modal states
   const [isMenuVisible, setIsMenuVisible] = useState(false);
-  const [isAlarmModalVisible, setIsAlarmModalVisible] = useState(false);
+  const [isAlarmSettingVisible, setIsAlarmSettingVisible] = useState(false);
   const [isAudioModalVisible, setIsAudioModalVisible] = useState(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
@@ -58,6 +61,9 @@ const HomeScreen: React.FC = () => {
     successCount: number;
     squatCount: number;
   } | null>(null);
+
+  // Squat measure screen state
+  const [isSquatMeasureVisible, setIsSquatMeasureVisible] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
@@ -72,6 +78,36 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
+
+  // Initialize alarm service and set up notification listener
+  useEffect(() => {
+    const initializeAlarm = async () => {
+      if (!user?.uid) return;
+
+      try {
+        // Initialize alarm service
+        await alarmService.initialize(user.uid);
+
+        // Set callback for when alarm triggers
+        alarmService.setOnAlarmTriggered(() => {
+          setIsSquatMeasureVisible(true);
+        });
+
+        // Re-schedule alarm if settings exist
+        if (userData?.settings?.alarmTime && userData?.settings?.alarmDays) {
+          await alarmService.scheduleAlarm({
+            alarmTime: userData.settings.alarmTime,
+            alarmDays: userData.settings.alarmDays,
+            customAlarmSound: userData.settings.customAlarmSound || null,
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing alarm:', error);
+      }
+    };
+
+    initializeAlarm();
+  }, [user?.uid, userData?.settings?.alarmTime, userData?.settings?.alarmDays]);
 
   // Check for weekly summary on mount
   useEffect(() => {
@@ -119,7 +155,7 @@ const HomeScreen: React.FC = () => {
     setTimeout(() => {
       switch (itemId) {
         case 'alarmSettings':
-          setIsAlarmModalVisible(true);
+          setIsAlarmSettingVisible(true);
           break;
         case 'soundSettings':
           setIsAudioModalVisible(true);
@@ -150,20 +186,51 @@ const HomeScreen: React.FC = () => {
   };
 
   const handleChangeAlarm = () => {
-    setIsAlarmModalVisible(true);
+    setIsAlarmSettingVisible(true);
   };
 
   const handleSaveAlarm = async (time: string, days: number[]) => {
     if (!user?.uid) return;
     try {
+      // Save to Firestore
       await updateUserSettings(user.uid, {
         alarmTime: time,
         alarmDays: days,
       });
+
+      // Schedule the alarm notification
+      await alarmService.scheduleAlarm({
+        alarmTime: time,
+        alarmDays: days,
+        customAlarmSound: userData?.settings?.customAlarmSound || null,
+      });
+
       await fetchUserData();
     } catch (error) {
       console.error('Error saving alarm settings:', error);
     }
+  };
+
+  // Handle squat measurement completion
+  const handleSquatComplete = async (success: boolean, squatCount: number) => {
+    setIsSquatMeasureVisible(false);
+
+    if (success) {
+      // Show success notification
+      await scheduleSuccessNotification(
+        t('wakeup.successTitle'),
+        t('notification.squatConfirmed')
+      );
+    } else {
+      // Show failure notification (X posting is handled in SquatMeasureScreen)
+      await scheduleFailureNotification(
+        t('wakeup.failureTitle'),
+        t('notification.oversleepPosted')
+      );
+    }
+
+    // Refresh user data to update stats
+    await fetchUserData();
   };
 
   const handleSaveAudio = async (audioUrl: string | null) => {
@@ -311,14 +378,17 @@ const HomeScreen: React.FC = () => {
         isSubscribed={isSubscribed}
       />
 
-      {/* Alarm Setting Modal */}
-      <AlarmSettingModal
-        visible={isAlarmModalVisible}
-        onClose={() => setIsAlarmModalVisible(false)}
-        onSave={handleSaveAlarm}
-        initialTime={settings?.alarmTime ?? null}
-        initialDays={settings?.alarmDays ?? []}
-      />
+      {/* Alarm Setting Screen */}
+      {isAlarmSettingVisible && (
+        <View style={StyleSheet.absoluteFill}>
+          <AlarmSettingScreen
+            onSave={handleSaveAlarm}
+            onClose={() => setIsAlarmSettingVisible(false)}
+            initialTime={settings?.alarmTime ?? null}
+            initialDays={settings?.alarmDays ?? []}
+          />
+        </View>
+      )}
 
       {/* Audio Setting Modal */}
       {user?.uid && (
@@ -362,6 +432,16 @@ const HomeScreen: React.FC = () => {
           <CalibrationScreen
             onComplete={handleCalibrationComplete}
             onClose={() => setIsCalibrationVisible(false)}
+          />
+        </View>
+      )}
+
+      {/* Squat Measure Screen (Alarm triggered) */}
+      {isSquatMeasureVisible && (
+        <View style={StyleSheet.absoluteFill}>
+          <SquatMeasureScreen
+            onComplete={handleSquatComplete}
+            customAlarmSound={userData?.settings?.customAlarmSound}
           />
         </View>
       )}

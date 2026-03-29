@@ -1,0 +1,119 @@
+# オキロヤ / Wake or Shame - App Store申請用情報
+
+================================================================================
+## アプリ説明文（日本語）
+================================================================================
+
+【朝、本当に起きられますか？】
+
+オキロヤは、「絶対に二度寝できない」をコンセプトにした目覚ましアプリです。
+
+アラームを止めるには、スクワットを完了する必要があります。
+もし起きられなかったら...あなたのX（Twitter）アカウントに「寝坊しました」と自動投稿されます。
+
+■ 主な機能
+・スクワット検知アラーム：加速度センサーでスクワットを検知し、指定回数を達成するまでアラームが鳴り続けます
+・ペナルティ投稿：起床に失敗すると、自動でXに投稿されます
+・カスタムアラーム：時刻・曜日を自由に設定
+・起床履歴：毎日の起床記録を確認できます
+
+■ こんな方におすすめ
+・何度アラームをかけても起きられない
+・二度寝の常習犯
+・絶対に遅刻できない予定がある
+・朝活を習慣化したい
+
+SNSでの「恥ずかしさ」をモチベーションに変えて、今日から早起き生活を始めましょう！
+
+================================================================================
+## アプリ説明文（英語）
+================================================================================
+
+【Can you really wake up in the morning?】
+
+Wake or Shame is an alarm app designed with one concept: "No more oversleeping."
+
+To stop the alarm, you must complete squats.
+If you fail to wake up... a "I overslept" post will be automatically shared on your X (Twitter) account.
+
+■ Key Features
+・Squat Detection Alarm: Uses accelerometer to detect squats. The alarm keeps ringing until you complete the required count.
+・Penalty Post: If you fail to wake up, an automatic post is made to X.
+・Custom Alarm: Set your preferred time and days.
+・Wake-up History: Track your daily wake-up records.
+
+■ Perfect for
+・People who can't wake up no matter how many alarms they set
+・Chronic oversleepers
+・Those who absolutely cannot be late
+・Anyone wanting to build a morning routine
+
+Turn the "embarrassment" of social media into motivation and start your early-bird lifestyle today!
+
+================================================================================
+## キーワード（日本語）- 最大100文字
+================================================================================
+
+目覚まし,アラーム,起床,早起き,朝活,スクワット,二度寝防止,寝坊,モーニング,習慣化
+
+================================================================================
+## キーワード（英語）- 最大100文字
+================================================================================
+
+alarm,wake up,morning,squat,oversleep,early bird,routine,habit,motivation,fitness
+
+================================================================================
+## カテゴリ
+================================================================================
+
+プライマリ: Health & Fitness（ヘルスケア/フィットネス）
+セカンダリ: Lifestyle（ライフスタイル）
+
+================================================================================
+## サポートURL
+================================================================================
+
+※GitHub Pagesで公開予定
+https://jime0083.github.io/okiroya-support/
+
+================================================================================
+## プライバシーポリシーURL
+================================================================================
+
+※GitHub Pagesで公開予定
+https://jime0083.github.io/okiroya-support/privacy-policy.html
+
+================================================================================
+## 利用規約URL
+================================================================================
+
+※GitHub Pagesで公開予定
+https://jime0083.github.io/okiroya-support/terms-of-service.html
+
+================================================================================
+## 年齢制限
+================================================================================
+
+4+ (制限なし)
+※ SNS連携機能があるが、投稿内容はシステムが自動生成する定型文のみ
+
+================================================================================
+## 審査メモ（App Review Notes）
+================================================================================
+
+This app requires X (Twitter) account connection for the penalty posting feature.
+Test Account:
+- X Username: [テスト用Xアカウント]
+- X Password: [テスト用パスワード]
+
+The squat detection feature uses device accelerometer.
+To test, hold the device and perform squat motions up and down.
+
+================================================================================
+## 問い合わせ先
+================================================================================
+
+※実際のメールアドレスを設定してください
+Email: support@example.com
+
+================================================================================

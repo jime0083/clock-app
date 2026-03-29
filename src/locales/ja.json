@@ -108,6 +108,12 @@
     "timeRemaining": "残り時間",
     "squatCount": "スクワット回数"
   },
+  "notification": {
+    "alarmTitle": "起床時間です！",
+    "alarmBody": "起床時間となりました。5分以内にスクワットを10回してください",
+    "squatConfirmed": "スクワットを確認できました",
+    "oversleepPosted": "寝坊投稿がXに投稿されました"
+  },
   "penalty": {
     "postText": "寝坊しました...\n私は決まった時間に起床することができず平気で寝過ごしてしまう愚かな人間です\n#オキロヤ"
   },

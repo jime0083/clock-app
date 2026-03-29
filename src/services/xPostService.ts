@@ -18,13 +18,13 @@ const TOKEN_REFRESH_BUFFER_SECONDS = 300;
 
 // Penalty images for random selection
 const PENALTY_IMAGES = [
-  require('@/assets/images/日本人男性.png'),
-  require('@/assets/images/日本人女性.png'),
-  require('@/assets/images/日本人女性2.png'),
-  require('@/assets/images/黒人男性.png'),
-  require('@/assets/images/黒人女性.png'),
-  require('@/assets/images/白人男性.png'),
-  require('@/assets/images/白人女性.png'),
+  require('@assets/images/日本人男性.png'),
+  require('@assets/images/日本人女性.png'),
+  require('@assets/images/日本人女性2.png'),
+  require('@assets/images/黒人男性.png'),
+  require('@assets/images/黒人女性.png'),
+  require('@assets/images/白人男性.png'),
+  require('@assets/images/白人女性.png'),
 ];
 
 /**

@@ -5,14 +5,7 @@ import {
 } from 'expo-audio';
 
 // Default alarm sound (bundled with app)
-// Note: Add a default-alarm.mp3 file to src/assets/sounds/
-// For now, we'll use a system default if not available
-let DEFAULT_ALARM_SOUND: number | null = null;
-try {
-  DEFAULT_ALARM_SOUND = require('@/assets/sounds/default-alarm.mp3');
-} catch {
-  // Default sound not available, will use system sound
-}
+const DEFAULT_ALARM_SOUND = require('@assets/sounds/アラーム音.m4a');
 
 class AudioService {
   private player: AudioPlayer | null = null;
