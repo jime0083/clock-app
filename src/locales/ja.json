@@ -38,6 +38,7 @@
     "defaultSound": "デフォルト音源",
     "customSound": "カスタム音源",
     "soundSettings": "アラーム音設定",
+    "soundDescription": "音源をアップロードしない場合はデフォルトの音源が使用されます",
     "snooze": "スヌーズ",
     "dismiss": "解除",
     "permissionRequired": "通知許可が必要です",

@@ -451,16 +451,23 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
       <Text style={styles.title}>{t('alarm.soundSettings')}</Text>
 
       <TouchableOpacity
-        style={styles.inputField}
+        style={[styles.inputField, styles.soundInputField]}
         onPress={handleSoundUpload}
         activeOpacity={0.7}
         disabled={isUploading}
       >
-        <Text style={[styles.inputText, !selectedSoundName && styles.placeholderText]}>
+        <Text
+          style={[styles.inputText, !selectedSoundName && styles.placeholderText, styles.soundInputText]}
+          numberOfLines={1}
+          ellipsizeMode="middle"
+        >
           {isUploading
             ? t('common.uploading')
             : selectedSoundName || t('setup.uploadSound')}
         </Text>
+        {selectedSoundName && !isUploading && (
+          <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -626,11 +633,6 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
             <Text style={styles.planPerMonth}>{t('pay.yearlyPerMonth')}</Text>
           </View>
         </View>
-        {selectedPlan === 'annual' && (
-          <View style={styles.checkmark}>
-            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-          </View>
-        )}
       </TouchableOpacity>
 
       {/* Monthly Plan Card */}
@@ -646,11 +648,6 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
           <Text style={styles.planDuration}>{t('pay.monthly')}</Text>
           <Text style={styles.planPriceMonthly}>{t('pay.monthlyPrice')}</Text>
         </View>
-        {selectedPlan === 'monthly' && (
-          <View style={styles.checkmark}>
-            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-          </View>
-        )}
       </TouchableOpacity>
 
       {/* Purchase Button */}
@@ -774,6 +771,15 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
     backgroundColor: Colors.background,
     marginBottom: 16,
+  },
+  soundInputField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  soundInputText: {
+    flex: 1,
+    marginRight: 12,
   },
   timePickerContainer: {
     width: '100%',
@@ -975,11 +981,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: Colors.textPrimary,
-  },
-  checkmark: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
   },
   footerLinks: {
     flexDirection: 'row',

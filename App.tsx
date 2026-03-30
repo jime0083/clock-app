@@ -48,21 +48,6 @@ const AppNavigator: React.FC = () => {
   const [isSetupCompleted, setIsSetupCompleted] = useState<boolean | null>(null);
   const [isCheckingSetup, setIsCheckingSetup] = useState(false);
   const [appInitState, setAppInitState] = useState<AppInitState>('loading');
-  const [isSplashHidden, setIsSplashHidden] = useState(false);
-  const splashHiddenRef = useRef(false);
-
-  // Hide splash screen helper
-  const hideSplashScreen = useCallback(async () => {
-    if (splashHiddenRef.current) return;
-    splashHiddenRef.current = true;
-    try {
-      await SplashScreen.hideAsync();
-      setIsSplashHidden(true);
-    } catch (error) {
-      // Ignore errors
-      setIsSplashHidden(true);
-    }
-  }, []);
 
   // Initialize app (check language selection)
   useEffect(() => {
@@ -130,11 +115,15 @@ const AppNavigator: React.FC = () => {
     if (appInitState === 'language_selection') {
       return 'language_selection';
     }
-    if (!isInitialized || isLoading || (isAuthenticated && isCheckingSetup)) {
+    if (!isInitialized || isLoading) {
       return 'loading';
     }
     if (!isAuthenticated) {
       return 'login';
+    }
+    // Still checking setup status - show loading
+    if (isCheckingSetup || isSetupCompleted === null) {
+      return 'loading';
     }
     if (!isSetupCompleted) {
       return 'setup';
@@ -147,20 +136,8 @@ const AppNavigator: React.FC = () => {
   // Determine if we're ready to show content (not loading state)
   const isReadyToShowContent = screenToShow !== 'loading';
 
-  // Hide splash screen when we know what to show (not loading)
-  useEffect(() => {
-    if (isReadyToShowContent && !splashHiddenRef.current) {
-      // Small delay to ensure the target screen is ready
-      const timer = setTimeout(() => {
-        hideSplashScreen();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isReadyToShowContent, hideSplashScreen]);
-
-  // Show loading screen during app initialization
-  // Keep showing LoadingScreen until splash is hidden to prevent white flash
-  if (!isReadyToShowContent || !isSplashHidden) {
+  // Show LoadingScreen during app initialization
+  if (!isReadyToShowContent) {
     return <LoadingScreen />;
   }
 
@@ -201,6 +178,45 @@ const AppNavigator: React.FC = () => {
   );
 };
 
+// Wrapper component to show LoadingScreen while contexts initialize
+const AppContent: React.FC = () => {
+  const [isReady, setIsReady] = useState(false);
+  const splashHiddenRef = useRef(false);
+
+  // Hide native splash and mark as ready immediately on mount
+  useEffect(() => {
+    const prepare = async () => {
+      if (!splashHiddenRef.current) {
+        splashHiddenRef.current = true;
+        try {
+          await SplashScreen.hideAsync();
+        } catch {
+          // Ignore errors
+        }
+      }
+      // Small delay to ensure LoadingScreen is rendered
+      setTimeout(() => setIsReady(true), 50);
+    };
+    prepare();
+  }, []);
+
+  // Show LoadingScreen immediately while contexts initialize
+  if (!isReady) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <AuthProvider>
+      <SubscriptionProvider>
+        <NavigationContainer>
+          <AppNavigator />
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </SubscriptionProvider>
+    </AuthProvider>
+  );
+};
+
 export default function App() {
   useEffect(() => {
     // Initialize offline service for network monitoring
@@ -210,14 +226,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <SubscriptionProvider>
-          <NavigationContainer>
-            <AppNavigator />
-            <StatusBar style="auto" />
-          </NavigationContainer>
-        </SubscriptionProvider>
-      </AuthProvider>
+      <AppContent />
     </SafeAreaProvider>
   );
 }

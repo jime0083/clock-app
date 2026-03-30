@@ -38,6 +38,7 @@
     "defaultSound": "Default sound",
     "customSound": "Custom sound",
     "soundSettings": "Alarm Sound Settings",
+    "soundDescription": "Default sound will be used if you don't upload a custom sound",
     "snooze": "Snooze",
     "dismiss": "Dismiss",
     "permissionRequired": "Notification permission required",

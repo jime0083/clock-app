@@ -189,20 +189,21 @@ const HomeScreen: React.FC = () => {
     setIsAlarmSettingVisible(true);
   };
 
-  const handleSaveAlarm = async (time: string, days: number[]) => {
+  const handleSaveAlarm = async (time: string, days: number[], soundName?: string | null) => {
     if (!user?.uid) return;
     try {
       // Save to Firestore
       await updateUserSettings(user.uid, {
         alarmTime: time,
         alarmDays: days,
+        customAlarmSound: soundName || null,
       });
 
       // Schedule the alarm notification
       await alarmService.scheduleAlarm({
         alarmTime: time,
         alarmDays: days,
-        customAlarmSound: userData?.settings?.customAlarmSound || null,
+        customAlarmSound: soundName || null,
       });
 
       await fetchUserData();
@@ -386,6 +387,7 @@ const HomeScreen: React.FC = () => {
             onClose={() => setIsAlarmSettingVisible(false)}
             initialTime={settings?.alarmTime ?? null}
             initialDays={settings?.alarmDays ?? []}
+            initialSoundName={settings?.customAlarmSound ?? null}
           />
         </View>
       )}
