@@ -17,6 +17,11 @@ Notifications.setNotificationHandler({
 // Notification channel ID for Android
 const ALARM_CHANNEL_ID = 'alarm-channel';
 
+// Number of repeat notifications to schedule for alarm
+const ALARM_REPEAT_COUNT = 10;
+// Interval between repeat notifications (in seconds)
+const ALARM_REPEAT_INTERVAL = 30;
+
 /**
  * Request notification permissions
  */
@@ -30,7 +35,16 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
   let finalStatus = existingStatus;
 
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
+    // Request with iOS-specific options for alarm functionality
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        allowCriticalAlerts: true, // Requires special entitlement from Apple
+        provideAppNotificationSettings: true,
+      },
+    });
     finalStatus = status;
   }
 
@@ -38,12 +52,13 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
     return false;
   }
 
-  // Set up Android notification channel
+  // Set up Android notification channel with alarm-specific settings
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
       name: 'Alarm',
+      description: 'Wake up alarm notifications',
       importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
+      vibrationPattern: [0, 500, 200, 500, 200, 500, 200, 500],
       lightColor: '#FF6B35',
       sound: 'default',
       enableVibrate: true,
@@ -52,6 +67,9 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
       bypassDnd: true,
     });
   }
+
+  // Set up notification categories for alarm actions
+  await setNotificationCategories();
 
   return true;
 };
@@ -65,7 +83,8 @@ export const checkNotificationPermissions = async (): Promise<boolean> => {
 };
 
 /**
- * Schedule an alarm notification
+ * Schedule alarm notifications with repeats for better wake-up experience
+ * Schedules multiple notifications starting from alarm time to ensure user wakes up
  */
 export const scheduleAlarmNotification = async (
   alarmTime: string, // "HH:mm" format
@@ -85,7 +104,7 @@ export const scheduleAlarmNotification = async (
   const daysToSchedule = alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6];
 
   for (const day of daysToSchedule) {
-    // Create trigger for each day
+    // Schedule the main alarm notification
     const trigger: Notifications.WeeklyTriggerInput = {
       type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
       weekday: day + 1, // expo-notifications uses 1-7 (1 = Sunday)
@@ -93,26 +112,95 @@ export const scheduleAlarmNotification = async (
       minute: minutes,
     };
 
+    const notificationContent: Notifications.NotificationContentInput = {
+      title,
+      body,
+      sound: true,
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      categoryIdentifier: 'alarm',
+      sticky: true, // Keep notification visible until user interacts
+      autoDismiss: false,
+      interruptionLevel: 'timeSensitive', // iOS 15+ Time Sensitive notification
+      data: {
+        type: 'alarm',
+        alarmTime,
+        day,
+        isMainAlarm: true,
+      },
+    };
+
+    // Add Android-specific settings
+    if (Platform.OS === 'android') {
+      Object.assign(notificationContent, {
+        vibrate: [0, 500, 200, 500, 200, 500],
+        color: '#FF6B35',
+      });
+    }
+
+    const mainNotificationId = await Notifications.scheduleNotificationAsync({
+      content: notificationContent,
+      trigger,
+    });
+
+    notificationIds.push(mainNotificationId);
+  }
+
+  return notificationIds;
+};
+
+/**
+ * Schedule immediate repeat notifications when alarm fires
+ * Called when the main alarm notification is received
+ */
+export const scheduleAlarmRepeatNotifications = async (
+  title: string,
+  body: string
+): Promise<string[]> => {
+  const notificationIds: string[] = [];
+
+  // Schedule repeat notifications at intervals
+  for (let i = 1; i <= ALARM_REPEAT_COUNT; i++) {
+    const delaySeconds = i * ALARM_REPEAT_INTERVAL;
+
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title,
-        body,
+        body: `${body} (${i})`,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.MAX,
         categoryIdentifier: 'alarm',
+        sticky: true,
+        autoDismiss: false,
+        interruptionLevel: 'timeSensitive',
         data: {
           type: 'alarm',
-          alarmTime,
-          day,
+          isRepeat: true,
+          repeatIndex: i,
         },
       },
-      trigger,
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: delaySeconds,
+      },
     });
 
     notificationIds.push(notificationId);
   }
 
   return notificationIds;
+};
+
+/**
+ * Cancel all repeat notifications (called when alarm is dismissed)
+ */
+export const cancelAlarmRepeatNotifications = async (): Promise<void> => {
+  const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+
+  for (const notification of scheduledNotifications) {
+    if (notification.content.data?.isRepeat) {
+      await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+    }
+  }
 };
 
 /**

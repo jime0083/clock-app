@@ -3,6 +3,8 @@ import * as Notifications from 'expo-notifications';
 import {
   requestNotificationPermissions,
   scheduleAlarmNotification,
+  scheduleAlarmRepeatNotifications,
+  cancelAlarmRepeatNotifications,
   cancelAllAlarmNotifications,
   addNotificationReceivedListener,
   addNotificationResponseListener,
@@ -22,6 +24,9 @@ export interface AlarmConfig {
 
 export type AlarmCallback = () => void;
 
+// Alarm state type
+export type AlarmState = 'idle' | 'ringing' | 'snoozed';
+
 class AlarmService {
   private isInitialized = false;
   private notificationSubscription: Notifications.Subscription | null = null;
@@ -29,12 +34,16 @@ class AlarmService {
   private appStateSubscription: any = null;
   private onAlarmTriggeredCallback: AlarmCallback | null = null;
   private currentUserId: string | null = null;
+  private alarmState: AlarmState = 'idle';
+  private pendingAlarmFromNotification = false;
 
   /**
    * Initialize the alarm service
    */
   async initialize(userId: string): Promise<boolean> {
     if (this.isInitialized) {
+      // Even if already initialized, check for pending alarm from notification
+      await this.checkLaunchNotification();
       return true;
     }
 
@@ -61,6 +70,27 @@ class AlarmService {
   }
 
   /**
+   * Get current alarm state
+   */
+  getAlarmState(): AlarmState {
+    return this.alarmState;
+  }
+
+  /**
+   * Check if there's a pending alarm from notification launch
+   */
+  hasPendingAlarm(): boolean {
+    return this.pendingAlarmFromNotification;
+  }
+
+  /**
+   * Clear pending alarm flag (call after showing squat screen)
+   */
+  clearPendingAlarm(): void {
+    this.pendingAlarmFromNotification = false;
+  }
+
+  /**
    * Set up notification event listeners
    */
   private setupNotificationListeners(): void {
@@ -69,6 +99,13 @@ class AlarmService {
       async (notification) => {
         const data = notification.request.content.data;
         if (data?.type === 'alarm') {
+          // If this is the main alarm (not a repeat), schedule repeats
+          if (data?.isMainAlarm && !data?.isRepeat) {
+            const title = i18n.t('notification.alarmTitle');
+            const body = i18n.t('notification.alarmBody');
+            await scheduleAlarmRepeatNotifications(title, body);
+          }
+
           await this.handleAlarmTriggered();
         }
       }
@@ -85,7 +122,8 @@ class AlarmService {
             // Snooze for 5 minutes
             await this.snoozeAlarm(5);
           } else {
-            // User tapped notification or dismissed - trigger alarm
+            // User tapped notification - trigger alarm and navigate to squat screen
+            this.pendingAlarmFromNotification = true;
             await this.handleAlarmTriggered();
           }
         }
@@ -119,6 +157,8 @@ class AlarmService {
   private async checkLaunchNotification(): Promise<void> {
     const response = await getLastNotificationResponse();
     if (response?.notification.request.content.data?.type === 'alarm') {
+      // Mark that we have a pending alarm from notification
+      this.pendingAlarmFromNotification = true;
       await this.handleAlarmTriggered();
     }
   }
@@ -127,8 +167,15 @@ class AlarmService {
    * Handle alarm triggered event
    */
   private async handleAlarmTriggered(): Promise<void> {
-    // Dismiss all notifications
-    await dismissAllNotifications();
+    // Don't re-trigger if already ringing
+    if (this.alarmState === 'ringing') {
+      return;
+    }
+
+    this.alarmState = 'ringing';
+
+    // Cancel repeat notifications since alarm was acknowledged
+    await cancelAlarmRepeatNotifications();
 
     // Get user settings for custom alarm sound
     let customSound: string | null = null;
@@ -144,7 +191,7 @@ class AlarmService {
     // Play alarm sound
     await audioService.playAlarmSound(customSound, true);
 
-    // Trigger callback
+    // Trigger callback to notify UI
     if (this.onAlarmTriggeredCallback) {
       this.onAlarmTriggeredCallback();
     }
@@ -194,7 +241,10 @@ class AlarmService {
    * Stop the currently playing alarm
    */
   async stopAlarm(): Promise<void> {
+    this.alarmState = 'idle';
+    this.pendingAlarmFromNotification = false;
     await audioService.stopAlarmSound();
+    await cancelAlarmRepeatNotifications();
     await dismissAllNotifications();
   }
 
@@ -202,7 +252,10 @@ class AlarmService {
    * Snooze the alarm for a specified number of minutes
    */
   async snoozeAlarm(minutes: number): Promise<void> {
-    await this.stopAlarm();
+    this.alarmState = 'snoozed';
+    await audioService.stopAlarmSound();
+    await cancelAlarmRepeatNotifications();
+    await dismissAllNotifications();
 
     // Schedule a one-time notification for snooze
     const snoozeSeconds = minutes * 60;
@@ -214,7 +267,10 @@ class AlarmService {
         title,
         body,
         sound: true,
-        data: { type: 'alarm', isSnooze: true },
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        categoryIdentifier: 'alarm',
+        interruptionLevel: 'timeSensitive',
+        data: { type: 'alarm', isSnooze: true, isMainAlarm: true },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

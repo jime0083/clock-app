@@ -121,6 +121,9 @@ export const updateUserSettings = async (
     if (settings.language !== undefined) {
       updates['settings.language'] = settings.language;
     }
+    if (settings.setupCompleted !== undefined) {
+      updates['settings.setupCompleted'] = settings.setupCompleted;
+    }
 
     await updateDoc(userRef, updates);
   } catch (error) {

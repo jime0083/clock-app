@@ -17,6 +17,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 // Services
 import { initializeOfflineService } from '@/services/offlineService';
 import { getUserDocument } from '@/services/userService';
+import { alarmService } from '@/services/alarmService';
 
 // Contexts
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,7 @@ import LanguageSelectionScreen from '@/screens/LanguageSelectionScreen';
 import LoginScreen from '@/screens/LoginScreen';
 import SetupScreen from '@/screens/SetupScreen';
 import HomeScreen from '@/screens/HomeScreen';
+import SquatMeasureScreen from '@/screens/SquatMeasureScreen';
 
 export type RootStackParamList = {
   Loading: undefined;
@@ -48,6 +50,8 @@ const AppNavigator: React.FC = () => {
   const [isSetupCompleted, setIsSetupCompleted] = useState<boolean | null>(null);
   const [isCheckingSetup, setIsCheckingSetup] = useState(false);
   const [appInitState, setAppInitState] = useState<AppInitState>('loading');
+  const [isAlarmRinging, setIsAlarmRinging] = useState(false);
+  const alarmInitializedRef = useRef(false);
 
   // Initialize app (check language selection)
   useEffect(() => {
@@ -71,6 +75,49 @@ const AppNavigator: React.FC = () => {
     };
 
     initializeApp();
+  }, []);
+
+  // Initialize alarm service when user is authenticated
+  useEffect(() => {
+    const initAlarm = async () => {
+      if (!user?.uid || alarmInitializedRef.current) return;
+
+      alarmInitializedRef.current = true;
+
+      // Set callback for when alarm is triggered
+      alarmService.setOnAlarmTriggered(() => {
+        setIsAlarmRinging(true);
+      });
+
+      // Initialize alarm service
+      await alarmService.initialize(user.uid);
+
+      // Check if there's a pending alarm from notification launch
+      if (alarmService.hasPendingAlarm()) {
+        setIsAlarmRinging(true);
+      }
+    };
+
+    if (isAuthenticated && user?.uid && isSetupCompleted) {
+      initAlarm();
+    }
+  }, [isAuthenticated, user?.uid, isSetupCompleted]);
+
+  // Handle squat measurement completion
+  const handleSquatComplete = useCallback(async (success: boolean, squatCount: number) => {
+    // Stop alarm
+    await alarmService.stopAlarm();
+    setIsAlarmRinging(false);
+
+    // Clear pending alarm flag
+    alarmService.clearPendingAlarm();
+  }, []);
+
+  // Handle squat screen close (without completing)
+  const handleSquatClose = useCallback(async () => {
+    await alarmService.stopAlarm();
+    setIsAlarmRinging(false);
+    alarmService.clearPendingAlarm();
   }, []);
 
   const handleLanguageSelectionComplete = useCallback(() => {
@@ -165,6 +212,16 @@ const AppNavigator: React.FC = () => {
     return <SetupScreen onComplete={handleSetupComplete} />;
   }
 
+  // If alarm is ringing, show squat measurement screen
+  if (isAlarmRinging) {
+    return (
+      <SquatMeasureScreen
+        onComplete={handleSquatComplete}
+        onClose={handleSquatClose}
+      />
+    );
+  }
+
   // Authenticated and setup completed - show home
   return (
     <Stack.Navigator
@@ -183,9 +240,10 @@ const AppContent: React.FC = () => {
   const [isReady, setIsReady] = useState(false);
   const splashHiddenRef = useRef(false);
 
-  // Hide native splash and mark as ready immediately on mount
+  // Hide native splash when LoadingScreen is ready to be displayed
   useEffect(() => {
-    const prepare = async () => {
+    const hideSplashAndPrepare = async () => {
+      // Hide native splash screen to show LoadingScreen
       if (!splashHiddenRef.current) {
         splashHiddenRef.current = true;
         try {
@@ -197,7 +255,7 @@ const AppContent: React.FC = () => {
       // Small delay to ensure LoadingScreen is rendered
       setTimeout(() => setIsReady(true), 50);
     };
-    prepare();
+    hideSplashAndPrepare();
   }, []);
 
   // Show LoadingScreen immediately while contexts initialize

@@ -10,8 +10,8 @@ interface ExtendedExpoConfig {
   userInterfaceStyle: 'light' | 'dark' | 'automatic';
   newArchEnabled?: boolean;
   splash: {
-    image?: string;
-    resizeMode?: 'contain' | 'cover' | 'native';
+    image: string;
+    resizeMode: 'contain' | 'cover' | 'native';
     backgroundColor: string;
   };
   ios: {
@@ -59,6 +59,8 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
   userInterfaceStyle: 'light',
   newArchEnabled: false,
   splash: {
+    image: './assets/images/okiroya-icon.png',
+    resizeMode: 'contain',
     backgroundColor: '#ffffff',
   },
   ios: {
