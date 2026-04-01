@@ -25,6 +25,7 @@ interface ExtendedExpoConfig {
       foregroundImage: string;
     };
     package: string;
+    permissions?: string[];
   };
   web: {
     favicon: string;
@@ -74,6 +75,15 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
       foregroundImage: './assets/images/okiroya-icon.png',
     },
     package: 'com.okiroya.app',
+    permissions: [
+      'RECEIVE_BOOT_COMPLETED',
+      'VIBRATE',
+      'WAKE_LOCK',
+      'USE_FULL_SCREEN_INTENT',
+      'SCHEDULE_EXACT_ALARM',
+      'USE_EXACT_ALARM',
+      'POST_NOTIFICATIONS',
+    ],
   },
   web: {
     favicon: './assets/images/okiroya-icon.png',

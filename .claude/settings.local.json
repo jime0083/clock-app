@@ -30,7 +30,15 @@
       "WebFetch(domain:docs.expo.dev)",
       "Bash(npx expo uninstall:*)",
       "Bash(npm uninstall:*)",
-      "Bash(pod install:*)"
+      "Bash(pod install:*)",
+      "Bash(npx expo run:ios:*)",
+      "Bash(xcrun xctrace:*)",
+      "Bash(eas build:*)",
+      "Bash(eas init:*)",
+      "Bash(npx expo export --platform ios)",
+      "Bash(open:*)",
+      "Bash(xcrun devicectl device install app:*)",
+      "Bash(xcrun devicectl device process launch:*)"
     ]
   }
 }

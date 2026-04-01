@@ -1,18 +1,16 @@
-import * as Notifications from 'expo-notifications';
+import notifee, {
+  AndroidImportance,
+  AndroidVisibility,
+  AndroidCategory,
+  TriggerType,
+  RepeatFrequency,
+  TimestampTrigger,
+  EventType,
+  Event,
+  AuthorizationStatus,
+  InitialNotification,
+} from '@notifee/react-native';
 import { Platform } from 'react-native';
-import * as Device from 'expo-device';
-
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    priority: Notifications.AndroidNotificationPriority.MAX,
-  }),
-});
 
 // Notification channel ID for Android
 const ALARM_CHANNEL_ID = 'alarm-channel';
@@ -23,53 +21,53 @@ const ALARM_REPEAT_COUNT = 10;
 const ALARM_REPEAT_INTERVAL = 30;
 
 /**
+ * Create Android notification channel for alarms
+ */
+export const createAlarmChannel = async (): Promise<string> => {
+  return notifee.createChannel({
+    id: ALARM_CHANNEL_ID,
+    name: 'Alarm',
+    description: 'Wake up alarm notifications',
+    importance: AndroidImportance.HIGH,
+    vibration: true,
+    vibrationPattern: [0, 500, 200, 500, 200, 500, 200, 500],
+    lights: true,
+    lightColor: '#FF6B35',
+    sound: 'default',
+    bypassDnd: true,
+    visibility: AndroidVisibility.PUBLIC,
+  });
+};
+
+/**
  * Request notification permissions
  */
 export const requestNotificationPermissions = async (): Promise<boolean> => {
-  if (!Device.isDevice) {
-    console.warn('Notifications only work on physical devices');
+  // Request permissions
+  const settings = await notifee.requestPermission({
+    sound: true,
+    badge: true,
+    alert: true,
+    criticalAlert: true, // iOS Critical Alerts (requires entitlement)
+    provisional: false,
+  });
+
+  if (settings.authorizationStatus < AuthorizationStatus.AUTHORIZED) {
+    console.warn('Notification permissions not granted');
     return false;
   }
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== 'granted') {
-    // Request with iOS-specific options for alarm functionality
-    const { status } = await Notifications.requestPermissionsAsync({
-      ios: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-        allowCriticalAlerts: true, // Requires special entitlement from Apple
-        provideAppNotificationSettings: true,
-      },
-    });
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') {
-    return false;
-  }
-
-  // Set up Android notification channel with alarm-specific settings
+  // Create Android notification channel
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
-      name: 'Alarm',
-      description: 'Wake up alarm notifications',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 500, 200, 500, 200, 500, 200, 500],
-      lightColor: '#FF6B35',
-      sound: 'default',
-      enableVibrate: true,
-      enableLights: true,
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      bypassDnd: true,
-    });
-  }
+    await createAlarmChannel();
 
-  // Set up notification categories for alarm actions
-  await setNotificationCategories();
+    // Request exact alarm permission for Android 12+
+    const batteryOptimizationStatus = await notifee.isBatteryOptimizationEnabled();
+    if (batteryOptimizationStatus) {
+      // Prompt user to disable battery optimization for reliable alarms
+      await notifee.openBatteryOptimizationSettings();
+    }
+  }
 
   return true;
 };
@@ -78,13 +76,40 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
  * Check if notifications are enabled
  */
 export const checkNotificationPermissions = async (): Promise<boolean> => {
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === 'granted';
+  const settings = await notifee.getNotificationSettings();
+  return settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
 };
 
 /**
- * Schedule alarm notifications with repeats for better wake-up experience
- * Schedules multiple notifications starting from alarm time to ensure user wakes up
+ * Get the next occurrence of a specific day and time
+ */
+const getNextOccurrence = (
+  dayOfWeek: number, // 0-6 (0 = Sunday)
+  hours: number,
+  minutes: number
+): Date => {
+  const now = new Date();
+  const targetDate = new Date();
+
+  // Set the target time
+  targetDate.setHours(hours, minutes, 0, 0);
+
+  // Calculate days until target day
+  const currentDay = now.getDay();
+  let daysUntilTarget = dayOfWeek - currentDay;
+
+  // If the target day is today but time has passed, or if the day is in the past this week
+  if (daysUntilTarget < 0 || (daysUntilTarget === 0 && targetDate <= now)) {
+    daysUntilTarget += 7;
+  }
+
+  targetDate.setDate(targetDate.getDate() + daysUntilTarget);
+
+  return targetDate;
+};
+
+/**
+ * Schedule alarm notifications with Full-screen Intent for Android
  */
 export const scheduleAlarmNotification = async (
   alarmTime: string, // "HH:mm" format
@@ -104,85 +129,72 @@ export const scheduleAlarmNotification = async (
   const daysToSchedule = alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6];
 
   for (const day of daysToSchedule) {
-    // Schedule the main alarm notification
-    const trigger: Notifications.WeeklyTriggerInput = {
-      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-      weekday: day + 1, // expo-notifications uses 1-7 (1 = Sunday)
-      hour: hours,
-      minute: minutes,
-    };
+    const triggerDate = getNextOccurrence(day, hours, minutes);
 
-    const notificationContent: Notifications.NotificationContentInput = {
-      title,
-      body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      categoryIdentifier: 'alarm',
-      sticky: true, // Keep notification visible until user interacts
-      autoDismiss: false,
-      interruptionLevel: 'timeSensitive', // iOS 15+ Time Sensitive notification
-      data: {
-        type: 'alarm',
-        alarmTime,
-        day,
-        isMainAlarm: true,
+    // Create timestamp trigger
+    const trigger: TimestampTrigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: triggerDate.getTime(),
+      repeatFrequency: RepeatFrequency.WEEKLY,
+      alarmManager: {
+        allowWhileIdle: true, // Fire even in Doze mode
       },
     };
 
-    // Add Android-specific settings
-    if (Platform.OS === 'android') {
-      Object.assign(notificationContent, {
-        vibrate: [0, 500, 200, 500, 200, 500],
-        color: '#FF6B35',
-      });
-    }
-
-    const mainNotificationId = await Notifications.scheduleNotificationAsync({
-      content: notificationContent,
-      trigger,
-    });
-
-    notificationIds.push(mainNotificationId);
-  }
-
-  return notificationIds;
-};
-
-/**
- * Schedule immediate repeat notifications when alarm fires
- * Called when the main alarm notification is received
- */
-export const scheduleAlarmRepeatNotifications = async (
-  title: string,
-  body: string
-): Promise<string[]> => {
-  const notificationIds: string[] = [];
-
-  // Schedule repeat notifications at intervals
-  for (let i = 1; i <= ALARM_REPEAT_COUNT; i++) {
-    const delaySeconds = i * ALARM_REPEAT_INTERVAL;
-
-    const notificationId = await Notifications.scheduleNotificationAsync({
-      content: {
+    // Schedule notification with Full-screen Intent for Android
+    const notificationId = await notifee.createTriggerNotification(
+      {
+        id: `alarm-${day}`,
         title,
-        body: `${body} (${i})`,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
-        categoryIdentifier: 'alarm',
-        sticky: true,
-        autoDismiss: false,
-        interruptionLevel: 'timeSensitive',
+        body,
         data: {
           type: 'alarm',
-          isRepeat: true,
-          repeatIndex: i,
+          alarmTime,
+          day: day.toString(),
+          isMainAlarm: 'true',
+        },
+        android: {
+          channelId: ALARM_CHANNEL_ID,
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.ALARM,
+          visibility: AndroidVisibility.PUBLIC,
+          fullScreenAction: {
+            id: 'default',
+            mainComponent: 'main', // Opens app's main component
+          },
+          pressAction: {
+            id: 'default',
+            launchActivity: 'default',
+          },
+          actions: [
+            {
+              title: 'Snooze 5min',
+              pressAction: {
+                id: 'snooze',
+              },
+            },
+            {
+              title: 'Dismiss',
+              pressAction: {
+                id: 'dismiss',
+              },
+            },
+          ],
+          sound: 'default',
+          vibrationPattern: [0, 500, 200, 500, 200, 500],
+          lights: ['#FF6B35', 300, 600],
+          autoCancel: false,
+          ongoing: true, // Keep notification visible
+        },
+        ios: {
+          sound: 'default',
+          critical: true, // Critical alert (requires entitlement)
+          interruptionLevel: 'timeSensitive',
+          categoryId: 'alarm',
         },
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: delaySeconds,
-      },
-    });
+      trigger
+    );
 
     notificationIds.push(notificationId);
   }
@@ -191,16 +203,234 @@ export const scheduleAlarmRepeatNotifications = async (
 };
 
 /**
- * Cancel all repeat notifications (called when alarm is dismissed)
+ * Schedule immediate repeat notifications when alarm fires
+ */
+export const scheduleAlarmRepeatNotifications = async (
+  title: string,
+  body: string
+): Promise<string[]> => {
+  const notificationIds: string[] = [];
+  const now = Date.now();
+
+  for (let i = 1; i <= ALARM_REPEAT_COUNT; i++) {
+    const triggerTimestamp = now + i * ALARM_REPEAT_INTERVAL * 1000;
+
+    const trigger: TimestampTrigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: triggerTimestamp,
+      alarmManager: {
+        allowWhileIdle: true,
+      },
+    };
+
+    const notificationId = await notifee.createTriggerNotification(
+      {
+        id: `alarm-repeat-${i}`,
+        title,
+        body: `${body} (${i})`,
+        data: {
+          type: 'alarm',
+          isRepeat: 'true',
+          repeatIndex: i.toString(),
+        },
+        android: {
+          channelId: ALARM_CHANNEL_ID,
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.ALARM,
+          fullScreenAction: {
+            id: 'default',
+            mainComponent: 'main',
+          },
+          sound: 'default',
+          vibrationPattern: [0, 500, 200, 500, 200, 500],
+          autoCancel: false,
+          ongoing: true,
+        },
+        ios: {
+          sound: 'default',
+          critical: true,
+          interruptionLevel: 'timeSensitive',
+        },
+      },
+      trigger
+    );
+
+    notificationIds.push(notificationId);
+  }
+
+  return notificationIds;
+};
+
+/**
+ * Cancel all repeat notifications
  */
 export const cancelAlarmRepeatNotifications = async (): Promise<void> => {
-  const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+  const triggers = await notifee.getTriggerNotificationIds();
 
-  for (const notification of scheduledNotifications) {
-    if (notification.content.data?.isRepeat) {
-      await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+  for (const id of triggers) {
+    if (id.startsWith('alarm-repeat-')) {
+      await notifee.cancelTriggerNotification(id);
     }
   }
+
+  // Also cancel any displayed repeat notifications
+  const displayed = await notifee.getDisplayedNotifications();
+  for (const notification of displayed) {
+    if (notification.id?.startsWith('alarm-repeat-')) {
+      await notifee.cancelNotification(notification.id);
+    }
+  }
+};
+
+/**
+ * Cancel all scheduled alarm notifications
+ */
+export const cancelAllAlarmNotifications = async (): Promise<void> => {
+  await notifee.cancelAllNotifications();
+  await notifee.cancelTriggerNotifications();
+};
+
+/**
+ * Cancel a specific notification by ID
+ */
+export const cancelNotification = async (notificationId: string): Promise<void> => {
+  await notifee.cancelNotification(notificationId);
+};
+
+/**
+ * Get all scheduled notifications
+ */
+export const getScheduledNotifications = async (): Promise<string[]> => {
+  return notifee.getTriggerNotificationIds();
+};
+
+/**
+ * Dismiss all displayed notifications
+ */
+export const dismissAllNotifications = async (): Promise<void> => {
+  await notifee.cancelAllNotifications();
+};
+
+/**
+ * Set up foreground event handler
+ */
+export const setForegroundEventHandler = (
+  onAlarmTriggered: () => void,
+  onSnooze: () => void,
+  onDismiss: () => void
+): void => {
+  notifee.onForegroundEvent(({ type, detail }: Event) => {
+    const { notification, pressAction } = detail;
+
+    if (notification?.data?.type !== 'alarm') {
+      return;
+    }
+
+    switch (type) {
+      case EventType.DELIVERED:
+        // Alarm notification delivered
+        onAlarmTriggered();
+        break;
+
+      case EventType.PRESS:
+        // User pressed notification
+        onAlarmTriggered();
+        break;
+
+      case EventType.ACTION_PRESS:
+        if (pressAction?.id === 'snooze') {
+          onSnooze();
+        } else if (pressAction?.id === 'dismiss') {
+          onDismiss();
+        }
+        break;
+    }
+  });
+};
+
+/**
+ * Set up background event handler
+ * This must be called outside of React component lifecycle
+ */
+export const setBackgroundEventHandler = (): void => {
+  notifee.onBackgroundEvent(async ({ type, detail }: Event) => {
+    const { notification, pressAction } = detail;
+
+    if (notification?.data?.type !== 'alarm') {
+      return;
+    }
+
+    switch (type) {
+      case EventType.PRESS:
+        // User pressed notification - app will open
+        // The foreground handler will take over
+        break;
+
+      case EventType.ACTION_PRESS:
+        if (pressAction?.id === 'snooze') {
+          // Schedule snooze notification
+          const snoozeTimestamp = Date.now() + 5 * 60 * 1000; // 5 minutes
+          const trigger: TimestampTrigger = {
+            type: TriggerType.TIMESTAMP,
+            timestamp: snoozeTimestamp,
+            alarmManager: {
+              allowWhileIdle: true,
+            },
+          };
+
+          await notifee.createTriggerNotification(
+            {
+              id: 'alarm-snooze',
+              title: notification?.title || 'Alarm',
+              body: notification?.body || 'Time to wake up!',
+              data: {
+                type: 'alarm',
+                isSnooze: 'true',
+                isMainAlarm: 'true',
+              },
+              android: {
+                channelId: ALARM_CHANNEL_ID,
+                importance: AndroidImportance.HIGH,
+                category: AndroidCategory.ALARM,
+                fullScreenAction: {
+                  id: 'default',
+                  mainComponent: 'main',
+                },
+                sound: 'default',
+                vibrationPattern: [0, 500, 200, 500, 200, 500],
+                autoCancel: false,
+                ongoing: true,
+              },
+              ios: {
+                sound: 'default',
+                critical: true,
+                interruptionLevel: 'timeSensitive',
+              },
+            },
+            trigger
+          );
+
+          // Cancel the current notification
+          if (notification?.id) {
+            await notifee.cancelNotification(notification.id);
+          }
+        } else if (pressAction?.id === 'dismiss') {
+          // Cancel all alarm notifications
+          await cancelAlarmRepeatNotifications();
+          if (notification?.id) {
+            await notifee.cancelNotification(notification.id);
+          }
+        }
+        break;
+    }
+  });
+};
+
+/**
+ * Get initial notification (when app is launched from notification)
+ */
+export const getInitialNotification = async (): Promise<InitialNotification | null> => {
+  return notifee.getInitialNotification();
 };
 
 /**
@@ -211,118 +441,68 @@ export const scheduleOneTimeAlarm = async (
   title: string,
   body: string
 ): Promise<string> => {
-  const notificationId = await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.MAX,
-      categoryIdentifier: 'alarm',
-      data: {
-        type: 'alarm',
-        isTest: true,
-      },
+  const trigger: TimestampTrigger = {
+    type: TriggerType.TIMESTAMP,
+    timestamp: Date.now() + secondsFromNow * 1000,
+    alarmManager: {
+      allowWhileIdle: true,
     },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: secondsFromNow,
-    },
-  });
-
-  return notificationId;
-};
-
-/**
- * Cancel all scheduled alarm notifications
- */
-export const cancelAllAlarmNotifications = async (): Promise<void> => {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-};
-
-/**
- * Cancel a specific notification by ID
- */
-export const cancelNotification = async (notificationId: string): Promise<void> => {
-  await Notifications.cancelScheduledNotificationAsync(notificationId);
-};
-
-/**
- * Get all scheduled notifications
- */
-export const getScheduledNotifications = async (): Promise<
-  Notifications.NotificationRequest[]
-> => {
-  return Notifications.getAllScheduledNotificationsAsync();
-};
-
-/**
- * Add a listener for notification received while app is in foreground
- */
-export const addNotificationReceivedListener = (
-  callback: (notification: Notifications.Notification) => void
-): Notifications.Subscription => {
-  return Notifications.addNotificationReceivedListener(callback);
-};
-
-/**
- * Add a listener for notification response (user tapped notification)
- */
-export const addNotificationResponseListener = (
-  callback: (response: Notifications.NotificationResponse) => void
-): Notifications.Subscription => {
-  return Notifications.addNotificationResponseReceivedListener(callback);
-};
-
-/**
- * Get the last notification response (for when app is launched from notification)
- */
-export const getLastNotificationResponse =
-  async (): Promise<Notifications.NotificationResponse | null> => {
-    return Notifications.getLastNotificationResponseAsync();
   };
 
-/**
- * Set notification categories (for action buttons)
- */
-export const setNotificationCategories = async (): Promise<void> => {
-  await Notifications.setNotificationCategoryAsync('alarm', [
+  return notifee.createTriggerNotification(
     {
-      identifier: 'snooze',
-      buttonTitle: 'Snooze 5min',
-      options: {
-        opensAppToForeground: false,
+      id: 'alarm-test',
+      title,
+      body,
+      data: {
+        type: 'alarm',
+        isTest: 'true',
+        isMainAlarm: 'true',
+      },
+      android: {
+        channelId: ALARM_CHANNEL_ID,
+        importance: AndroidImportance.HIGH,
+        category: AndroidCategory.ALARM,
+        fullScreenAction: {
+          id: 'default',
+          mainComponent: 'main',
+        },
+        sound: 'default',
+        vibrationPattern: [0, 500, 200, 500, 200, 500],
+        autoCancel: false,
+        ongoing: true,
+      },
+      ios: {
+        sound: 'default',
+        critical: true,
+        interruptionLevel: 'timeSensitive',
       },
     },
-    {
-      identifier: 'dismiss',
-      buttonTitle: 'Dismiss',
-      options: {
-        opensAppToForeground: true,
-      },
-    },
-  ]);
+    trigger
+  );
 };
 
 /**
- * Dismiss all displayed notifications
+ * Display an immediate notification
  */
-export const dismissAllNotifications = async (): Promise<void> => {
-  await Notifications.dismissAllNotificationsAsync();
-};
-
-/**
- * Get the push token for remote notifications (if needed later)
- */
-export const getExpoPushToken = async (): Promise<string | null> => {
-  try {
-    const token = await Notifications.getExpoPushTokenAsync({
-      projectId: 'your-project-id', // TODO: Replace with actual project ID
-    });
-    return token.data;
-  } catch (error) {
-    console.error('Error getting push token:', error);
-    return null;
-  }
+export const displayImmediateNotification = async (
+  title: string,
+  body: string,
+  data?: Record<string, string>
+): Promise<string> => {
+  return notifee.displayNotification({
+    title,
+    body,
+    data,
+    android: {
+      channelId: ALARM_CHANNEL_ID,
+      importance: AndroidImportance.HIGH,
+      sound: 'default',
+    },
+    ios: {
+      sound: 'default',
+    },
+  });
 };
 
 /**
@@ -332,15 +512,18 @@ export const scheduleSuccessNotification = async (
   title: string,
   body: string
 ): Promise<void> => {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.HIGH,
-      data: { type: 'success' },
+  await notifee.displayNotification({
+    title,
+    body,
+    data: { type: 'success' },
+    android: {
+      channelId: ALARM_CHANNEL_ID,
+      importance: AndroidImportance.DEFAULT,
+      sound: 'default',
     },
-    trigger: null, // Immediate notification
+    ios: {
+      sound: 'default',
+    },
   });
 };
 
@@ -351,14 +534,37 @@ export const scheduleFailureNotification = async (
   title: string,
   body: string
 ): Promise<void> => {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.HIGH,
-      data: { type: 'failure' },
+  await notifee.displayNotification({
+    title,
+    body,
+    data: { type: 'failure' },
+    android: {
+      channelId: ALARM_CHANNEL_ID,
+      importance: AndroidImportance.DEFAULT,
+      sound: 'default',
     },
-    trigger: null, // Immediate notification
+    ios: {
+      sound: 'default',
+    },
   });
+};
+
+// Set up notification categories for iOS
+export const setNotificationCategories = async (): Promise<void> => {
+  await notifee.setNotificationCategories([
+    {
+      id: 'alarm',
+      actions: [
+        {
+          id: 'snooze',
+          title: 'Snooze 5min',
+        },
+        {
+          id: 'dismiss',
+          title: 'Dismiss',
+          destructive: true,
+        },
+      ],
+    },
+  ]);
 };

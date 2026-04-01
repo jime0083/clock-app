@@ -23,11 +23,11 @@ interface AlarmSound {
 }
 
 interface AlarmSettingScreenProps {
-  onSave: (time: string, days: number[], sound?: AlarmSound | null) => void;
+  onSave: (time: string, days: number[], soundName?: string | null) => void;
   onClose: () => void;
   initialTime: string | null;
   initialDays: number[];
-  initialSound?: AlarmSound | null;
+  initialSoundName?: string | null;
 }
 
 type SettingStep = 'time' | 'days' | 'sound';
@@ -51,13 +51,15 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
   onClose,
   initialTime,
   initialDays,
-  initialSound,
+  initialSoundName,
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<SettingStep>('time');
   const [showTimePicker, setShowTimePicker] = useState(true);
   const [selectedDays, setSelectedDays] = useState<number[]>(initialDays.length > 0 ? initialDays : [1, 2, 3, 4, 5]);
-  const [selectedSound, setSelectedSound] = useState<AlarmSound | null>(initialSound || null);
+  const [selectedSound, setSelectedSound] = useState<AlarmSound | null>(
+    initialSoundName ? { name: initialSoundName, uri: initialSoundName } : null
+  );
   const [isSelecting, setIsSelecting] = useState(false);
 
   const [alarmTime, setAlarmTime] = useState<Date>(() => {
@@ -127,7 +129,7 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
   };
 
   const handleSave = () => {
-    onSave(formatTime(alarmTime), selectedDays, selectedSound);
+    onSave(formatTime(alarmTime), selectedDays, selectedSound?.uri || null);
     onClose();
   };
 

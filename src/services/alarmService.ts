@@ -1,15 +1,14 @@
 import { AppState, AppStateStatus } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import {
   requestNotificationPermissions,
   scheduleAlarmNotification,
   scheduleAlarmRepeatNotifications,
   cancelAlarmRepeatNotifications,
   cancelAllAlarmNotifications,
-  addNotificationReceivedListener,
-  addNotificationResponseListener,
-  getLastNotificationResponse,
   dismissAllNotifications,
+  setForegroundEventHandler,
+  getInitialNotification,
+  setNotificationCategories,
 } from './notificationService';
 import { audioService } from './audioService';
 import { getUserDocument } from './userService';
@@ -29,9 +28,7 @@ export type AlarmState = 'idle' | 'ringing' | 'snoozed';
 
 class AlarmService {
   private isInitialized = false;
-  private notificationSubscription: Notifications.Subscription | null = null;
-  private responseSubscription: Notifications.Subscription | null = null;
-  private appStateSubscription: any = null;
+  private appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
   private onAlarmTriggeredCallback: AlarmCallback | null = null;
   private currentUserId: string | null = null;
   private alarmState: AlarmState = 'idle';
@@ -56,8 +53,11 @@ class AlarmService {
       return false;
     }
 
-    // Set up notification listeners
-    this.setupNotificationListeners();
+    // Set up notification categories for iOS
+    await setNotificationCategories();
+
+    // Set up foreground event handler
+    this.setupForegroundEventHandler();
 
     // Set up app state listener
     this.setupAppStateListener();
@@ -91,42 +91,21 @@ class AlarmService {
   }
 
   /**
-   * Set up notification event listeners
+   * Set up foreground event handler using notifee
    */
-  private setupNotificationListeners(): void {
-    // Listener for notifications received while app is in foreground
-    this.notificationSubscription = addNotificationReceivedListener(
-      async (notification) => {
-        const data = notification.request.content.data;
-        if (data?.type === 'alarm') {
-          // If this is the main alarm (not a repeat), schedule repeats
-          if (data?.isMainAlarm && !data?.isRepeat) {
-            const title = i18n.t('notification.alarmTitle');
-            const body = i18n.t('notification.alarmBody');
-            await scheduleAlarmRepeatNotifications(title, body);
-          }
-
-          await this.handleAlarmTriggered();
-        }
-      }
-    );
-
-    // Listener for notification response (user interaction)
-    this.responseSubscription = addNotificationResponseListener(
-      async (response) => {
-        const data = response.notification.request.content.data;
-        if (data?.type === 'alarm') {
-          const actionId = response.actionIdentifier;
-
-          if (actionId === 'snooze') {
-            // Snooze for 5 minutes
-            await this.snoozeAlarm(5);
-          } else {
-            // User tapped notification - trigger alarm and navigate to squat screen
-            this.pendingAlarmFromNotification = true;
-            await this.handleAlarmTriggered();
-          }
-        }
+  private setupForegroundEventHandler(): void {
+    setForegroundEventHandler(
+      // onAlarmTriggered
+      async () => {
+        await this.handleAlarmTriggered();
+      },
+      // onSnooze
+      async () => {
+        await this.snoozeAlarm(5);
+      },
+      // onDismiss
+      async () => {
+        await this.stopAlarm();
       }
     );
   }
@@ -155,11 +134,16 @@ class AlarmService {
    * Check if app was launched from an alarm notification
    */
   private async checkLaunchNotification(): Promise<void> {
-    const response = await getLastNotificationResponse();
-    if (response?.notification.request.content.data?.type === 'alarm') {
-      // Mark that we have a pending alarm from notification
-      this.pendingAlarmFromNotification = true;
-      await this.handleAlarmTriggered();
+    try {
+      const initialNotification = await getInitialNotification();
+
+      if (initialNotification?.notification?.data?.type === 'alarm') {
+        // Mark that we have a pending alarm from notification
+        this.pendingAlarmFromNotification = true;
+        await this.handleAlarmTriggered();
+      }
+    } catch (error) {
+      console.error('Error checking launch notification:', error);
     }
   }
 
@@ -173,6 +157,7 @@ class AlarmService {
     }
 
     this.alarmState = 'ringing';
+    this.pendingAlarmFromNotification = true;
 
     // Cancel repeat notifications since alarm was acknowledged
     await cancelAlarmRepeatNotifications();
@@ -253,30 +238,15 @@ class AlarmService {
    */
   async snoozeAlarm(minutes: number): Promise<void> {
     this.alarmState = 'snoozed';
+    this.pendingAlarmFromNotification = false;
     await audioService.stopAlarmSound();
     await cancelAlarmRepeatNotifications();
     await dismissAllNotifications();
 
-    // Schedule a one-time notification for snooze
-    const snoozeSeconds = minutes * 60;
-    const title = i18n.t('alarm.title');
-    const body = i18n.t('squat.instruction');
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
-        categoryIdentifier: 'alarm',
-        interruptionLevel: 'timeSensitive',
-        data: { type: 'alarm', isSnooze: true, isMainAlarm: true },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: snoozeSeconds,
-      },
-    });
+    // Schedule repeat notifications for snooze (will be handled by background handler)
+    const title = i18n.t('notification.alarmTitle');
+    const body = i18n.t('notification.alarmBody');
+    await scheduleAlarmRepeatNotifications(title, body);
   }
 
   /**
@@ -298,14 +268,6 @@ class AlarmService {
    * Clean up resources
    */
   cleanup(): void {
-    if (this.notificationSubscription) {
-      this.notificationSubscription.remove();
-      this.notificationSubscription = null;
-    }
-    if (this.responseSubscription) {
-      this.responseSubscription.remove();
-      this.responseSubscription = null;
-    }
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
       this.appStateSubscription = null;
