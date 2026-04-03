@@ -154,12 +154,6 @@ const HomeScreen: React.FC = () => {
     // Small delay to allow menu close animation
     setTimeout(() => {
       switch (itemId) {
-        case 'alarmSettings':
-          setIsAlarmSettingVisible(true);
-          break;
-        case 'soundSettings':
-          setIsAudioModalVisible(true);
-          break;
         case 'squatCalibration':
           setIsCalibrationVisible(true);
           break;
@@ -177,9 +171,6 @@ const HomeScreen: React.FC = () => {
           break;
         case 'deleteAccount':
           setIsDeleteAccountModalVisible(true);
-          break;
-        case 'premium':
-          setIsPaywallVisible(true);
           break;
       }
     }, 300);
@@ -376,7 +367,6 @@ const HomeScreen: React.FC = () => {
         onMenuItemPress={handleMenuItemPress}
         userEmail={user?.email}
         userName={user?.displayName}
-        isSubscribed={isSubscribed}
       />
 
       {/* Alarm Setting Screen */}

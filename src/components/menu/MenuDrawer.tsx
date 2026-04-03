@@ -8,7 +8,6 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -21,15 +20,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 export type MenuItemId =
-  | 'alarmSettings'
-  | 'soundSettings'
   | 'squatCalibration'
   | 'snsConnection'
   | 'language'
   | 'account'
   | 'deleteAccount'
-  | 'logout'
-  | 'premium';
+  | 'logout';
 
 interface MenuItem {
   id: MenuItemId;
@@ -40,18 +36,6 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  {
-    id: 'alarmSettings',
-    labelKey: 'settings.alarmSettings',
-    icon: 'alarm-outline',
-    section: 'settings',
-  },
-  {
-    id: 'soundSettings',
-    labelKey: 'alarm.soundSettings',
-    icon: 'volume-high-outline',
-    section: 'settings',
-  },
   {
     id: 'squatCalibration',
     labelKey: 'settings.squatCalibration',
@@ -97,7 +81,6 @@ interface MenuDrawerProps {
   onMenuItemPress: (itemId: MenuItemId) => void;
   userEmail?: string | null;
   userName?: string | null;
-  isSubscribed?: boolean;
 }
 
 export const MenuDrawer: React.FC<MenuDrawerProps> = ({
@@ -106,7 +89,6 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   onMenuItemPress,
   userEmail,
   userName,
-  isSubscribed = false,
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -164,7 +146,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
         </Animated.View>
 
         <Animated.View
-          entering={SlideInRight.springify().damping(20)}
+          entering={SlideInRight.duration(250)}
           exiting={SlideOutRight.duration(250)}
           style={[
             styles.drawer,
@@ -195,35 +177,6 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
                 {userName && <Text style={styles.userName}>{userName}</Text>}
                 {userEmail && <Text style={styles.userEmail}>{userEmail}</Text>}
               </View>
-            </Animated.View>
-          )}
-
-          {/* Premium Upgrade Banner */}
-          {!isSubscribed && (
-            <Animated.View entering={FadeIn.delay(100).duration(300)}>
-              <Pressable
-                onPress={() => onMenuItemPress('premium')}
-                style={({ pressed }) => [
-                  styles.premiumBanner,
-                  pressed && styles.premiumBannerPressed,
-                ]}
-              >
-                <LinearGradient
-                  colors={['#FF6B35', '#F7931E']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.premiumGradient}
-                >
-                  <View style={styles.premiumIconContainer}>
-                    <Ionicons name="diamond" size={20} color="#FFFFFF" />
-                  </View>
-                  <View style={styles.premiumTextContainer}>
-                    <Text style={styles.premiumTitle}>{t('paywall.title')}</Text>
-                    <Text style={styles.premiumSubtitle}>{t('settings.upgrade')}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-                </LinearGradient>
-              </Pressable>
             </Animated.View>
           )}
 
@@ -366,41 +319,5 @@ const styles = StyleSheet.create({
   },
   menuItemTextDanger: {
     color: Colors.error,
-  },
-  premiumBanner: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  premiumBannerPressed: {
-    opacity: 0.9,
-  },
-  premiumGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  premiumIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  premiumTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  premiumTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  premiumSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
