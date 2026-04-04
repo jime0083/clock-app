@@ -18,6 +18,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 import { initializeOfflineService } from '@/services/offlineService';
 import { getUserDocument } from '@/services/userService';
 import { alarmService } from '@/services/alarmService';
+import {
+  initializeFCM,
+  setForegroundMessageHandler,
+  setNotificationOpenedHandler,
+  getInitialNotification,
+} from '@/services/fcmService';
 
 // Contexts
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -77,9 +83,12 @@ const AppNavigator: React.FC = () => {
     initializeApp();
   }, []);
 
-  // Initialize alarm service when user is authenticated
+  // Initialize alarm service and FCM when user is authenticated
   useEffect(() => {
-    const initAlarm = async () => {
+    let foregroundUnsubscribe: (() => void) | null = null;
+    let notificationOpenedUnsubscribe: (() => void) | null = null;
+
+    const initAlarmAndFCM = async () => {
       if (!user?.uid || alarmInitializedRef.current) return;
 
       alarmInitializedRef.current = true;
@@ -92,6 +101,31 @@ const AppNavigator: React.FC = () => {
       // Initialize alarm service
       await alarmService.initialize(user.uid);
 
+      // Initialize FCM
+      await initializeFCM(user.uid);
+
+      // Handle foreground messages
+      foregroundUnsubscribe = setForegroundMessageHandler((message) => {
+        console.log('Foreground message:', message);
+        if (message.data?.type === 'alarm') {
+          setIsAlarmRinging(true);
+        }
+      });
+
+      // Handle notification opened (app in background)
+      notificationOpenedUnsubscribe = setNotificationOpenedHandler((message) => {
+        console.log('Notification opened:', message);
+        if (message.data?.type === 'alarm') {
+          setIsAlarmRinging(true);
+        }
+      });
+
+      // Check if app was opened from notification
+      const initialNotification = await getInitialNotification();
+      if (initialNotification?.data?.type === 'alarm') {
+        setIsAlarmRinging(true);
+      }
+
       // Check if there's a pending alarm from notification launch
       if (alarmService.hasPendingAlarm()) {
         setIsAlarmRinging(true);
@@ -99,8 +133,13 @@ const AppNavigator: React.FC = () => {
     };
 
     if (isAuthenticated && user?.uid && isSetupCompleted) {
-      initAlarm();
+      initAlarmAndFCM();
     }
+
+    return () => {
+      if (foregroundUnsubscribe) foregroundUnsubscribe();
+      if (notificationOpenedUnsubscribe) notificationOpenedUnsubscribe();
+    };
   }, [isAuthenticated, user?.uid, isSetupCompleted]);
 
   // Handle squat measurement completion

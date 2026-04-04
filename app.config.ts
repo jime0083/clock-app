@@ -18,6 +18,8 @@ interface ExtendedExpoConfig {
     supportsTablet: boolean;
     bundleIdentifier: string;
     googleServicesFile: string;
+    entitlements?: Record<string, unknown>;
+    infoPlist?: Record<string, unknown>;
   };
   android: {
     adaptiveIcon: {
@@ -68,6 +70,12 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
     supportsTablet: false,
     bundleIdentifier: 'com.okiroya.app',
     googleServicesFile: './GoogleService-Info.plist',
+    entitlements: {
+      'aps-environment': 'production',
+    },
+    infoPlist: {
+      UIBackgroundModes: ['remote-notification', 'audio'],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -93,6 +101,8 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
     'expo-web-browser',
     'expo-secure-store',
     'expo-audio',
+    '@react-native-firebase/app',
+    '@react-native-firebase/messaging',
     [
       '@react-native-google-signin/google-signin',
       {

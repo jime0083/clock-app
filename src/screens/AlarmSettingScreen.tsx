@@ -57,8 +57,20 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
   const [currentStep, setCurrentStep] = useState<SettingStep>('time');
   const [showTimePicker, setShowTimePicker] = useState(true);
   const [selectedDays, setSelectedDays] = useState<number[]>(initialDays.length > 0 ? initialDays : [1, 2, 3, 4, 5]);
+
+  // Validate initialSoundName - handle case where Firestore has object instead of string
+  const normalizedSoundName = (() => {
+    if (!initialSoundName) return null;
+    if (typeof initialSoundName === 'string') return initialSoundName;
+    // Handle legacy object format {name, uri}
+    if (typeof initialSoundName === 'object' && 'uri' in (initialSoundName as object)) {
+      return (initialSoundName as { uri: string }).uri;
+    }
+    return null;
+  })();
+
   const [selectedSound, setSelectedSound] = useState<AlarmSound | null>(
-    initialSoundName ? { name: initialSoundName, uri: initialSoundName } : null
+    normalizedSoundName ? { name: normalizedSoundName, uri: normalizedSoundName } : null
   );
   const [isSelecting, setIsSelecting] = useState(false);
 

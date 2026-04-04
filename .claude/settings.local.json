@@ -38,7 +38,9 @@
       "Bash(npx expo export --platform ios)",
       "Bash(open:*)",
       "Bash(xcrun devicectl device install app:*)",
-      "Bash(xcrun devicectl device process launch:*)"
+      "Bash(xcrun devicectl device process launch:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

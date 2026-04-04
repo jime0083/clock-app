@@ -65,6 +65,8 @@ export interface UserDocument {
   snsConnections: SNSConnections;
   stats: UserStats;
   subscription: SubscriptionStatus;
+  fcmToken?: string;
+  fcmTokenUpdatedAt?: string;
 }
 
 // ===== History Document =====
