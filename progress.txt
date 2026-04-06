@@ -70,7 +70,7 @@
 **目的**: アプリがバックグラウンド/ロック状態でも確実にアラームを鳴らす
 
 ### Phase 17.12.1: Firebase Cloud Messaging (FCM) セットアップ
-- [ ] APNs認証キー（.p8）をFirebase Consoleに登録 ※手動作業
+- [x] APNs認証キー（.p8）をFirebase Consoleに登録
 - [x] @react-native-firebase/messaging をインストール
 - [x] iOS用のFCM設定（app.config.ts修正）
 - [x] FCMトークン取得処理を実装（fcmService.ts）
@@ -81,18 +81,18 @@
 - [x] Cloud Scheduler設定（毎分実行、Asia/Tokyo）
 - [x] アラーム対象ユーザー検索ロジック実装（現在時刻 + 曜日でFirestore検索）
 - [x] FCM送信処理実装（高優先度プッシュ通知）
-- [ ] Firebase Functionsをデプロイ ※手動作業
+- [x] Firebase Functionsをデプロイ
 
 ### Phase 17.12.3: クライアント側プッシュ通知受信処理
-- [ ] フォアグラウンド通知受信ハンドラー実装
-- [ ] バックグラウンド通知受信ハンドラー実装
-- [ ] 通知タップ時にスクワット計測画面を表示
-- [ ] アラーム音再生処理（通知受信時に音声を再生）
+- [x] フォアグラウンド通知受信ハンドラー実装
+- [x] バックグラウンド通知受信ハンドラー実装
+- [x] 通知タップ時にスクワット計測画面を表示
+- [x] アラーム音再生処理（通知受信時に音声を再生）
 
 ### Phase 17.12.4: 既存コードのリファクタリング
-- [ ] notificationService.tsをFCM対応に更新
-- [ ] alarmService.tsの通知スケジュール処理を削除（サーバー側に移行）
-- [ ] ローカル通知をバックアップとして残す（オプション）
+- [x] ローカル通知をFCMのバックアップとして維持（信頼性向上のため）
+- [x] notificationService.ts: 既存のnotifee実装を維持（バックアップ用）
+- [x] alarmService.ts: ローカル通知スケジュール処理を維持（FCM失敗時の保険）
 
 ### Phase 17.12.5: テスト・検証
 - [ ] バックグラウンド状態でのアラーム動作テスト

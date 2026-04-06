@@ -16,8 +16,6 @@ import LottieView from 'lottie-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-
 import { PACKAGE_TYPE } from 'react-native-purchases';
 
 import { Colors } from '@/constants/colors';
@@ -26,7 +24,6 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { updateUserSettings } from '@/services/userService';
 import { useXAuth } from '@/hooks/useXAuth';
 import { hasXTokens } from '@/services/secureTokenService';
-import { uploadAlarmSound } from '@/services/storageService';
 import { accelerometerService, AccelerometerData } from '@/services/accelerometerService';
 import { alarmService } from '@/services/alarmService';
 
@@ -34,7 +31,7 @@ interface SetupScreenProps {
   onComplete: () => void;
 }
 
-type SetupStep = 'alarm_time' | 'alarm_days' | 'alarm_sound' | 'x_connect' | 'calibration' | 'subscription';
+type SetupStep = 'alarm_time' | 'alarm_days' | 'x_connect' | 'calibration' | 'subscription';
 type CalibrationPhase = 'ready' | 'measuring' | 'complete';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -66,8 +63,6 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   const [alarmTime, setAlarmTime] = useState<Date>(new Date());
   const [showTimePicker, setShowTimePicker] = useState(true);
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [selectedSoundName, setSelectedSoundName] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Calibration state
   const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('ready');
@@ -122,34 +117,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
     );
   };
 
-  const handleDaysConfirm = () => {
-    setCurrentStep('alarm_sound');
-  };
-
-  const handleSoundUpload = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'audio/*',
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-        setIsUploading(true);
-
-        if (user?.uid) {
-          await uploadAlarmSound(user.uid, file.uri, file.name);
-          setSelectedSoundName(file.name);
-        }
-      }
-    } catch (error) {
-      console.error('Error uploading sound:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleSaveAlarmSettings = async () => {
+  const handleDaysConfirm = async () => {
     if (!user?.uid) return;
 
     try {
@@ -436,51 +404,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
     </View>
   );
 
-  // Step 3: Sound Upload
-  const renderSoundStep = () => (
-    <View style={styles.stepContainer}>
-      <View style={styles.animationContainer}>
-        <LottieView
-          source={require('@assets/animations/Morning and night in the city.json')}
-          autoPlay
-          loop
-          style={styles.animation}
-        />
-      </View>
-
-      <Text style={styles.title}>{t('alarm.soundSettings')}</Text>
-
-      <TouchableOpacity
-        style={[styles.inputField, styles.soundInputField]}
-        onPress={handleSoundUpload}
-        activeOpacity={0.7}
-        disabled={isUploading}
-      >
-        <Text
-          style={[styles.inputText, !selectedSoundName && styles.placeholderText, styles.soundInputText]}
-          numberOfLines={1}
-          ellipsizeMode="middle"
-        >
-          {isUploading
-            ? t('common.uploading')
-            : selectedSoundName || t('setup.uploadSound')}
-        </Text>
-        {selectedSoundName && !isUploading && (
-          <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={handleSaveAlarmSettings}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.primaryButtonText}>{t('setup.saveSettings')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Step 4: X Connection
+  // Step 3: X Connection
   const renderXConnectStep = () => (
     <View style={styles.stepContainer}>
       <View style={styles.animationContainer}>
@@ -685,8 +609,6 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
         return renderTimeStep();
       case 'alarm_days':
         return renderDaysStep();
-      case 'alarm_sound':
-        return renderSoundStep();
       case 'x_connect':
         return renderXConnectStep();
       case 'calibration':
@@ -771,15 +693,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
     backgroundColor: Colors.background,
     marginBottom: 16,
-  },
-  soundInputField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  soundInputText: {
-    flex: 1,
-    marginRight: 12,
   },
   timePickerContainer: {
     width: '100%',

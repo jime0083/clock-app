@@ -105,17 +105,21 @@ const AppNavigator: React.FC = () => {
       await initializeFCM(user.uid);
 
       // Handle foreground messages
-      foregroundUnsubscribe = setForegroundMessageHandler((message) => {
+      foregroundUnsubscribe = setForegroundMessageHandler(async (message) => {
         console.log('Foreground message:', message);
         if (message.data?.type === 'alarm') {
+          // Trigger alarm sound and show squat screen
+          await alarmService.triggerAlarmFromFCM();
           setIsAlarmRinging(true);
         }
       });
 
       // Handle notification opened (app in background)
-      notificationOpenedUnsubscribe = setNotificationOpenedHandler((message) => {
+      notificationOpenedUnsubscribe = setNotificationOpenedHandler(async (message) => {
         console.log('Notification opened:', message);
         if (message.data?.type === 'alarm') {
+          // Trigger alarm sound and show squat screen
+          await alarmService.triggerAlarmFromFCM();
           setIsAlarmRinging(true);
         }
       });
@@ -123,6 +127,8 @@ const AppNavigator: React.FC = () => {
       // Check if app was opened from notification
       const initialNotification = await getInitialNotification();
       if (initialNotification?.data?.type === 'alarm') {
+        // Trigger alarm sound and show squat screen
+        await alarmService.triggerAlarmFromFCM();
         setIsAlarmRinging(true);
       }
 

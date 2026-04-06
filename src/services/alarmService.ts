@@ -151,13 +151,17 @@ class AlarmService {
    * Handle alarm triggered event
    */
   private async handleAlarmTriggered(): Promise<void> {
+    console.log('[Alarm] handleAlarmTriggered called, current state:', this.alarmState);
+
     // Don't re-trigger if already ringing
     if (this.alarmState === 'ringing') {
+      console.log('[Alarm] Already ringing, skipping');
       return;
     }
 
     this.alarmState = 'ringing';
     this.pendingAlarmFromNotification = true;
+    console.log('[Alarm] State set to ringing');
 
     // Cancel repeat notifications since alarm was acknowledged
     await cancelAlarmRepeatNotifications();
@@ -165,19 +169,26 @@ class AlarmService {
     // Get user settings for custom alarm sound
     let customSound: string | null = null;
     if (this.currentUserId) {
+      console.log('[Alarm] Getting user settings for userId:', this.currentUserId);
       try {
         const userData = await getUserDocument(this.currentUserId);
         customSound = userData?.settings?.customAlarmSound || null;
+        console.log('[Alarm] Custom sound:', customSound);
       } catch (error) {
-        console.error('Error getting user settings:', error);
+        console.error('[Alarm] Error getting user settings:', error);
       }
+    } else {
+      console.warn('[Alarm] No currentUserId set');
     }
 
     // Play alarm sound
+    console.log('[Alarm] Playing alarm sound...');
     await audioService.playAlarmSound(customSound, true);
+    console.log('[Alarm] Alarm sound play requested');
 
     // Trigger callback to notify UI
     if (this.onAlarmTriggeredCallback) {
+      console.log('[Alarm] Triggering UI callback');
       this.onAlarmTriggeredCallback();
     }
   }
@@ -262,6 +273,14 @@ class AlarmService {
    */
   isAlarmPlaying(): boolean {
     return audioService.getIsPlaying();
+  }
+
+  /**
+   * Trigger alarm from FCM notification
+   * Called when FCM alarm notification is received
+   */
+  async triggerAlarmFromFCM(): Promise<void> {
+    await this.handleAlarmTriggered();
   }
 
   /**

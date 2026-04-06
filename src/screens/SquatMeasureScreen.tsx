@@ -41,7 +41,6 @@ const WARNING_THRESHOLD_SECONDS = 60; // Show warning at 1 minute left
 interface SquatMeasureScreenProps {
   onComplete: (success: boolean, squatCount: number) => void;
   onClose?: () => void;
-  customAlarmSound?: string | null;
 }
 
 type ScreenState = 'measuring' | 'success' | 'failure';
@@ -49,7 +48,6 @@ type ScreenState = 'measuring' | 'success' | 'failure';
 const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
   onComplete,
   onClose,
-  customAlarmSound,
 }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -76,8 +74,8 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
   // Start accelerometer and timer on mount
   useEffect(() => {
     const initialize = async () => {
-      // Play alarm sound
-      await audioService.playAlarmSound(customAlarmSound, true);
+      // Play default alarm sound
+      await audioService.playAlarmSound(null, true);
 
       // Start accelerometer
       try {

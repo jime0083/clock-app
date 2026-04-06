@@ -40,7 +40,12 @@
       "Bash(xcrun devicectl device install app:*)",
       "Bash(xcrun devicectl device process launch:*)",
       "Bash(ls:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(firebase functions:log:*)",
+      "Bash(echo 'curl -X POST https://asia-northeast1-okiroya-9af3f.cloudfunctions.net/testAlarm \\\\'\necho ' -H \"Content-Type: application/json\" '')",
+      "Bash(echo:*)",
+      "WebFetch(domain:console.firebase.google.com)"
     ]
   }
 }

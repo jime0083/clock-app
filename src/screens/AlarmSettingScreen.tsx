@@ -13,24 +13,17 @@ import LottieView from 'lottie-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
 
 import { Colors } from '@/constants/colors';
 
-interface AlarmSound {
-  name: string;
-  uri: string;
-}
-
 interface AlarmSettingScreenProps {
-  onSave: (time: string, days: number[], soundName?: string | null) => void;
+  onSave: (time: string, days: number[]) => void;
   onClose: () => void;
   initialTime: string | null;
   initialDays: number[];
-  initialSoundName?: string | null;
 }
 
-type SettingStep = 'time' | 'days' | 'sound';
+type SettingStep = 'time' | 'days';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ANIMATION_SIZE = SCREEN_WIDTH * 0.55;
@@ -51,28 +44,11 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
   onClose,
   initialTime,
   initialDays,
-  initialSoundName,
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<SettingStep>('time');
   const [showTimePicker, setShowTimePicker] = useState(true);
   const [selectedDays, setSelectedDays] = useState<number[]>(initialDays.length > 0 ? initialDays : [1, 2, 3, 4, 5]);
-
-  // Validate initialSoundName - handle case where Firestore has object instead of string
-  const normalizedSoundName = (() => {
-    if (!initialSoundName) return null;
-    if (typeof initialSoundName === 'string') return initialSoundName;
-    // Handle legacy object format {name, uri}
-    if (typeof initialSoundName === 'object' && 'uri' in (initialSoundName as object)) {
-      return (initialSoundName as { uri: string }).uri;
-    }
-    return null;
-  })();
-
-  const [selectedSound, setSelectedSound] = useState<AlarmSound | null>(
-    normalizedSoundName ? { name: normalizedSoundName, uri: normalizedSoundName } : null
-  );
-  const [isSelecting, setIsSelecting] = useState(false);
 
   const [alarmTime, setAlarmTime] = useState<Date>(() => {
     if (initialTime) {
@@ -114,34 +90,8 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
     );
   };
 
-  const handleDaysConfirm = () => {
-    setCurrentStep('sound');
-  };
-
-  const handleSoundSelect = async () => {
-    try {
-      setIsSelecting(true);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'audio/*',
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-        setSelectedSound({
-          name: file.name,
-          uri: file.uri,
-        });
-      }
-    } catch (error) {
-      console.error('Error selecting sound:', error);
-    } finally {
-      setIsSelecting(false);
-    }
-  };
-
   const handleSave = () => {
-    onSave(formatTime(alarmTime), selectedDays, selectedSound?.uri || null);
+    onSave(formatTime(alarmTime), selectedDays);
     onClose();
   };
 
@@ -229,55 +179,9 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
 
       <TouchableOpacity
         style={[styles.primaryButton, selectedDays.length === 0 && styles.buttonDisabled]}
-        onPress={handleDaysConfirm}
-        activeOpacity={0.8}
-        disabled={selectedDays.length === 0}
-      >
-        <Text style={styles.primaryButtonText}>{t('common.confirm')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Sound selection step
-  const renderSoundStep = () => (
-    <View style={styles.stepContainer}>
-      <View style={styles.animationContainer}>
-        <LottieView
-          source={require('@assets/animations/Morning and night in the city.json')}
-          autoPlay
-          loop
-          style={styles.animation}
-        />
-      </View>
-
-      <Text style={styles.title}>{t('alarm.soundSettings')}</Text>
-
-      <TouchableOpacity
-        style={[styles.inputField, styles.soundInputField]}
-        onPress={handleSoundSelect}
-        activeOpacity={0.7}
-        disabled={isSelecting}
-      >
-        <Text
-          style={[styles.inputText, !selectedSound && styles.placeholderText, styles.soundInputText]}
-          numberOfLines={1}
-          ellipsizeMode="middle"
-        >
-          {isSelecting
-            ? t('common.selecting')
-            : selectedSound?.name || t('setup.uploadSound')}
-        </Text>
-        {selectedSound && !isSelecting && (
-          <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-        )}
-      </TouchableOpacity>
-
-      <Text style={styles.description}>{t('alarm.soundDescription')}</Text>
-
-      <TouchableOpacity
-        style={styles.primaryButton}
         onPress={handleSave}
         activeOpacity={0.8}
+        disabled={selectedDays.length === 0}
       >
         <Text style={styles.primaryButtonText}>{t('alarm.saveSettings')}</Text>
       </TouchableOpacity>
@@ -290,8 +194,6 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
         return renderTimeStep();
       case 'days':
         return renderDaysStep();
-      case 'sound':
-        return renderSoundStep();
     }
   };
 
@@ -358,14 +260,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginBottom: 24,
   },
-  description: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-  },
   inputField: {
     width: '100%',
     paddingVertical: 16,
@@ -376,21 +270,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     marginBottom: 16,
   },
-  soundInputField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   inputText: {
     fontSize: 16,
     color: Colors.textPrimary,
-  },
-  soundInputText: {
-    flex: 1,
-    marginRight: 12,
-  },
-  placeholderText: {
-    color: Colors.textTertiary,
   },
   timePickerContainerCompact: {
     width: '100%',

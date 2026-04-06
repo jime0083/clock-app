@@ -100,7 +100,7 @@ async function sendAlarmNotification(fcmToken, userId) {
                             title: "起床時間です！",
                             body: "5分以内にスクワットを10回してください",
                         },
-                        sound: "default",
+                        sound: "alarm.m4a", // Custom alarm sound bundled in app
                         badge: 1,
                         "content-available": 1,
                         "interruption-level": "time-sensitive",

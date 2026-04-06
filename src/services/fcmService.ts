@@ -69,23 +69,33 @@ export const saveFCMTokenToFirestore = async (
  * Initialize FCM and save token
  */
 export const initializeFCM = async (uid: string): Promise<void> => {
+  console.log('[FCM] Starting FCM initialization for user:', uid);
+
   try {
     // Request permission
+    console.log('[FCM] Requesting notification permission...');
     const hasPermission = await requestNotificationPermission();
+    console.log('[FCM] Permission result:', hasPermission);
+
     if (!hasPermission) {
-      console.warn('Notification permission not granted');
+      console.warn('[FCM] Notification permission not granted');
       return;
     }
 
     // Get token
+    console.log('[FCM] Getting FCM token...');
     const token = await getFCMToken();
+    console.log('[FCM] Token result:', token ? `${token.substring(0, 20)}...` : 'null');
+
     if (!token) {
-      console.warn('Failed to get FCM token');
+      console.warn('[FCM] Failed to get FCM token');
       return;
     }
 
     // Save to Firestore
+    console.log('[FCM] Saving token to Firestore...');
     await saveFCMTokenToFirestore(uid, token);
+    console.log('[FCM] Token saved successfully');
 
     // Listen for token refresh
     messaging().onTokenRefresh(async (newToken) => {
