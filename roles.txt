@@ -1,0 +1,64 @@
+# IAMロール一覧 - okiroya-9af3f プロジェクト
+
+最終更新: 2026-04-12 17:31
+
+---
+
+## サービスアカウント別ロール一覧
+
+### 1. firebase-adminsdk-fbsvc@okiroya-9af3f.iam.gserviceaccount.com
+- [x] Cloud Datastore ユーザー
+- [x] Firebase Admin SDK 管理者サービス エージェント
+- [x] Firebase App Check 管理者
+- [x] Firebase Authentication 管理者
+- [x] Firebase Cloud Messaging API 管理者
+- [x] Firebase 管理者
+- [x] サービス アカウント トークン作成者
+
+### 2. okiroya-9af3f@appspot.gserviceaccount.com (App Engine default service account)
+- [x] Cloud Datastore ユーザー
+- [x] Firebase Admin SDK 管理者サービス エージェント
+- [x] Firebase Cloud Messaging API 管理者
+- [x] サービス アカウント トークン作成者
+
+### 3. 385341847803-compute@developer.gserviceaccount.com (Default compute service account)
+- [x] Cloud Build サービス アカウント
+- [x] Cloud Functions 開発者
+- [x] Firebase Admin SDK 管理者サービス エージェント
+- [x] Firebase Cloud Messaging API 管理者
+- [x] サービス アカウント トークン作成者
+- [x] サービス アカウント ユーザー
+
+---
+
+## 有効化済みAPI
+
+- [x] Firebase Cloud Messaging API (fcm.googleapis.com) - 2026-04-12確認済み
+- [x] IAM Service Account Credentials API (iamcredentials.googleapis.com) - 2026-04-12確認済み
+- [x] Cloud Functions API
+- [x] Cloud Build API
+- [x] Compute Engine API
+- [x] Firestore API
+
+## APNs設定
+
+- [x] 本番環境用 APNs 認証キー (キーID: YY7USJ7P4T, チームID: GK79P6R4DF)
+- [x] 開発用 APNs 認証キー (キーID: YY7USJ7P4T, チームID: GK79P6R4DF) - 2026-04-13追加
+
+---
+
+## 運用ルール
+
+### ロール追加時の手順
+1. IAMでロールを追加
+2. **即座に**このファイルを更新
+3. タスク完了としてマーク
+
+### 新しいタスクを追加する前の確認
+1. このファイルを読み込む
+2. 既存のロールと重複していないか確認
+3. 重複していたら追加しない
+
+### ユーザーが「追加済み」と言った場合
+1. このファイルを即座に更新
+2. 画像で確認できた内容を正確に反映

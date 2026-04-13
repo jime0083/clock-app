@@ -2,41 +2,270 @@
 
 ---
 
-## Work 1: Firebase設定
-
-### Work 1.1: Firebaseプロジェクト作成
-- [x] Firebase Consoleでプロジェクト作成
-- [x] プロジェクト名設定
-- [x] Google Analytics設定（任意）
-
-### Work 1.2: Firebase Authentication有効化
-- [x] Authentication有効化
-- [x] Googleログインプロバイダ有効化
-- [x] Appleログインプロバイダ有効化
-
-### Work 1.3: Firestore有効化
-- [x] Cloud Firestore作成
-- [x] セキュリティルール初期設定
-- [x] リージョン選択（asia-northeast1推奨）
-
-### Work 1.4: Firebase Functions設定
-- [x] Functions有効化
-- [x] Blazeプラン（従量課金）へアップグレード
-
-### Work 1.5: Firebase Cloud Messaging設定
-- [x] FCM有効化
-- [x] APNs認証キー設定
-
-### Work 1.6: iOSアプリ登録
-- [x] iOSアプリをFirebaseに登録
-- [x] GoogleService-Info.plist ダウンロード
-- [x] プロジェクトに配置
-
-### Work 1.7: 管理者ユーザー登録
-- [x] adminUsersコレクション作成
+## Work 1.7: 管理者ユーザー登録（Work 1の残タスク）
 - [ ] 開発者・管理者のUIDを登録 ※アプリログイン後に設定
 
 ---
+
+## Work 2: アラーム不具合調査（Problem 1, 2, 3対応）
+※ 2026-04-09 実機テストで発見された問題への対応
+
+### Work 2.4: Critical Alert エンタイトルメント取得
+- [x] Time Sensitiveで対応することに決定（Apple承認不要）
+- [x] Critical Alertは使用しない
+
+### Work 2.5: Firebase Functions デプロイエラー確認 [完了]
+**原因**: Cloud Build関連APIの有効化が必要
+
+**手順**:
+- [x] Compute Engine API 有効化
+- [x] Cloud Build API 自動有効化（デプロイ時に有効化された）
+- [x] `firebase deploy --only functions` 実行成功（2026-04-10）
+
+### Work 2.6: FCM認証エラー解決 [完了]
+**IAMロール追加完了**:
+- [x] Cloud Messaging API 有効化確認
+- [x] サービスアカウントに「Firebase Cloud Messaging API 管理者」ロール追加
+- [x] サービスアカウントに「サービスアカウント トークン作成者」ロール追加
+- [x] Firebase Functions 再デプロイ完了（2026-04-10）
+
+### Work 2.7: 実機テスト [保留]
+※ Critical Alert対応後に実施
+
+- [ ] 実機ビルド（EAS Build または Xcodeから直接）
+- [ ] アプリ起動・アラーム設定
+- [ ] 通常モードでのアラーム動作テスト
+- [ ] サイレントモードでのアラーム動作テスト（Critical Alert承認後）
+- [ ] ロック画面状態でのアラーム動作テスト
+- [ ] アプリ終了状態でのアラーム動作テスト
+
+---
+
+## Work 2.8: サービスアカウントにFirestore権限を付与 [完了]
+※ Problem 5対応: Firebase FunctionsがFirestoreにアクセスできない問題
+
+**完了** (2026-04-10 21:33):
+- [x] Cloud Datastore User ロール追加
+- [x] Firebase Admin SDK 管理者サービス エージェント ロール追加
+- [x] 権限反映確認（ログでエラー解消を確認）
+
+---
+
+## Work 2.9: checkAlarmsクエリ問題の調査（Problem 6対応）[最優先]
+※ 2026-04-12 checkAlarmsがユーザーを見つけられない問題への対応
+
+### Work 2.9.1: Firestoreインデックスの確認
+**確認URL**: https://console.firebase.google.com/project/okiroya-9af3f/firestore/indexes
+
+**手順**:
+- [ ] Firebase Console > Firestore > インデックスを確認
+- [ ] `settings.alarmTime`に対するインデックスがあるか確認
+- [ ] 必要であれば単一フィールドインデックスを作成
+
+### Work 2.9.2: Firestoreのデータ構造を確認
+**確認URL**: https://console.firebase.google.com/project/okiroya-9af3f/firestore/data/~2Fusers
+
+**手順**:
+- [ ] `users`コレクションで自分のドキュメントを開く
+- [ ] `settings`フィールドがマップ（オブジェクト）として表示されているか確認
+- [ ] `settings.alarmTime`の値が正しいフォーマット（`"HH:mm"`）か確認
+
+### Work 2.9.3: FCMトークンの更新
+**手順**:
+- [ ] iPhoneからオキロヤアプリを削除
+- [ ] Xcodeから再インストール
+- [ ] アプリを起動してログイン
+- [ ] Firebase Console > Firestore で `fcmToken` が更新されたことを確認
+
+### Work 2.9.4: 追加のサービスアカウント権限（方法2）
+**確認URL**: https://console.cloud.google.com/iam-admin/iam?project=okiroya-9af3f
+
+**手順**:
+- [ ] `385341847803-compute@developer.gserviceaccount.com`を編集
+- [ ] 「Cloud Datastore User」ロールを追加
+- [ ] 保存して数分待つ
+
+### Work 2.9.5: アラーム時間変更によるテスト（方法1）
+**手順**:
+- [x] Firebase Console > Firestore > users > 自分のドキュメント
+- [x] `settings.alarmTime`を現在時刻の2分後に変更（例: `"13:15"`）
+- [x] Firebase Functions のログを確認
+- [x] 通知が届くか確認 → **成功！（Work 2.14で開発用APNsキー追加後に解決）**
+
+---
+
+## Work 2.10: FCM認証権限の追加 [完了]
+※ Problem 7対応: FCM通知送信時の認証エラー
+
+**確認URL**: https://console.cloud.google.com/iam-admin/iam?project=okiroya-9af3f
+
+**手順**:
+- [x] `okiroya-9af3f@appspot.gserviceaccount.com`を編集
+- [x] 「Firebase Cloud Messaging API 管理者」ロールを追加
+- [x] 「サービスアカウント トークン作成者」ロールを追加
+- [x] 保存して数分待つ
+- [x] testAlarm APIで通知送信をテスト → 成功（Work 2.14完了後）
+
+**テストコマンド**:
+```bash
+curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "W1lrHjZADQeXkp3XPfy8ujRLo2l2"}'
+```
+
+成功時: `Alarm notification sent successfully`
+失敗時: `Failed to send alarm notification`
+
+---
+
+## Work 2.11: Firebase Cloud Messaging API の有効化確認 [最優先・致命的]
+※ Problem 8対応: IAM権限設定後もFCM認証エラーが継続
+
+**重要**: これはIAMロールではなく、**API自体の有効化**です（別の設定）
+
+**確認URL**: https://console.cloud.google.com/apis/library/fcm.googleapis.com?project=okiroya-9af3f
+
+**現状**:
+- サービスアカウントにFCM権限（IAMロール）は追加済み ✓
+- しかしtestAlarm APIで認証エラーが発生
+- Firebase Cloud Messaging **API自体**が無効の可能性
+
+**手順**:
+- [x] 上記URLにアクセス（APIs & Services > ライブラリ）
+- [x] 「Firebase Cloud Messaging API」のページで「有効」と表示されているか確認 → **有効済み**
+- [x] APIは既に有効 ✓
+
+**結果**: APIは有効だが、まだFCM認証エラーが発生 → Work 2.12へ
+
+---
+
+## Work 2.12: IAM Service Account Credentials API の有効化 [最優先]
+※ Problem 8対応: サービスアカウントがアクセストークンを生成するために必要
+
+**確認URL**: https://console.cloud.google.com/apis/library/iamcredentials.googleapis.com?project=okiroya-9af3f
+
+**現状**:
+- IAMロールは全て追加済み ✓
+- Firebase Cloud Messaging APIは有効 ✓
+- しかしサービスアカウントがアクセストークンを生成できない
+- IAM Service Account Credentials APIが無効の可能性
+
+**手順**:
+- [x] 上記URLにアクセス
+- [x] 「IAM Service Account Credentials API」が有効か確認 → **有効済み**
+- [x] APIは既に有効 ✓
+
+**結果**: APIは有効だが、まだFCM認証エラーが発生
+
+**テストコマンド**:
+```bash
+curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "W1lrHjZADQeXkp3XPfy8ujRLo2l2"}'
+```
+
+**テストコマンド**:
+```bash
+curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "W1lrHjZADQeXkp3XPfy8ujRLo2l2"}'
+```
+
+成功時: `Alarm notification sent successfully`
+失敗時: `Failed to send alarm notification`
+
+---
+
+## Work 2.13: APNs認証キーの確認・設定 [完了]
+※ Problem 8対応: iOSデバイスへのプッシュ通知に必要
+→ 本番用APNs認証キーは設定済みだった
+
+---
+
+## Work 2.14: 開発用APNs認証キーの追加 [完了 2026-04-13]
+※ Problem 8の根本原因: 開発用APNs認証キーが未設定だった
+
+**背景**:
+- Xcodeからビルドしたアプリは開発環境（APNs Sandbox）で動作
+- 本番用APNs認証キーのみ設定されており、開発用が未設定だった
+- そのため、FCMがAPNsにメッセージを送信できなかった
+
+**解決手順**:
+- [x] Firebase Console > Cloud Messaging > Apple アプリの構成
+- [x] 開発用APNs認証キーの「アップロード」をクリック
+- [x] 本番用と同じ.p8ファイル（AuthKey_YY7USJ7P4T.p8）をアップロード
+- [x] Key ID: YY7USJ7P4T, Team ID: GK79P6R4DF を入力
+- [x] testAlarm APIで通知送信をテスト → 成功！
+
+**結果**: FCM通知が正常に動作するようになった
+
+---
+
+## Work 2.13 (元): APNs認証キーの確認・設定 [参考]
+
+**背景**:
+- FCMトークンがiOSデバイスのものである場合、APNs認証キーが必要
+- これがないとFirebase Admin SDKがiOSデバイスに通知を送信できない
+
+**確認URL**: https://console.firebase.google.com/project/okiroya-9af3f/settings/cloudmessaging
+
+**手順**:
+- [ ] 上記URLにアクセス
+- [ ] 「Apple アプリの構成」セクションを確認
+- [ ] 「APNs認証キー」が設定されているか確認
+- [ ] 設定されていない場合は以下の手順で追加
+
+**APNs認証キーの取得方法（未設定の場合）**:
+1. Apple Developer Portal (https://developer.apple.com/account/resources/authkeys/list) にアクセス
+2. 「Keys」から「+」ボタンをクリック
+3. Key Name を入力（例: "Okiroya FCM Key"）
+4. 「Apple Push Notifications service (APNs)」にチェック
+5. 「Continue」→「Register」をクリック
+6. .p8ファイルをダウンロード（**一度しかダウンロードできない**）
+7. Key ID をメモ
+
+**Firebase Consoleへの登録**:
+1. Firebase Console > プロジェクト設定 > Cloud Messaging
+2. 「Apple アプリの構成」で「APNs認証キー」の「アップロード」をクリック
+3. .p8ファイルをアップロード
+4. Key ID を入力
+5. Team ID を入力（Apple Developer PortalのMembership詳細で確認）
+
+**テストコマンド**:
+```bash
+curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "W1lrHjZADQeXkp3XPfy8ujRLo2l2"}'
+```
+
+---
+
+## Work 3: Critical Alert エンタイトルメント取得 [優先度: 中]
+※ Problem 4対応: サイレントモードでもアラーム音を鳴らすために必要
+
+### Work 3.1: Apple への申請
+**申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
+
+**申請時に必要な情報**:
+- App Name: オキロヤ (Wake or Shame)
+- Bundle ID: com.okiroya.app
+- App Store URL: (未公開の場合は空欄または「審査前」)
+- Description: アラームアプリ。ユーザーが設定した時間にアラームを鳴らし、スクワットを完了するまで止まらない。サイレントモードでも確実にユーザーを起こす必要があるため、Critical Alertが必要。
+
+**申請手順**:
+- [x] Apple Developer Programにログイン
+- [x] 上記URLにアクセス
+- [x] フォームに必要事項を入力
+- [x] 申請を送信（2026-04-10 完了、Request ID: MDS6U7Y83W）
+
+### Work 3.2: 承認待ち
+- [ ] Appleからの承認メールを待つ（通常1-2週間）
+- [ ] 承認されたらエンタイトルメントがアカウントに追加される
+
+### Work 3.3: Provisioning Profile更新（承認後）
+- [ ] Apple Developer Portal でProvisioning Profileを再生成
+- [ ] Critical Alertエンタイトルメントが含まれることを確認
+- [ ] Xcodeでプロファイルをダウンロード
 
 ---
 
@@ -70,3 +299,4 @@
 - [ ] ビルドアップロード
 - [ ] 審査情報入力
 - [ ] 審査提出
+

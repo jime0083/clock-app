@@ -20,6 +20,8 @@ expo-env.d.ts
 
 # Credentials (certificates, provisioning profiles, API keys)
 credentials/
+**/serviceAccountKey.json
+**/service-account*.json
 
 # Metro
 .metro-health-check*

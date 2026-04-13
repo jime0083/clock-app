@@ -1,0 +1,319 @@
+# Problem - 発見された問題
+
+---
+
+## Problem 8: FCM認証エラーが解消されない（IAM権限設定後も継続）(2026-04-12) [解決済み 2026-04-13]
+
+### 根本原因
+**開発用APNs認証キーがFirebase Consoleに設定されていなかった**
+
+- Xcodeからビルドしたアプリは開発環境（APNs Sandbox）で動作する
+- 本番用APNs認証キーのみ設定されており、開発用が未設定だった
+- そのため、FCMがAPNsにメッセージを送信できなかった
+
+### 解決策
+Firebase Console > Cloud Messaging > Apple アプリの構成 で、開発用APNs認証キーをアップロード
+- 本番用と同じ.p8ファイル（AuthKey_YY7USJ7P4T.p8）を開発用としてもアップロード
+- Key ID: YY7USJ7P4T
+- Team ID: GK79P6R4DF
+
+### 学び
+- APNs認証キー（.p8）は開発・本番共通で使用可能だが、Firebase Consoleでは開発用・本番用の両方にアップロードが必要
+- IAMロールやAPI有効化は全て正しく設定されていた
+- 問題はAPNs認証キーの設定漏れだった
+
+---
+
+## Problem 1: アラームが鳴らない (2026-04-09)
+
+### 症状
+- アプリ起動時もバックグラウンド状態でもアラームが鳴らない
+- Xcodeコンソールにはアプリのライフサイクルイベント（appBecomesActive, appEntersBackground等）は表示されるが、アラーム関連のエラーは見られない
+
+### 発見された原因
+
+#### 1. Critical Alert エンタイトルメント不足 [重大度: 高]
+- **ファイル**: `ios/app/app.entitlements`, `app.config.ts`
+- **問題**:
+  - `notificationService.ts` で `critical: true` を使用している（L191, L251）
+  - しかし `ios/app/app.entitlements` に `com.apple.developer.usernotifications.critical-alerts` が**設定されていない**
+  - `app.config.ts` の `entitlements` にも設定されていない
+- **影響**: iOSでCritical Alert（サイレントモード・おやすみモードを無視して鳴る通知）が動作しない
+
+#### 2. Notifeeプラグインがapp.config.tsに未登録 [重大度: 中]
+- **ファイル**: `app.config.ts`
+- **問題**: `plugins` 配列に `@notifee/react-native` が含まれていない
+- **影響**: Expo prebuildでNotifeeのネイティブ設定が正しく適用されない可能性
+
+#### 3. デフォルトアラーム音ファイル（alarm.caf）のバンドル未確認 [重大度: 中]
+- **ファイル**: `ios/alarm.caf`, `functions/src/index.ts`
+- **問題**:
+  - FCM通知で `sound: "alarm.caf"` を指定している（L79）
+  - `ios/alarm.caf` が追加されているが、ビルドに正しく含まれているか未確認
+  - ※これはアプリにバンドルされたデフォルト音であり、ユーザー選択機能ではない
+- **影響**: 通知のアラーム音が再生されない
+
+#### 4. FCMトークン保存状況の未確認 [重大度: 要確認]
+- **ファイル**: `src/services/fcmService.ts`
+- **問題**: コードは正しく実装されているが、実際にFirestoreにトークンが保存されているか未確認
+- **確認方法**: Firebase Console > Firestore > users/{userId}/fcmToken を確認
+
+#### 5. Firebase Functions デプロイ状況の未確認 [重大度: 要確認]
+- **ファイル**: `functions/src/index.ts`
+- **問題**: 最新のコードがデプロイされているか、Cloud Schedulerが正しく実行されているか未確認
+- **確認方法**: Firebase Console > Functions > ログを確認
+
+#### 6. APNs設定の未確認 [重大度: 要確認]
+- **問題**: Firebase ConsoleにAPNs認証キー（.p8）が正しく設定されているか未確認
+- **確認方法**: Firebase Console > プロジェクト設定 > Cloud Messaging > Apple アプリの構成
+
+### 関連するコードフロー
+```
+アラーム時間到達
+    ↓
+[Firebase Functions] checkAlarms が毎分実行
+    ├─ Firestore で settings.alarmTime と現在時刻を比較
+    ├─ 対象ユーザーにFCM通知を送信
+    └─
+[クライアント] FCM通知受信
+    ├─ fcmService.ts でハンドリング
+    ├─ alarmService.handleAlarmTriggered()
+    ├─ audioService.playAlarmSound()
+    └─ UI更新（スクワット画面表示）
+```
+
+---
+
+## Problem 2: バックグラウンドでアラーム音が鳴らない (2026-04-09 15:00頃)
+
+### 症状
+- バックグラウンド状態で通知は来るがアラーム音が鳴らない
+- Xcodeのコンソールにログが出力されない（JSコードが実行されていない）
+
+### 発見された原因
+
+#### 1. FCM通知のサウンド設定がバンドルに存在しない [重大度: 高]
+- **ファイル**: `functions/src/index.ts`
+- **問題**:
+  - FCM通知で `sound: "alarm.caf"` が指定されている（デプロイ済みの古いコード）
+  - しかし `alarm.caf` がアプリバンドルに含まれていない
+  - iOSは存在しないサウンドファイルを再生できない
+- **影響**: 通知は表示されるが音が鳴らない
+
+#### 2. Firebase Functionsのデプロイ失敗 [重大度: 高]
+- **問題**:
+  - `sound: "default"` への変更をデプロイできていない
+  - Cloud Buildで「An unexpected error occurred」エラーが発生
+  - 古いコード（sound: "alarm.caf"）が本番で動作中
+- **確認方法**: Google Cloud Console > Cloud Build でエラーログを確認
+
+#### 3. prebuild時にカスタムファイルが消える [重大度: 中]
+- **問題**:
+  - `npx expo prebuild --clean` で `ios/` フォルダが再生成される
+  - 手動で追加した `alarm.caf` が消える
+- **影響**: prebuildのたびにファイルを再配置する必要がある
+
+#### 4. バックグラウンドでJSコードが実行されない [重大度: 情報]
+- **問題**:
+  - iOSではバックグラウンドでJavaScriptランタイムが停止
+  - `setBackgroundMessageHandler` 内のコードは実行されない可能性が高い
+- **対策**: FCM通知のサウンド設定に依存する（JSに依存しない）
+
+### 根本原因の特定
+
+**バックグラウンドでアラーム音が鳴らない直接の原因**:
+- FCM通知のペイロードで指定された `alarm.caf` がアプリバンドルに存在しない
+- iOSは存在しないサウンドファイルを無視し、無音で通知を表示する
+
+**解決策の優先順位**:
+1. Firebase Functionsをデプロイして `sound: "default"` を適用（最も簡単）
+2. または `alarm.caf` をアプリバンドルに正しく含める（Expo config plugin必要）
+
+---
+
+## Problem 5: Firebase FunctionsがFirestoreにアクセスできない (2026-04-10 21:17)
+
+### 症状
+- Firebase Functionsのログで`PERMISSION_DENIED: Missing or insufficient permissions`エラーが発生
+- checkAlarms関数がFirestoreからユーザーデータを取得できない
+- 結果として**FCM通知が一切送信されていない**
+
+### エラーメッセージ
+```
+Error: 7 PERMISSION_DENIED: Missing or insufficient permissions.
+```
+
+### 発見された原因
+
+#### 1. サービスアカウントのFirestore権限不足 [重大度: 致命的]
+- **問題**:
+  - Cloud Functionsが使用するサービスアカウント `okiroya-9af3f@appspot.gserviceaccount.com` に
+    Firestoreへのアクセス権限がない
+  - Firebase Admin SDKはデフォルトでこのサービスアカウントを使用する
+- **影響**: **アラーム機能が完全に動作しない**
+
+### 根本原因の特定
+
+**これがアラームが鳴らない真の根本原因**:
+1. checkAlarms関数が毎分実行される
+2. Firestoreにクエリを実行しようとする
+3. `PERMISSION_DENIED`エラーで失敗
+4. ユーザーデータを取得できないため、FCM通知が送信されない
+5. 結果として、通知は届かない（または音が鳴らない以前の問題）
+
+**解決策**:
+1. Google Cloud Console > IAM で、サービスアカウントに「Cloud Datastore User」ロールを付与
+2. または「Firebase Admin SDK Administrator Service Agent」ロールを付与
+
+---
+
+## Problem 4: バックグラウンドで通知音が鳴らない（デプロイ後も継続）(2026-04-10)
+
+### 症状
+- Firebase Functionsデプロイ成功後もバックグラウンドで通知音が鳴らない
+- 通知自体は正常に表示される
+- Xcodeコンソールには`appEntersBackground`イベントが表示されている
+
+### 調査結果
+
+#### 確認済みの設定
+- `ios/app/Info.plist`: UIBackgroundModes に `remote-notification`, `audio`, `fetch` が設定済み ✓
+- `app.config.ts`: infoPlist に UIBackgroundModes が設定済み ✓
+- `functions/src/index.ts`: `sound: "default"` に変更済み・デプロイ済み ✓
+- `notificationService.ts`: `interruptionLevel: 'timeSensitive'` が設定済み ✓
+
+#### 根本原因の特定
+
+**原因1: iOSのサイレントスイッチ（物理スイッチ）[重大度: 致命的・可能性高]**
+- iPhoneの側面の物理スイッチがオレンジ色（サイレントモード）の場合、通常の通知音は鳴らない
+- `sound: "default"` はサイレントスイッチを**無視しない**
+- `interruptionLevel: 'timeSensitive'` もサイレントスイッチを**無視しない**
+- **サイレントスイッチを無視して音を鳴らすには Critical Alert が必要**（Apple特別承認必要）
+
+**原因2: iOS通知設定でサウンドがオフ [重大度: 高・可能性中]**
+- 設定 > 通知 > オキロヤ > サウンドがオフになっている可能性
+- ユーザーが意図せずオフにしている場合がある
+
+**原因3: 着信音/通知音の音量がゼロ [重大度: 高・可能性中]**
+- 設定 > サウンドと触覚 > 着信音と通知音がゼロになっている可能性
+
+**原因4: バックグラウンドでJSコードが実行されない [重大度: 情報]**
+- iOSではバックグラウンドでJavaScriptランタイムが停止
+- `audioService.playAlarmSound()` はバックグラウンドでは実行されない
+- → FCM通知の`sound`設定のみに依存する必要がある（現状はこれで正しい）
+
+### 結論
+
+**最も可能性が高い原因**: ユーザーのiPhoneがサイレントモード（物理スイッチがオレンジ色）
+
+**解決策の選択肢**:
+1. **ユーザーにサイレントモードをオフにしてもらう**（即座に解決・制限あり）
+2. **Critical Alert エンタイトルメントを取得**（Apple承認必要・時間がかかる）
+3. **アプリ内でユーザーに注意喚起**（サイレントモードでは音が鳴らない旨を表示）
+
+---
+
+## Problem 3: FCM認証エラー (2026-04-09 15:40頃)
+
+### 症状
+- Cloud FunctionsからFCM通知を送信しようとすると認証エラーが発生
+- `testAlarm` APIを呼び出すと「Failed to send alarm notification」が返される
+
+### エラーメッセージ
+```
+FirebaseMessagingError: Request is missing required authentication credential.
+Expected OAuth 2 access token, login cookie or other valid authentication credential.
+```
+
+### 発見された原因
+
+#### 1. Cloud Messaging APIの権限問題 [重大度: 致命的]
+- **問題**: Firebase Admin SDKがFCM通知を送信するための認証情報がない
+- **原因**: サービスアカウントにCloud Messaging APIへのアクセス権限がない可能性
+- **影響**: **全てのFCM通知が送信できない** → アラームが鳴らない
+
+### 根本原因の特定
+
+**これがアラームが鳴らない真の根本原因**:
+- Cloud FunctionsはFirestoreクエリでユーザーを見つけている（または見つけようとしている）
+- しかし、FCM通知を送信する時点で認証エラーが発生
+- 結果として、通知は一切送信されていない
+
+**解決策**:
+1. Google Cloud Console > APIs & Services > Cloud Messaging API を有効化
+2. サービスアカウントに「Firebase Cloud Messaging Admin」ロールを付与
+3. または、Firebase Admin SDKの初期化方法を確認
+
+---
+
+## Problem 6: checkAlarmsクエリがユーザーを見つけられない (2026-04-12)
+
+### 症状
+- Firebase Functionsのログで「No users found with alarm at this time」と表示される
+- Firestoreには`settings.alarmTime`が正しく保存されているユーザーが存在する
+- しかし、checkAlarmsのクエリが一致するユーザーを見つけられない
+- 結果として、FCM通知が送信されない
+
+### 調査結果
+
+#### 確認済み
+- Firestoreデータ: `settings.alarmTime: "21:41"`, `settings.alarmDays: [1,2,3,4,5,6,0]`, `fcmToken: 存在する` ✓
+- Firebase Functionsのログ: 毎分実行されている ✓
+- サービスアカウント権限: Cloud Datastore User追加済み ✓
+
+### 可能性のある原因
+
+#### 1. Firestoreインデックスの問題 [重大度: 高・可能性: 中]
+- **問題**: `settings.alarmTime`のようなネストされたフィールドへのクエリにインデックスが必要な場合がある
+- **確認方法**: Firebase Console > Firestore > インデックス
+- **対応**: 必要であればインデックスを作成
+
+#### 2. データ構造の不一致 [重大度: 高・可能性: 高]
+- **問題**: Firestoreの実際のデータ構造と、クエリが期待する構造が異なる可能性
+- **確認方法**: Firebase ConsoleでRAWデータを確認
+- **対応**: デバッグログで全ユーザーのデータを出力して確認
+
+#### 3. FCMトークンの無効化 [重大度: 中・可能性: 中]
+- **問題**: iOSではアプリを長期間使用しないとトークンが無効になる
+- **確認方法**: アプリを再起動してFCMトークンを更新
+- **対応**: アプリを再インストールしてトークンを再取得
+
+#### 4. サービスアカウント権限の追加不足 [重大度: 高・可能性: 中]
+- **問題**: `385341847803-compute@developer.gserviceaccount.com`にCloud Datastore Userがない
+- **確認方法**: IAMで権限を確認
+- **対応**: 追加でCloud Datastore Userロールを付与
+
+#### 5. Cloud Functionsのコールドスタート問題 [重大度: 低・可能性: 低]
+- **問題**: 新しいコードがまだ反映されていない
+- **確認方法**: デバッグログが出力されるか確認
+- **対応**: 時間を置いて再確認
+
+---
+
+## Problem 7: FCM認証エラー（再発）(2026-04-12)
+
+### 症状
+- testAlarm APIを呼び出すと「Failed to send alarm notification」が返される
+- Firebase Functionsのログで`FirebaseMessagingError: Request is missing required authentication credential`が表示される
+
+### エラーメッセージ
+```
+FirebaseMessagingError: Request is missing required authentication credential.
+Expected OAuth 2 access token, login cookie or other valid authentication credential.
+code: 'messaging/third-party-auth-error'
+```
+
+### 発見された原因
+
+#### 1. サービスアカウントのFCM権限不足 [重大度: 致命的]
+- **問題**: `okiroya-9af3f@appspot.gserviceaccount.com`にFCM APIへのアクセス権限がない
+- **影響**: **全てのFCM通知が送信できない** → アラームが鳴らない
+
+### 解決策
+Google Cloud Console > IAMで、以下のサービスアカウントに権限を追加:
+- サービスアカウント: `okiroya-9af3f@appspot.gserviceaccount.com`
+- 追加するロール:
+  1. 「Firebase Cloud Messaging API 管理者」(Firebase Cloud Messaging Admin)
+  2. 「サービスアカウント トークン作成者」(Service Account Token Creator)
+
+---

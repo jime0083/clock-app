@@ -547,3 +547,129 @@
 - [x] 購入完了後にセットアップ完了・ホーム画面に遷移
 
 ---
+
+## Phase 17.8: ローディング・課金不具合修正（完了: 2026-04-09）
+
+### Phase 17.8.1: ローディング画面の白い画面問題修正
+- [x] SplashScreen.hideAsync()の呼び出しタイミングを修正
+- [x] 言語チェック・認証チェック完了まで LoadingScreen（アイコン+Loading Dots Blue.json）を維持
+- [x] 状態遷移時に白い画面が表示されないよう確実に次の画面を表示してから遷移
+
+### Phase 17.8.2: サブスク課金エラー修正
+- [x] packageTypeの比較をPACKAGE_TYPE enum（数値）に修正
+- [x] RevenueCat APIキーとEntitlement IDを正しい値に設定
+- [x] 購入処理が正常に動作することを確認（実機テスト待ち）
+
+---
+
+## Phase 17.9: アラーム・ホーム画面不具合修正（完了: 2026-04-09）
+
+### Phase 17.9.1: アラーム発火・通知機能の修正
+- [x] 設定した時間にアラームが鳴るように修正（alarmService.scheduleAlarmを呼び出し）
+- [x] アラーム発火時に「起床時間となりました。5分以内にスクワットを10回してください」という通知を表示
+- [x] スクワット計測画面を表示（HomeScreenにSquatMeasureScreen統合）
+- [x] スクワット確認後に「スクワットを確認できました」という通知を表示
+- [x] 5分以内にスクワットが確認できなかった場合、Xに寝坊投稿を自動投稿
+
+### Phase 17.9.2: ホーム画面のアラーム変更ボタン修正
+- [x] AlarmSettingScreen作成（セットアップ画面と同じUIの全画面アラーム設定）
+- [x] HomeScreenでAlarmSettingModalをAlarmSettingScreenに置き換え
+- [x] 「アラームを変更」ボタン押下時にセットアップ画面と同じ時間指定画面を表示
+
+---
+
+## Phase 17.10: UI・機能不具合修正（完了: 2026-04-09）
+
+### Phase 17.10.1: 起動時の不要な画面削除
+- [x] アプリ起動時に表示される青いアラームアイコン画面を削除
+- [x] 関連するコードを完全に削除（LoadingScreen.tsx削除）
+
+### Phase 17.10.2: ログイン状態維持・バックグラウンドアラーム
+- [x] 一度ログインしたらアプリを閉じてもログイン状態を維持（Firebase Auth + AsyncStorage永続化）
+- [x] アプリが起動していない状態でもアラーム時間に通知を送信しアラームを鳴らす（expo-notifications）
+
+### Phase 17.10.3: サブスク画面のチェックマーク削除
+- [x] プラン選択時のチェックマークを非表示にする
+- [x] 選択時は枠の色変更のみで選択状態を表現
+
+---
+
+## Phase 17.11: 起動フロー・アラーム設定修正（完了: 2026-04-09）
+
+### Phase 17.11.1: ローディング画面の復元
+- [x] LoadingScreen.tsxを再作成（アイコン + Loading Dots Blue.json）
+- [x] App.tsxでLoadingScreenを表示するように修正
+- [x] 白い画面を表示せず、ローディング→次の画面へスムーズに遷移
+
+### Phase 17.11.2: 2回目以降の起動時フロー修正
+- [x] ログイン済み＆セットアップ完了済みユーザーは直接HomeScreenへ遷移
+- [x] ログイン画面・セットアップ画面・課金画面をスキップ（isSetupCompleted === nullの場合はローディング表示）
+
+### Phase 17.11.3: アラーム設定画面の調整
+- [x] AlarmSettingScreenの実装（時間選択→曜日選択）
+- [x] ~~音源アップロード機能~~ → **削除決定**（デフォルト音のみ使用）
+
+---
+
+## Phase 17.12: バックグラウンド・ロック画面アラーム対応（FCM + Firebase Functions）（一部完了: 2026-04-09）
+
+**目的**: アプリがバックグラウンド/ロック状態でも確実にアラームを鳴らす
+
+### Phase 17.12.1: Firebase Cloud Messaging (FCM) セットアップ
+- [x] APNs認証キー（.p8）をFirebase Consoleに登録
+- [x] @react-native-firebase/messaging をインストール
+- [x] iOS用のFCM設定（app.config.ts修正）
+- [x] FCMトークン取得処理を実装（fcmService.ts）
+- [x] FCMトークンをFirestoreのユーザードキュメントに保存
+
+### Phase 17.12.2: Firebase Functions アラームスケジューラー作成
+- [x] Firebase Functions プロジェクト初期化（functions/ディレクトリ）
+- [x] Cloud Scheduler設定（毎分実行、Asia/Tokyo）
+- [x] アラーム対象ユーザー検索ロジック実装（現在時刻 + 曜日でFirestore検索）
+- [x] FCM送信処理実装（高優先度プッシュ通知）
+- [x] Firebase Functionsをデプロイ
+
+### Phase 17.12.3: クライアント側プッシュ通知受信処理
+- [x] フォアグラウンド通知受信ハンドラー実装
+- [x] バックグラウンド通知受信ハンドラー実装
+- [x] 通知タップ時にスクワット計測画面を表示
+- [x] アラーム音再生処理（通知受信時に音声を再生）
+
+### Phase 17.12.4: 既存コードのリファクタリング
+- [x] ローカル通知をFCMのバックアップとして維持（信頼性向上のため）
+- [x] notificationService.ts: 既存のnotifee実装を維持（バックアップ用）
+- [x] alarmService.ts: ローカル通知スケジュール処理を維持（FCM失敗時の保険）
+
+---
+
+## Work 1: Firebase設定（完了: 2026-04-09）
+
+### Work 1.1: Firebaseプロジェクト作成
+- [x] Firebase Consoleでプロジェクト作成
+- [x] プロジェクト名設定
+- [x] Google Analytics設定（任意）
+
+### Work 1.2: Firebase Authentication有効化
+- [x] Authentication有効化
+- [x] Googleログインプロバイダ有効化
+- [x] Appleログインプロバイダ有効化
+
+### Work 1.3: Firestore有効化
+- [x] Cloud Firestore作成
+- [x] セキュリティルール初期設定
+- [x] リージョン選択（asia-northeast1推奨）
+
+### Work 1.4: Firebase Functions設定
+- [x] Functions有効化
+- [x] Blazeプラン（従量課金）へアップグレード
+
+### Work 1.5: Firebase Cloud Messaging設定
+- [x] FCM有効化
+- [x] APNs認証キー設定
+
+### Work 1.6: iOSアプリ登録
+- [x] iOSアプリをFirebaseに登録
+- [x] GoogleService-Info.plist ダウンロード
+- [x] プロジェクトに配置
+
+---

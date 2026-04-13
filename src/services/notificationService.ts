@@ -48,7 +48,6 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
     sound: true,
     badge: true,
     alert: true,
-    criticalAlert: true, // iOS Critical Alerts (requires entitlement)
     provisional: false,
   });
 
@@ -188,7 +187,6 @@ export const scheduleAlarmNotification = async (
         },
         ios: {
           sound: 'default',
-          critical: true, // Critical alert (requires entitlement)
           interruptionLevel: 'timeSensitive',
           categoryId: 'alarm',
         },
@@ -248,7 +246,6 @@ export const scheduleAlarmRepeatNotifications = async (
         },
         ios: {
           sound: 'default',
-          critical: true,
           interruptionLevel: 'timeSensitive',
         },
       },
@@ -403,7 +400,6 @@ export const setBackgroundEventHandler = (): void => {
               },
               ios: {
                 sound: 'default',
-                critical: true,
                 interruptionLevel: 'timeSensitive',
               },
             },
@@ -474,7 +470,6 @@ export const scheduleOneTimeAlarm = async (
       },
       ios: {
         sound: 'default',
-        critical: true,
         interruptionLevel: 'timeSensitive',
       },
     },

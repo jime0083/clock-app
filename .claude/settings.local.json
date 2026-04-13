@@ -45,7 +45,20 @@
       "Bash(firebase functions:log:*)",
       "Bash(echo 'curl -X POST https://asia-northeast1-okiroya-9af3f.cloudfunctions.net/testAlarm \\\\'\necho ' -H \"Content-Type: application/json\" '')",
       "Bash(echo:*)",
-      "WebFetch(domain:console.firebase.google.com)"
+      "WebFetch(domain:console.firebase.google.com)",
+      "Bash(afconvert:*)",
+      "Bash(afinfo:*)",
+      "Bash(curl:*)",
+      "Bash(gcloud projects add-iam-policy-binding:*)",
+      "Bash(firebase functions:list:*)",
+      "Bash(gcloud functions logs read:*)",
+      "Bash(firebase functions:config:get:*)",
+      "Bash(git checkout:*)",
+      "Bash(gcloud builds log:*)",
+      "Bash(gcloud services list:*)",
+      "Bash(firebase functions:delete:*)",
+      "Bash(gcloud logging read:*)",
+      "Bash(firebase firestore:indexes:*)"
     ]
   }
 }

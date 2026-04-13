@@ -37,8 +37,12 @@ exports.testAlarm = exports.checkAlarms = void 0;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
-// Initialize Firebase Admin
-admin.initializeApp();
+// Version: 2026-04-13-v1 (Fixed: Added development APNs auth key)
+const serviceAccount = require("../serviceAccountKey.json");
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: "okiroya-9af3f",
+});
 const db = admin.firestore();
 const messaging = admin.messaging();
 /**
@@ -47,11 +51,9 @@ const messaging = admin.messaging();
  */
 function getCurrentDayOfWeekJST() {
     const now = new Date();
-    // Convert to Japan time
-    const jstOffset = 9 * 60; // JST is UTC+9
+    const jstOffset = 9 * 60;
     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
     const jstMinutes = utcMinutes + jstOffset;
-    // Adjust for day overflow
     let jstDate = new Date(now);
     if (jstMinutes >= 24 * 60) {
         jstDate.setUTCDate(jstDate.getUTCDate() + 1);
@@ -63,8 +65,7 @@ function getCurrentDayOfWeekJST() {
  */
 function getCurrentTimeJST() {
     const now = new Date();
-    // Convert to Japan time
-    const jstOffset = 9 * 60; // JST is UTC+9
+    const jstOffset = 9 * 60;
     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
     let jstMinutes = (utcMinutes + jstOffset) % (24 * 60);
     const hours = Math.floor(jstMinutes / 60);
@@ -91,7 +92,7 @@ async function sendAlarmNotification(fcmToken, userId) {
             },
             apns: {
                 headers: {
-                    "apns-priority": "10", // High priority
+                    "apns-priority": "10",
                     "apns-push-type": "alert",
                 },
                 payload: {
@@ -100,7 +101,7 @@ async function sendAlarmNotification(fcmToken, userId) {
                             title: "起床時間です！",
                             body: "5分以内にスクワットを10回してください",
                         },
-                        sound: "alarm.m4a", // Custom alarm sound bundled in app
+                        sound: "default",
                         badge: 1,
                         "content-available": 1,
                         "interruption-level": "time-sensitive",
@@ -119,49 +120,49 @@ async function sendAlarmNotification(fcmToken, userId) {
 }
 /**
  * Scheduled function that runs every minute to check for alarms
- * This function queries Firestore for users whose alarm time matches the current time
- * and sends them a push notification
  */
 exports.checkAlarms = (0, scheduler_1.onSchedule)({
-    schedule: "* * * * *", // Every minute
+    schedule: "* * * * *",
     timeZone: "Asia/Tokyo",
     region: "asia-northeast1",
+    serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
 }, async () => {
     const currentTime = getCurrentTimeJST();
     const currentDay = getCurrentDayOfWeekJST();
     console.log(`Checking alarms for time: ${currentTime}, day: ${currentDay}`);
     try {
-        // Query users whose alarm time matches current time
-        const usersSnapshot = await db
-            .collection("users")
-            .where("settings.alarmTime", "==", currentTime)
-            .get();
-        if (usersSnapshot.empty) {
+        const allUsersSnapshot = await db.collection("users").get();
+        const matchingUsers = [];
+        for (const doc of allUsersSnapshot.docs) {
+            const data = doc.data();
+            const alarmTimeValue = data.settings?.alarmTime;
+            if (alarmTimeValue === currentTime) {
+                matchingUsers.push({ id: doc.id, data });
+            }
+        }
+        if (matchingUsers.length === 0) {
             console.log("No users found with alarm at this time");
             return;
         }
-        console.log(`Found ${usersSnapshot.size} users with alarm at ${currentTime}`);
+        console.log(`Found ${matchingUsers.length} users with alarm at ${currentTime}`);
         const sendPromises = [];
-        for (const userDoc of usersSnapshot.docs) {
-            const userData = userDoc.data();
+        for (const user of matchingUsers) {
+            const userData = user.data;
             const alarmDays = userData.settings?.alarmDays || [];
             const fcmToken = userData.fcmToken;
-            // Check if alarm is set for current day of week
+            const userId = user.id;
             if (!alarmDays.includes(currentDay)) {
-                console.log(`User ${userDoc.id}: Alarm not set for today (day ${currentDay})`);
+                console.log(`User ${userId}: Alarm not set for today (day ${currentDay})`);
                 continue;
             }
-            // Check if user has FCM token
             if (!fcmToken) {
-                console.log(`User ${userDoc.id}: No FCM token found`);
+                console.log(`User ${userId}: No FCM token found`);
                 continue;
             }
-            // Send notification
-            const sendPromise = sendAlarmNotification(fcmToken, userDoc.id).then(async (success) => {
+            const sendPromise = sendAlarmNotification(fcmToken, userId).then(async (success) => {
                 if (success) {
-                    // Record that alarm was sent (optional: for tracking)
                     await db.collection("alarmHistory").add({
-                        userId: userDoc.id,
+                        userId: userId,
                         sentAt: admin.firestore.FieldValue.serverTimestamp(),
                         alarmTime: currentTime,
                         dayOfWeek: currentDay,
@@ -184,6 +185,8 @@ exports.checkAlarms = (0, scheduler_1.onSchedule)({
  */
 exports.testAlarm = (0, https_1.onRequest)({
     region: "asia-northeast1",
+    invoker: "public",
+    serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
 }, async (req, res) => {
     if (req.method !== "POST") {
         res.status(405).send("Method not allowed");
