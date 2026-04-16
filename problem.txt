@@ -24,6 +24,85 @@ Firebase Console > Cloud Messaging > Apple アプリの構成 で、開発用APN
 
 ---
 
+## Problem 9: バックグラウンド・ロック画面でアプリのアラーム音が鳴らない (2026-04-13)
+
+### 症状
+- **アプリ起動時（フォアグラウンド）**: アラーム音が鳴る ✓
+- **ホーム画面（バックグラウンド）**: 通知音は鳴るがアプリのアラーム音が鳴らない ✗
+- **ロック画面**: 通知音は鳴るがアプリのアラーム音が鳴らない ✗
+
+### 重要な区別
+- **通知音**: FCM/APNsが再生する短い音（"default" = 約2秒）→ **動作している** ✓
+- **アラーム音**: `audioService.playAlarmSound()`が再生するループ音（アラーム音.m4a）→ **バックグラウンドでは動作しない** ✗
+
+### 調査で排除した原因
+- ✗ Cloud Functionsの問題 → ログで「Successfully sent alarm」を確認
+- ✗ FCM送信の問題 → 通知は正常に届いている
+- ✗ iOS通知設定 → 全てオン
+- ✗ サイレントスイッチ → オフ
+- ✗ `setBackgroundMessageHandler` → 無効化しても改善せず
+- ✗ FCMペイロード形式 → 複数パターン試行済み
+
+### 根本原因（2026-04-15 特定）
+
+**iOSのバックグラウンド制限により、アプリがバックグラウンドにある時はJavaScriptコードが実行されない**
+
+現在のアーキテクチャ:
+```
+フォアグラウンド時:
+  FCM通知受信 → setForegroundMessageHandler → alarmService.triggerAlarmFromFCM()
+    → audioService.playAlarmSound() → アラーム音がループ再生 ✓
+
+バックグラウンド時:
+  FCM通知受信 → iOS が通知を表示（通知音 "default" が鳴る）
+    → JSコード実行されない → audioService.playAlarmSound() 呼ばれない ✗
+```
+
+**コードの流れ**:
+1. `alarmService.ts:282` - `triggerAlarmFromFCM()` → `handleAlarmTriggered()`
+2. `alarmService.ts:186` - `audioService.playAlarmSound(customSound, true)`
+3. `audioService.ts:36-95` - expo-audioで`アラーム音.m4a`をループ再生
+
+**問題**: バックグラウンドでは上記のJSコードが実行されないため、アラーム音が鳴らない
+
+### 解決策
+
+**APNs通知のカスタムサウンドとして、アラーム音をバンドルに含め、FCMペイロードで指定する**
+
+iOSではAPNs通知のサウンドは最大30秒まで指定可能。カスタムアラーム音をアプリにバンドルし、FCMペイロードの`sound`フィールドで指定することで、バックグラウンドでもアラーム音が鳴るようにする。
+
+```javascript
+// Firebase Functions - FCMペイロード
+apns: {
+  payload: {
+    aps: {
+      alert: { title: "起床時間です！", body: "..." },
+      sound: "alarm.caf",  // カスタムアラーム音（30秒以内）
+      "interruption-level": "time-sensitive",
+    },
+  },
+},
+```
+
+### 実装タスク
+
+1. **アラーム音ファイルの準備**
+   - `アラーム音.m4a`を30秒以内にトリミング
+   - CAF形式に変換（`alarm.caf`）
+
+2. **iOSバンドルへの追加**
+   - Expo config pluginでXcodeプロジェクトに追加
+   - または手動で`ios/okiroya/`に配置
+
+3. **FCMペイロードの更新**
+   - `sound: "alarm.caf"`に変更
+
+4. **ユーザー起動時のアラーム継続**
+   - 通知タップでアプリ起動 → ループアラーム再生開始
+   - スクワット完了まで継続
+
+---
+
 ## Problem 1: アラームが鳴らない (2026-04-09)
 
 ### 症状

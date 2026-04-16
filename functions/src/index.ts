@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 
-// Version: 2026-04-13-v1 (Fixed: Added development APNs auth key)
+// Version: 2026-04-15-v7 (Use custom alarm.caf sound for iOS notification)
 const serviceAccount = require("../serviceAccountKey.json");
 
 admin.initializeApp({
@@ -50,6 +50,9 @@ function getCurrentTimeJST(): string {
 
 /**
  * Send alarm notification to a user
+ *
+ * Uses APNs-specific payload for iOS (no top-level notification).
+ * This ensures alert and sound are in the same aps object.
  */
 async function sendAlarmNotification(
   fcmToken: string,
@@ -58,15 +61,12 @@ async function sendAlarmNotification(
   try {
     const message: admin.messaging.Message = {
       token: fcmToken,
-      notification: {
-        title: "起床時間です！",
-        body: "5分以内にスクワットを10回してください",
-      },
       data: {
         type: "alarm",
         userId: userId,
         timestamp: new Date().toISOString(),
       },
+      // iOS: APNs payload with alert and sound together
       apns: {
         headers: {
           "apns-priority": "10",
@@ -78,11 +78,20 @@ async function sendAlarmNotification(
               title: "起床時間です！",
               body: "5分以内にスクワットを10回してください",
             },
-            sound: "default",
+            sound: "alarm.caf",
             badge: 1,
-            "content-available": 1,
             "interruption-level": "time-sensitive",
           },
+        },
+      },
+      // Android: notification with sound
+      android: {
+        priority: "high" as const,
+        notification: {
+          title: "起床時間です！",
+          body: "5分以内にスクワットを10回してください",
+          sound: "default",
+          channelId: "alarm-channel",
         },
       },
     };

@@ -240,6 +240,52 @@ curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
 
 ---
 
+## Work 2.15: バックグラウンドアラーム不具合の調査 [完了] (Problem 9対応)
+※ 2026-04-13 スケジュールアラームがバックグラウンドで鳴らない問題への対応
+※ 2026-04-15 調査完了・根本原因特定
+
+### Work 2.15.1: Firebase Functions ログの確認 [完了]
+- [x] ログを確認 → 「Successfully sent alarm」が出力されており、FCM送信は正常
+
+### Work 2.15.2: iOS通知設定の確認 [完了]
+- [x] 全ての通知設定がオンになっていることを確認
+
+### Work 2.15.3: 集中モード（Focus）の確認 [完了]
+- [x] 集中モードはオフであることを確認
+
+### Work 2.15.4: testAlarm vs checkAlarms の比較テスト [完了]
+- [x] 両方ともバックグラウンドで通知は届くが音が鳴らないことを確認
+- [x] サイレントスイッチ: オフ、音量: 0ではない ことを確認
+
+### 調査結果
+**根本原因**: `setBackgroundMessageHandler`が登録されている場合、iOSでFCM通知の音声が再生されない
+**解決策**: バックグラウンドハンドラー内でNotifeeの`displayNotification()`を使用して明示的に音声付き通知を表示する
+**参考**:
+- https://github.com/invertase/react-native-firebase/discussions/4633
+- https://github.com/invertase/react-native-firebase/issues/2634
+
+---
+
+## Work 2.16: バックグラウンド通知音修正後のテスト (Problem 9対応)
+※ Phase 17.12.5.2の実装完了後に実施
+
+### Work 2.16.1: アプリの再ビルド
+**手順**:
+- [ ] Xcodeでアプリをクリーンビルド（Product > Clean Build Folder）
+- [ ] 実機にインストール
+
+### Work 2.16.2: バックグラウンド通知音テスト
+**手順**:
+- [ ] アプリを起動してログイン
+- [ ] アラームを現在時刻の2分後に設定
+- [ ] アプリをバックグラウンドに移動（ホームボタン）
+- [ ] アラーム時刻になったら以下を確認:
+  - 通知が表示されるか
+  - 通知音が鳴るか
+- [ ] ロック画面でも同様にテスト
+
+---
+
 ## Work 3: Critical Alert エンタイトルメント取得 [優先度: 中]
 ※ Problem 4対応: サイレントモードでもアラーム音を鳴らすために必要
 

@@ -109,6 +109,7 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
         iosUrlScheme: 'com.googleusercontent.apps.385341847803-kj8ofskj97uaer269k1kfq4tn88ngf8r',
       },
     ],
+    './plugins/withAlarmSound',
   ],
   extra: {
     eas: {

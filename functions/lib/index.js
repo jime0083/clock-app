@@ -37,7 +37,7 @@ exports.testAlarm = exports.checkAlarms = void 0;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
-// Version: 2026-04-13-v1 (Fixed: Added development APNs auth key)
+// Version: 2026-04-15-v7 (Use custom alarm.caf sound for iOS notification)
 const serviceAccount = require("../serviceAccountKey.json");
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -76,20 +76,20 @@ function getCurrentTimeJST() {
 }
 /**
  * Send alarm notification to a user
+ *
+ * Uses APNs-specific payload for iOS (no top-level notification).
+ * This ensures alert and sound are in the same aps object.
  */
 async function sendAlarmNotification(fcmToken, userId) {
     try {
         const message = {
             token: fcmToken,
-            notification: {
-                title: "起床時間です！",
-                body: "5分以内にスクワットを10回してください",
-            },
             data: {
                 type: "alarm",
                 userId: userId,
                 timestamp: new Date().toISOString(),
             },
+            // iOS: APNs payload with alert and sound together
             apns: {
                 headers: {
                     "apns-priority": "10",
@@ -101,11 +101,20 @@ async function sendAlarmNotification(fcmToken, userId) {
                             title: "起床時間です！",
                             body: "5分以内にスクワットを10回してください",
                         },
-                        sound: "default",
+                        sound: "alarm.caf",
                         badge: 1,
-                        "content-available": 1,
                         "interruption-level": "time-sensitive",
                     },
+                },
+            },
+            // Android: notification with sound
+            android: {
+                priority: "high",
+                notification: {
+                    title: "起床時間です！",
+                    body: "5分以内にスクワットを10回してください",
+                    sound: "default",
+                    channelId: "alarm-channel",
                 },
             },
         };

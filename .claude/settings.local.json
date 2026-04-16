@@ -58,7 +58,12 @@
       "Bash(gcloud services list:*)",
       "Bash(firebase functions:delete:*)",
       "Bash(gcloud logging read:*)",
-      "Bash(firebase firestore:indexes:*)"
+      "Bash(firebase firestore:indexes:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:notifee.app)",
+      "Bash(node:*)",
+      "Bash(ffprobe:*)",
+      "Bash(brew install:*)"
     ]
   }
 }
