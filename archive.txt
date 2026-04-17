@@ -673,3 +673,27 @@
 - [x] プロジェクトに配置
 
 ---
+
+---
+
+## Phase 17.12.5.3: アプリ終了状態でのアラーム対応（完了: 2026-04-16）
+※ アプリがタスクキルされた状態でもアラームが鳴ることを確認
+
+**完了項目**:
+- [x] Firebase Functions `checkAlarms` が毎分実行されFCM通知を送信
+- [x] FCMトークンがFirestoreに保存される仕組み
+- [x] アプリ終了状態での動作テスト → 成功
+
+
+---
+
+## Phase 17.12.5.4: 通知メッセージ変更・アプリ起動時ループアラーム（完了: 2026-04-16）
+
+**実装内容**:
+- [x] 通知メッセージを「起床時間となりました / アプリを開きスクワットを行ってください」に変更
+- [x] lastAlarmSentAtをユーザードキュメントに記録（Firebase Functions v8）
+- [x] alarmService.ts: checkAlarmWindow() - 5分以内かチェック
+- [x] alarmService.ts: checkAndStartAlarmIfNeeded() - アプリ起動/復帰時にループアラーム開始
+- [x] alarmService.ts: recordSquatCompletion() - スクワット完了を記録しアラーム停止
+- [x] 実機テスト成功
+

@@ -11,8 +11,13 @@ import {
   setNotificationCategories,
 } from './notificationService';
 import { audioService } from './audioService';
-import { getUserDocument } from './userService';
+import { getUserDocument, updateUserDocument } from './userService';
+import { db } from './firebase';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import i18n from '@/locales';
+
+// Time window for squat screen display (5 minutes in milliseconds)
+const SQUAT_WINDOW_MS = 5 * 60 * 1000;
 
 // Types
 export interface AlarmConfig {
@@ -125,8 +130,14 @@ class AlarmService {
    */
   private handleAppStateChange = async (nextAppState: AppStateStatus): Promise<void> => {
     if (nextAppState === 'active') {
-      // App came to foreground - check for pending alarms
-      await this.checkLaunchNotification();
+      // App came to foreground - check if within alarm window
+      console.log('[Alarm] App became active, checking alarm window');
+      const shouldTrigger = await this.checkAndStartAlarmIfNeeded();
+
+      if (!shouldTrigger) {
+        // Also check for notification launch as fallback
+        await this.checkLaunchNotification();
+      }
     }
   };
 
@@ -281,6 +292,111 @@ class AlarmService {
    */
   async triggerAlarmFromFCM(): Promise<void> {
     await this.handleAlarmTriggered();
+  }
+
+  /**
+   * Check if we're within the alarm window (5 minutes from lastAlarmSentAt)
+   * Returns true if squat screen should be shown
+   */
+  async checkAlarmWindow(): Promise<boolean> {
+    if (!this.currentUserId) {
+      console.log('[Alarm] checkAlarmWindow: No userId');
+      return false;
+    }
+
+    try {
+      const userDocRef = doc(db, 'users', this.currentUserId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        console.log('[Alarm] checkAlarmWindow: User document not found');
+        return false;
+      }
+
+      const userData = userDoc.data();
+      const lastAlarmSentAt = userData?.lastAlarmSentAt;
+      const squatCompletedAt = userData?.squatCompletedAt;
+
+      if (!lastAlarmSentAt) {
+        console.log('[Alarm] checkAlarmWindow: No lastAlarmSentAt');
+        return false;
+      }
+
+      // Convert Firestore Timestamp to milliseconds
+      const alarmTime = lastAlarmSentAt instanceof Timestamp
+        ? lastAlarmSentAt.toMillis()
+        : new Date(lastAlarmSentAt).getTime();
+
+      const now = Date.now();
+      const timeSinceAlarm = now - alarmTime;
+
+      console.log('[Alarm] checkAlarmWindow: timeSinceAlarm =', timeSinceAlarm, 'ms');
+
+      // Check if within 5-minute window
+      if (timeSinceAlarm > SQUAT_WINDOW_MS) {
+        console.log('[Alarm] checkAlarmWindow: Outside 5-minute window');
+        return false;
+      }
+
+      // Check if squats already completed for this alarm
+      if (squatCompletedAt) {
+        const completedTime = squatCompletedAt instanceof Timestamp
+          ? squatCompletedAt.toMillis()
+          : new Date(squatCompletedAt).getTime();
+
+        // If squats were completed after this alarm was sent, don't show again
+        if (completedTime > alarmTime) {
+          console.log('[Alarm] checkAlarmWindow: Squats already completed');
+          return false;
+        }
+      }
+
+      console.log('[Alarm] checkAlarmWindow: Within window, should show squat screen');
+      return true;
+    } catch (error) {
+      console.error('[Alarm] checkAlarmWindow error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check alarm window and start loop alarm if within window
+   * Call this when app comes to foreground
+   */
+  async checkAndStartAlarmIfNeeded(): Promise<boolean> {
+    const shouldShowSquatScreen = await this.checkAlarmWindow();
+
+    if (shouldShowSquatScreen) {
+      // Start loop alarm
+      this.pendingAlarmFromNotification = true;
+      await this.handleAlarmTriggered();
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Record squat completion in Firestore
+   * Call this when user completes 10 squats
+   */
+  async recordSquatCompletion(): Promise<void> {
+    if (!this.currentUserId) {
+      console.warn('[Alarm] recordSquatCompletion: No userId');
+      return;
+    }
+
+    try {
+      await updateUserDocument(this.currentUserId, {
+        squatCompletedAt: Timestamp.now(),
+      });
+      console.log('[Alarm] Squat completion recorded');
+
+      // Stop the alarm
+      await this.stopAlarm();
+    } catch (error) {
+      console.error('[Alarm] Error recording squat completion:', error);
+    }
   }
 
   /**

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -58,6 +59,7 @@ const AppNavigator: React.FC = () => {
   const [appInitState, setAppInitState] = useState<AppInitState>('loading');
   const [isAlarmRinging, setIsAlarmRinging] = useState(false);
   const alarmInitializedRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
 
   // Initialize app (check language selection)
   useEffect(() => {
@@ -82,6 +84,40 @@ const AppNavigator: React.FC = () => {
 
     initializeApp();
   }, []);
+
+  // Listen for app state changes (background -> foreground)
+  // This directly checks alarm window and updates UI state
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      // Only check when coming back to foreground from background/inactive
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active' &&
+        isAuthenticated &&
+        user?.uid &&
+        isSetupCompleted &&
+        !isAlarmRinging
+      ) {
+        console.log('[App] App returned to foreground, checking alarm window');
+        try {
+          const shouldShowSquatScreen = await alarmService.checkAndStartAlarmIfNeeded();
+          if (shouldShowSquatScreen) {
+            console.log('[App] Within alarm window, showing squat screen');
+            setIsAlarmRinging(true);
+          }
+        } catch (error) {
+          console.error('[App] Error checking alarm window:', error);
+        }
+      }
+      appStateRef.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isAuthenticated, user?.uid, isSetupCompleted, isAlarmRinging]);
 
   // Initialize alarm service and FCM when user is authenticated
   useEffect(() => {
@@ -136,6 +172,13 @@ const AppNavigator: React.FC = () => {
       if (alarmService.hasPendingAlarm()) {
         setIsAlarmRinging(true);
       }
+
+      // Check if within 5-minute alarm window (even without notification)
+      // This handles: app icon tap, background restore within 5 min
+      const shouldShowSquatScreen = await alarmService.checkAndStartAlarmIfNeeded();
+      if (shouldShowSquatScreen) {
+        setIsAlarmRinging(true);
+      }
     };
 
     if (isAuthenticated && user?.uid && isSetupCompleted) {
@@ -150,8 +193,8 @@ const AppNavigator: React.FC = () => {
 
   // Handle squat measurement completion
   const handleSquatComplete = useCallback(async (success: boolean, squatCount: number) => {
-    // Stop alarm
-    await alarmService.stopAlarm();
+    // Record squat completion to Firestore (this also stops the alarm)
+    await alarmService.recordSquatCompletion();
     setIsAlarmRinging(false);
 
     // Clear pending alarm flag
@@ -194,6 +237,26 @@ const AppNavigator: React.FC = () => {
       setIsSetupCompleted(null);
     }
   }, [isAuthenticated, user?.uid, checkSetupStatus]);
+
+  // Check alarm window when setup is completed (handles app launch from terminated state)
+  useEffect(() => {
+    const checkAlarmOnLaunch = async () => {
+      if (isAuthenticated && user?.uid && isSetupCompleted && !isAlarmRinging && alarmInitializedRef.current) {
+        console.log('[App] Checking alarm window on launch/setup complete');
+        try {
+          const shouldShowSquatScreen = await alarmService.checkAndStartAlarmIfNeeded();
+          if (shouldShowSquatScreen) {
+            console.log('[App] Within alarm window on launch, showing squat screen');
+            setIsAlarmRinging(true);
+          }
+        } catch (error) {
+          console.error('[App] Error checking alarm window on launch:', error);
+        }
+      }
+    };
+
+    checkAlarmOnLaunch();
+  }, [isAuthenticated, user?.uid, isSetupCompleted, isAlarmRinging]);
 
   const handleSetupComplete = useCallback(() => {
     setIsSetupCompleted(true);

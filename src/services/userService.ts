@@ -69,6 +69,23 @@ export const createUserDocument = async (
   }
 };
 
+/**
+ * Update user document with arbitrary fields
+ * Used for updating lastAlarmSentAt, squatCompletedAt, etc.
+ */
+export const updateUserDocument = async (
+  uid: string,
+  updates: Record<string, unknown>
+): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, updates);
+  } catch (error) {
+    console.error('Error updating user document:', error);
+    throw error;
+  }
+};
+
 export const updateUserProfile = async (
   uid: string,
   profile: Partial<UserProfile>

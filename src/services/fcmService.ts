@@ -1,4 +1,5 @@
 import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 

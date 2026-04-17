@@ -37,7 +37,7 @@ exports.testAlarm = exports.checkAlarms = void 0;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
-// Version: 2026-04-15-v7 (Use custom alarm.caf sound for iOS notification)
+// Version: 2026-04-16-v8 (Change notification message, add lastAlarmSentAt)
 const serviceAccount = require("../serviceAccountKey.json");
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -98,8 +98,8 @@ async function sendAlarmNotification(fcmToken, userId) {
                 payload: {
                     aps: {
                         alert: {
-                            title: "起床時間です！",
-                            body: "5分以内にスクワットを10回してください",
+                            title: "起床時間となりました",
+                            body: "アプリを開きスクワットを行ってください",
                         },
                         sound: "alarm.caf",
                         badge: 1,
@@ -111,8 +111,8 @@ async function sendAlarmNotification(fcmToken, userId) {
             android: {
                 priority: "high",
                 notification: {
-                    title: "起床時間です！",
-                    body: "5分以内にスクワットを10回してください",
+                    title: "起床時間となりました",
+                    body: "アプリを開きスクワットを行ってください",
                     sound: "default",
                     channelId: "alarm-channel",
                 },
@@ -170,11 +170,17 @@ exports.checkAlarms = (0, scheduler_1.onSchedule)({
             }
             const sendPromise = sendAlarmNotification(fcmToken, userId).then(async (success) => {
                 if (success) {
+                    // Record alarm history
                     await db.collection("alarmHistory").add({
                         userId: userId,
                         sentAt: admin.firestore.FieldValue.serverTimestamp(),
                         alarmTime: currentTime,
                         dayOfWeek: currentDay,
+                    });
+                    // Record lastAlarmSentAt in user document for squat screen check
+                    await db.collection("users").doc(userId).update({
+                        lastAlarmSentAt: admin.firestore.FieldValue.serverTimestamp(),
+                        squatCompletedAt: null, // Reset squat completion status
                     });
                 }
             });
