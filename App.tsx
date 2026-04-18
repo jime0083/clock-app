@@ -86,7 +86,7 @@ const AppNavigator: React.FC = () => {
   }, []);
 
   // Listen for app state changes (background -> foreground)
-  // This directly checks alarm window and updates UI state
+  // This is the single source of truth for AppState handling - alarmService no longer has its own listener
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       // Only check when coming back to foreground from background/inactive
@@ -95,14 +95,19 @@ const AppNavigator: React.FC = () => {
         nextAppState === 'active' &&
         isAuthenticated &&
         user?.uid &&
-        isSetupCompleted &&
-        !isAlarmRinging
+        isSetupCompleted
       ) {
         console.log('[App] App returned to foreground, checking alarm window');
         try {
-          const shouldShowSquatScreen = await alarmService.checkAndStartAlarmIfNeeded();
-          if (shouldShowSquatScreen) {
-            console.log('[App] Within alarm window, showing squat screen');
+          // Check if within 5-minute alarm window (does not trigger alarm sound)
+          const isWithinWindow = await alarmService.checkAlarmWindow();
+          console.log('[App] checkAlarmWindow result:', isWithinWindow, 'current isAlarmRinging:', isAlarmRinging);
+
+          if (isWithinWindow) {
+            // Trigger alarm sound and set UI state directly
+            console.log('[App] Within alarm window, triggering alarm and showing squat screen');
+            await alarmService.triggerAlarmFromFCM();
+            // Always set state directly for reliable UI update
             setIsAlarmRinging(true);
           }
         } catch (error) {
@@ -175,8 +180,10 @@ const AppNavigator: React.FC = () => {
 
       // Check if within 5-minute alarm window (even without notification)
       // This handles: app icon tap, background restore within 5 min
-      const shouldShowSquatScreen = await alarmService.checkAndStartAlarmIfNeeded();
-      if (shouldShowSquatScreen) {
+      const isWithinWindow = await alarmService.checkAlarmWindow();
+      if (isWithinWindow) {
+        console.log('[App] Within alarm window on init, triggering alarm');
+        await alarmService.triggerAlarmFromFCM();
         setIsAlarmRinging(true);
       }
     };
@@ -244,9 +251,10 @@ const AppNavigator: React.FC = () => {
       if (isAuthenticated && user?.uid && isSetupCompleted && !isAlarmRinging && alarmInitializedRef.current) {
         console.log('[App] Checking alarm window on launch/setup complete');
         try {
-          const shouldShowSquatScreen = await alarmService.checkAndStartAlarmIfNeeded();
-          if (shouldShowSquatScreen) {
-            console.log('[App] Within alarm window on launch, showing squat screen');
+          const isWithinWindow = await alarmService.checkAlarmWindow();
+          if (isWithinWindow) {
+            console.log('[App] Within alarm window on launch, triggering alarm and showing squat screen');
+            await alarmService.triggerAlarmFromFCM();
             setIsAlarmRinging(true);
           }
         } catch (error) {

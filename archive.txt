@@ -697,3 +697,40 @@
 - [x] alarmService.ts: recordSquatCompletion() - スクワット完了を記録しアラーム停止
 - [x] 実機テスト成功
 
+---
+
+## Phase 17.12.5.5: アラーム5分以内→強制スクワット画面表示（完了: 2026-04-18）
+※ 2026-04-16 ユーザー要望対応
+
+**仕様**:
+- アラーム時間から5分以内にアプリを開いた場合、どのような方法でも必ずスクワット計測画面を表示
+  - 通知タップでアプリを開いた場合
+  - アプリアイコンをタップした場合
+  - バックグラウンドから復帰した場合
+  - いずれの場合も強制的にスクワット画面へ遷移
+- 5分を過ぎている場合は通常のホーム画面を表示
+
+**AI実装タスク**:
+- [x] Firestore: アラーム送信時に`lastAlarmSentAt`タイムスタンプを記録（Phase 17.12.5.4で実装済み）
+- [x] alarmService.ts: checkAlarmWindow()でFirestoreから5分以内かチェック（Phase 17.12.5.4で実装済み）
+- [x] alarmService.ts: handleAppStateChange()でアプリ復帰時に自動チェック（Phase 17.12.5.4で実装済み）
+- [x] App.tsx: 初期化時に`checkAndStartAlarmIfNeeded()`を呼び出し
+- [x] App.tsx: handleSquatComplete()で`recordSquatCompletion()`を呼び出し
+- [x] 実機テスト（通知タップ、アイコンタップ、バックグラウンド復帰の全パターン）→ **成功 2026-04-18**
+
+---
+
+## Phase 17.12.5.5.1: バックグラウンド復帰時スクワット画面不表示の修正（完了: 2026-04-18）
+※ Problem 10対応: 二重AppStateリスナーと競合状態の修正
+
+**根本原因**:
+- alarmService.tsとApp.tsxの両方がAppStateリスナーを持ち、競合
+- alarmService側でalarmState='ringing'設定後、App.tsx側のcheckAndStartAlarmIfNeededがスキップされる
+
+**修正内容**:
+- [x] alarmService.ts: 内部AppStateリスナーを削除し、外部からの呼び出しに一元化
+- [x] alarmService.ts: handleAlarmTriggeredでringing状態でもコールバックを呼び出すよう修正
+- [x] App.tsx: AppStateリスナーでcheckAlarmWindow()を直接呼び出し、確実にsetIsAlarmRinging(true)を設定
+- [x] 型チェック（npx tsc --noEmit）
+- [x] 実機テスト → **成功 2026-04-18**
+

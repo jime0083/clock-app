@@ -1,4 +1,4 @@
-import { AppState, AppStateStatus } from 'react-native';
+// NOTE: AppState listener is now managed by App.tsx to avoid dual listener issues
 import {
   requestNotificationPermissions,
   scheduleAlarmNotification,
@@ -33,7 +33,7 @@ export type AlarmState = 'idle' | 'ringing' | 'snoozed';
 
 class AlarmService {
   private isInitialized = false;
-  private appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
+  // NOTE: AppState listener is now managed by App.tsx
   private onAlarmTriggeredCallback: AlarmCallback | null = null;
   private currentUserId: string | null = null;
   private alarmState: AlarmState = 'idle';
@@ -64,8 +64,7 @@ class AlarmService {
     // Set up foreground event handler
     this.setupForegroundEventHandler();
 
-    // Set up app state listener
-    this.setupAppStateListener();
+    // NOTE: AppState listener is now handled by App.tsx to avoid dual listener issues
 
     // Check if app was launched from notification
     await this.checkLaunchNotification();
@@ -115,31 +114,8 @@ class AlarmService {
     );
   }
 
-  /**
-   * Set up app state listener for background/foreground transitions
-   */
-  private setupAppStateListener(): void {
-    this.appStateSubscription = AppState.addEventListener(
-      'change',
-      this.handleAppStateChange
-    );
-  }
-
-  /**
-   * Handle app state changes
-   */
-  private handleAppStateChange = async (nextAppState: AppStateStatus): Promise<void> => {
-    if (nextAppState === 'active') {
-      // App came to foreground - check if within alarm window
-      console.log('[Alarm] App became active, checking alarm window');
-      const shouldTrigger = await this.checkAndStartAlarmIfNeeded();
-
-      if (!shouldTrigger) {
-        // Also check for notification launch as fallback
-        await this.checkLaunchNotification();
-      }
-    }
-  };
+  // NOTE: AppState listener is now handled by App.tsx to avoid dual listener issues.
+  // App.tsx calls checkAlarmWindow() directly and manages UI state.
 
   /**
    * Check if app was launched from an alarm notification
@@ -164,9 +140,16 @@ class AlarmService {
   private async handleAlarmTriggered(): Promise<void> {
     console.log('[Alarm] handleAlarmTriggered called, current state:', this.alarmState);
 
-    // Don't re-trigger if already ringing
-    if (this.alarmState === 'ringing') {
-      console.log('[Alarm] Already ringing, skipping');
+    const wasAlreadyRinging = this.alarmState === 'ringing';
+
+    // Always trigger callback for UI sync, even if already ringing
+    if (wasAlreadyRinging) {
+      console.log('[Alarm] Already ringing, but still triggering callback for UI sync');
+      // Just trigger callback to ensure UI is updated
+      if (this.onAlarmTriggeredCallback) {
+        console.log('[Alarm] Triggering UI callback (sync)');
+        this.onAlarmTriggeredCallback();
+      }
       return;
     }
 
@@ -403,10 +386,7 @@ class AlarmService {
    * Clean up resources
    */
   cleanup(): void {
-    if (this.appStateSubscription) {
-      this.appStateSubscription.remove();
-      this.appStateSubscription = null;
-    }
+    // NOTE: AppState listener is now managed by App.tsx
     this.isInitialized = false;
   }
 }
