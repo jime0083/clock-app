@@ -324,6 +324,45 @@ curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
 
 ---
 
+## Work 2.18: Firebase Functions 環境変数設定（Phase 17.12.5.6）
+※ X自動投稿機能のために必要
+
+### Work 2.18.1: X_CLIENT_ID 環境変数の設定
+**手順**:
+1. Firebase Console > Functions > 環境変数を設定
+   または
+   ```bash
+   cd functions
+   firebase functions:config:set x.client_id="YOUR_X_CLIENT_ID"
+   ```
+
+   または firebase functions:secrets を使用:
+   ```bash
+   firebase functions:secrets:set X_CLIENT_ID
+   ```
+
+2. X_CLIENT_ID の値は app.config.ts の `process.env.X_CLIENT_ID` と同じ値を使用
+
+### Work 2.18.2: Firebase Functions デプロイ
+**手順**:
+```bash
+cd functions
+firebase deploy --only functions
+```
+
+### Work 2.18.3: testPenalty API で動作確認
+**テストコマンド**:
+```bash
+curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "YOUR_USER_ID"}'
+```
+
+成功時: `Penalty tweet posted successfully`
+失敗時: `Failed to post penalty tweet (X may not be connected)`
+
+---
+
 ## Work 3: Critical Alert エンタイトルメント取得 [優先度: 中]
 ※ Problem 4対応: サイレントモードでもアラーム音を鳴らすために必要
 

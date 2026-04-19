@@ -68,11 +68,12 @@ export const useXAuth = (): UseXAuthReturn => {
         );
       }
 
-      // Save connection to Firestore (without storing tokens in Firestore for security)
+      // Save connection to Firestore (including tokens for server-side access)
+      // Note: Firestore security rules ensure only the user can access their own tokens
       const firestoreConnection: SNSConnection = {
         connected: true,
-        accessToken: null, // Don't store in Firestore
-        refreshToken: null, // Don't store in Firestore
+        accessToken: result.connection.accessToken,
+        refreshToken: result.connection.refreshToken,
         connectedAt: result.connection.connectedAt,
         username: result.connection.username,
       };
@@ -168,7 +169,7 @@ export const useXAuth = (): UseXAuthReturn => {
           return null;
         }
 
-        // Save new tokens securely
+        // Save new tokens securely (local secure storage)
         await saveXTokens(
           result.tokens.access_token,
           result.tokens.refresh_token,
@@ -176,12 +177,14 @@ export const useXAuth = (): UseXAuthReturn => {
           tokenData.username || ''
         );
 
+        // Update connection with new tokens in Firestore (for server-side access)
         const updatedConnection: SNSConnection = {
           ...currentConnection,
+          accessToken: result.tokens.access_token,
+          refreshToken: result.tokens.refresh_token,
           connectedAt: Timestamp.now(),
         };
 
-        // Update connection timestamp in Firestore
         await updateSNSConnection(user.uid, 'x', updatedConnection);
 
         return updatedConnection;
