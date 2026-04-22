@@ -20,6 +20,7 @@ interface ExtendedExpoConfig {
     googleServicesFile: string;
     entitlements?: Record<string, unknown>;
     infoPlist?: Record<string, unknown>;
+    usesAppleSignIn?: boolean;
   };
   android: {
     adaptiveIcon: {
@@ -60,7 +61,7 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/images/okiroya-icon.png',
   userInterfaceStyle: 'light',
-  newArchEnabled: false,
+  newArchEnabled: true,
   splash: {
     image: './assets/images/okiroya-icon.png',
     resizeMode: 'contain',
@@ -72,9 +73,14 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
     googleServicesFile: './GoogleService-Info.plist',
     entitlements: {
       'aps-environment': 'production',
+      'com.apple.developer.healthkit': true,
     },
     infoPlist: {
       UIBackgroundModes: ['remote-notification', 'audio'],
+      NSHealthShareUsageDescription:
+        'スクワット運動の履歴を表示するために、ヘルスケアデータへのアクセスを許可してください。',
+      NSHealthUpdateUsageDescription:
+        'スクワット運動をワークアウトとして記録するために、ヘルスケアデータへの書き込みを許可してください。',
     },
   },
   android: {
@@ -109,11 +115,21 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
         iosUrlScheme: 'com.googleusercontent.apps.385341847803-kj8ofskj97uaer269k1kfq4tn88ngf8r',
       },
     ],
+    [
+      '@kingstinct/react-native-healthkit',
+      {
+        NSHealthShareUsageDescription:
+          'スクワット運動の履歴を表示するために、ヘルスケアデータへのアクセスを許可してください。',
+        NSHealthUpdateUsageDescription:
+          'スクワット運動をワークアウトとして記録するために、ヘルスケアデータへの書き込みを許可してください。',
+        background: false,
+      },
+    ],
     './plugins/withAlarmSound',
   ],
   extra: {
     eas: {
-      projectId: '',
+      projectId: 'baa23eed-1153-482c-b0c3-6775b7b15d94',
     },
     firebase: {
       apiKey: process.env.FIREBASE_API_KEY,

@@ -526,3 +526,476 @@ const firestoreConnection: SNSConnection = {
 - Firestoreセキュリティルール: Firebase Console > Firestore > ルール
 - 現在のユーザードキュメント構造: Firebase Console > Firestore > users/{userId}
 
+---
+
+## Problem 12: クライアント側X自動投稿が「No valid access token」で失敗 (2026-04-20)
+
+### 症状
+- スクワット未完了時（5分間でスクワット検出なし）にXへのペナルティ投稿が行われない
+- Xcodeコンソールに以下のエラーが表示される:
+  ```
+  'Failed to post penalty tweet (will retry):'. 'No valid access token'
+  ```
+
+### 発生箇所
+- **SquatMeasureScreen.tsx (line 178)**: `postPenaltyWithRetry()` 呼び出し
+- **penaltyRetryService.ts**: リトライ処理
+- **xPostService.ts (line 33-64)**: `getValidToken()` が `null` を返す
+
+### エラー発生フロー
+```
+SquatMeasureScreen.tsx
+  ↓ postPenaltyWithRetry()
+penaltyRetryService.ts
+  ↓ postPenaltyTweet()
+xPostService.ts
+  ↓ getValidToken()
+  ├─ getXTokens() → Secure Storage からトークン取得
+  ├─ accessToken が null → "No valid access token" 返却
+  └─ または: isXTokenExpired() → needsRefresh = true
+      └─ refreshXToken() 失敗 → clearXTokens() → null 返却
+```
+
+### 根本原因の候補
+
+#### 1. Secure Storage からの読み込み失敗 [可能性: 高]
+- **xPostService.ts (line 34)**: `getXTokens()` がエラーなく `null` を返す
+- **問題**: エラーハンドリングは存在するが、失敗理由の詳細ログがない
+- **secureTokenService.ts (line 33-39)**: `getXAccessToken()` が例外時に `null` を返す
+
+#### 2. トークン有効期限の不正確な判定 [可能性: 高]
+- **secureTokenService.ts (line 189-203)**: `isXTokenExpired()` が `expiresAt = null` の場合 `true` を返す
+- **問題**: `expiresAt` が保存されていない、または読み込み失敗時に「期限切れ」として判定
+- `refreshToken` が無い場合、リフレッシュせずに `null` を返す
+
+#### 3. Firestore ↔ Secure Storage のトークン同期ズレ [可能性: 中]
+- **現状**: クライアント（Secure Storage）とサーバー（Firestore）に別々にトークンを保存
+- **問題**: クライアント側でトークンをリフレッシュしても Firestore に反映されない
+- サーバー側でリフレッシュしても Secure Storage に反映されない
+
+#### 4. リフレッシュトークン自体の無効 [可能性: 中]
+- **xPostService.ts (line 43-50)**: `refreshXToken()` が失敗すると `clearXTokens()` を実行
+- **問題**: トークンが削除され、次回以降も投稿不可
+
+#### 5. X再連携後のトークン未保存 [可能性: 中]
+- Phase 17.12.5.6.1 で `useXAuth.ts` を修正してFirestoreにトークンを保存するよう変更
+- **問題**: 実機でX再連携を行っていない、または再連携後もSecure Storageに保存されていない
+
+### 問題のあるコード箇所
+
+| ファイル | 行番号 | 問題 |
+|---------|-------|------|
+| `xPostService.ts` | 33-64 | `getValidToken()` のエラー詳細化不足 |
+| `xPostService.ts` | 36-38 | `accessToken` が `null` 時の理由がログされない |
+| `xPostService.ts` | 43-50 | リフレッシュ失敗時の詳細ログ不足 |
+| `secureTokenService.ts` | 189-203 | `expiresAt = null` 時の判定が曖昧 |
+| `penaltyRetryService.ts` | 全体 | リトライ時の詳細エラー情報が不足 |
+
+### 解決策
+
+**Phase 1: デバッグログの追加（原因特定）**
+1. `xPostService.ts` の `getValidToken()` に詳細ログを追加
+2. `secureTokenService.ts` の各関数に読み込み結果のログを追加
+3. `penaltyRetryService.ts` に詳細なエラー情報のログを追加
+
+**Phase 2: 問題修正**
+- 原因特定後、該当箇所を修正
+
+**Phase 3: 再テスト**
+- 実機でX再連携→スクワット未完了テスト
+
+### 関連する既知の問題
+- Problem 11: サーバー側でX自動投稿ができない（トークン未保存問題）→ Phase 17.12.5.6.1 で対応中
+- 本問題はクライアント側での投稿失敗であり、Problem 11とは別の問題
+
+---
+
+## Problem 13: X API クレジット不足によるツイート投稿失敗 (2026-04-22)
+
+### 症状
+- スクワット未完了時のペナルティ投稿が失敗
+- トークン取得は正常に動作
+- API呼び出し時に HTTP 402 エラーが発生
+
+### エラーログ
+```
+[XAuth] postTweet: Response status: 402
+{
+  "account_id": "2036655084226984864",
+  "title": "CreditsDepleted",
+  "detail": "Your enrolled account (2036655084226984864) does not have any credits to fulfill this request.",
+  "type": "https://api.twitter.com/2/problems/credits"
+}
+```
+
+### 根本原因
+**X API v2 Free tier のクレジット（API呼び出し回数制限）が枯渇**
+
+X API v2 Free tier の制限:
+- 月間1,500ツイート投稿
+- 月間API呼び出し制限あり
+- クレジットは毎月リセット
+
+### 重要な確認事項
+これは**コードの問題ではない**。トークン取得、認証、API呼び出しは全て正常に動作している。
+
+### 解決策
+
+#### 選択肢A: X Developer Portal でプランをアップグレード
+- **Basic tier**: $100/月 - 50,000ツイート/月
+- **Pro tier**: $5,000/月 - 300,000ツイート/月
+- URL: https://developer.twitter.com/en/portal/dashboard
+
+#### 選択肢B: 月のクレジットリセットを待つ（無料）
+- 毎月1日にクレジットがリセットされる
+- テスト用途であれば、次月まで待機
+
+#### 選択肢C: 別のX Developer Accountを作成
+- 新しいXアカウントでDeveloper登録
+- 新しいApp ID/Secretを設定
+- ※アプリのリリース前に本番用アカウントの準備が必要
+
+### 推奨アクション
+1. **短期**: 選択肢Bで次月まで待機（テスト用途）
+2. **リリース前**: 選択肢Aでプランアップグレードを検討
+3. **アプリ設計**: ペナルティ投稿の頻度を考慮し、月間投稿数を見積もる
+
+### 技術的な確認（正常動作している箇所）
+- ✅ トークン取得: `hasAccessToken: true, hasRefreshToken: true`
+- ✅ トークン有効期限: `isExpired: false, timeUntilExpiry: 4712 seconds`
+- ✅ Firestoreからの復元: 正常動作
+- ✅ Secure Storageへの保存: 正常動作
+- ✅ X API認証: 認証は成功（402はクレジット不足、401/403ではない）
+
+### Problem 12との関係
+- Problem 12: トークン取得の問題 → **解決済み**（トークンは正常に取得できている）
+- Problem 13: X APIクレジット不足 → **外部サービスの制限**
+
+---
+
+## Problem 14: Critical Alertエンタイトルメント申請がAppleに却下された (2026-04-22)
+
+### 症状
+- Appleから「We've reviewed your request」メールを受信
+- Critical Alerts APIの使用が却下された
+
+### Appleからの却下理由（原文）
+```
+Unfortunately, this API is not designed for the use you've identified.
+
+Because Critical Alerts are disruptive, they are meant to be used for a very
+restricted number of purposes. This include medical- and health-related
+notifications, home- and security-related notifications, and public safety
+notifications.
+
+Apps that can't enforce that usage are not likely candidates for this API.
+```
+
+### 根本原因の分析
+
+#### 1. 申請時のフレーミングが「アラーム」に偏っていた可能性 [重大度: 致命的]
+- **問題**: 申請時に「目覚ましアラーム」としての用途を主張した可能性
+- **Appleの立場**: アラームアプリは標準のClock.appと競合する領域
+- **結果**: Appleが承認する3カテゴリ（医療/健康、ホーム/セキュリティ、公共安全）に該当しないと判断された
+
+#### 2. アプリの健康・フィットネス側面が強調されなかった [重大度: 高]
+- **問題**: スクワット運動という健康介入の側面が申請で十分に説明されていない
+- **オキロヤの実態**: 単なるアラームではなく、運動を通じた起床習慣改善アプリ
+- **活用できる点**:
+  - 睡眠の質向上（規則正しい起床）
+  - 身体活動の促進（スクワット運動）
+  - 生活習慣病予防（座りすぎ防止）
+
+#### 3. 「enforce that usage」の解釈 [重大度: 高]
+- **Appleの文言**: "Apps that can't enforce that usage are not likely candidates"
+- **意味**: アプリが本当に医療/健康目的で使用されることを「強制」できるか
+- **オキロヤの場合**: ユーザーが目覚まし以外の用途で使う可能性がある→enforceできない
+
+### 承認される可能性のあるアプリの特徴（調査結果）
+
+| カテゴリ | 承認例 | 特徴 |
+|---------|--------|------|
+| 医療/健康 | 血糖値モニター、心拍異常警告 | 生命に関わる緊急性 |
+| ホーム/セキュリティ | 防犯カメラ、スマートロック | 財産/安全への脅威 |
+| 公共安全 | 地震速報、緊急警報 | 公的機関連携 |
+
+### 却下されやすいアプリの特徴
+
+1. **単純なアラーム/リマインダーアプリ**: Appleの標準アプリと競合
+2. **汎用的な通知アプリ**: ユーザーが任意の用途に使える
+3. **健康への直接的影響が説明されないアプリ**: 「便利」vs「必須」の違い
+
+### 解決策の選択肢
+
+#### 選択肢A: 健康/フィットネスアプリとして再申請 [推奨度: 中]
+
+**戦略**: アプリを「睡眠健康改善・運動促進アプリ」として再フレーミング
+
+**申請文案（英語）**:
+```
+Our app is a health intervention tool designed to improve sleep quality and
+promote physical activity. Users set a wake-up time, and the app requires
+them to complete a series of squat exercises to dismiss the alarm. This
+physical activity:
+
+1. Helps establish healthy circadian rhythms
+2. Reduces sedentary behavior (a WHO-recognized health risk)
+3. Promotes morning exercise, which research links to improved cognitive function
+
+Critical Alerts are essential because:
+- Missing the wake-up intervention disrupts the user's health routine
+- The squat exercise component is time-sensitive (morning-specific benefit)
+- Users with irregular sleep patterns NEED this health intervention to function
+
+Our app enforces health usage by:
+- Requiring physical exercise (squats) to dismiss the alarm
+- Tracking exercise completion for health monitoring
+- Integrating with HealthKit for comprehensive health data
+```
+
+**必要な追加実装**:
+- [ ] HealthKit連携を実装（睡眠データ、運動データの記録）
+- [ ] アプリ説明文をHealth & Fitness向けに書き換え
+- [ ] App Store カテゴリを「Health & Fitness」に変更
+
+#### 選択肢B: Critical Alertなしで対応（代替ソリューション）[推奨度: 高]
+
+**戦略**: Critical Alertを使わずにサイレントモードの問題に対処
+
+**実装内容**:
+1. **アプリ内警告UI**: サイレントモード時の注意喚起を表示
+2. **設定ガイド**: 「着信モードにしてください」の説明画面
+3. **Apple Watchサポート**: 振動でユーザーを起こす（将来）
+4. **Time Sensitive通知**: 現在の実装を維持（既に最大限活用）
+
+**メリット**:
+- Apple承認不要で即座に実装可能
+- 多くのユーザーはサイレントモードで寝ない
+- リリースをブロックしない
+
+#### 選択肢C: 様子を見て再申請 [推奨度: 低]
+
+**戦略**: 他の成功事例を研究し、再申請のタイミングを図る
+
+**調査内容**:
+- Health & Fitness カテゴリで Critical Alert を持つアプリを分析
+- 申請成功事例の収集
+- Apple Developerフォーラムでの情報収集
+
+### 推奨アプローチ
+
+**短期（リリースに向けて）**: 選択肢B
+- サイレントモード警告UIを実装
+- Time Sensitive通知を維持
+- Critical Alertなしでリリース
+
+**中期（リリース後）**: 選択肢A
+- HealthKit連携を実装
+- アプリの健康・フィットネス側面を強化
+- 再申請を検討
+
+### 技術的な代替手段
+
+| 手段 | サイレントモード突破 | Apple承認 | 実装難易度 |
+|------|---------------------|-----------|-----------|
+| Critical Alert | ✅ | 必要（却下済み） | 低 |
+| Time Sensitive | ❌ | 不要 | 実装済み |
+| Apple Watch振動 | ✅（Watch経由） | 不要 | 中 |
+| アプリ内警告UI | ❌（予防のみ） | 不要 | 低 |
+| 着信音連携 | ❌ | 不要 | 不可 |
+
+### Sources
+- [Apple Developer Documentation: Critical Alerts](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.usernotifications.critical-alerts)
+- [Apple Developer Forums: Critical Alerts entitlement](https://developer.apple.com/forums/thread/690030)
+- [X (Twitter) API Pricing 2026](https://postproxy.dev/blog/x-api-pricing-2026/)
+
+---
+
+## Problem 15: HealthKit権限ダイアログが表示されず、ワークアウトが記録されない (2026-04-22) [解決済み 2026-04-22]
+
+### 症状
+1. **アプリ起動時**: HealthKitへのアクセス許可ダイアログが表示されない
+2. **スクワット完了後**: ヘルスケアアプリに「機能的筋力トレーニング」ワークアウトが記録されない
+
+### 調査結果
+
+#### 確認済み（正常）
+- ✅ `react-native-health` パッケージがインストール済み
+- ✅ `RNAppleHealthKit` が Podfile.lock に存在（CocoaPods連携済み）
+- ✅ `ios/app/app.entitlements` に HealthKit entitlement が存在
+- ✅ `ios/app/Info.plist` に `NSHealthShareUsageDescription` と `NSHealthUpdateUsageDescription` が存在
+- ✅ `healthKitService.ts` の実装が正しい
+- ✅ `HomeScreen.tsx` で `healthKitService.initialize()` を呼び出している
+- ✅ `SquatMeasureScreen.tsx` で `healthKitService.saveSquatWorkout()` を呼び出している
+
+#### 根本原因（特定）
+
+**1. XcodeでHealthKitケイパビリティが有効化されていない [重大度: 致命的]** → **Work 4.0で解決済み**
+
+- **問題**: `ios/app/app.entitlements` ファイルは存在するが、Xcodeプロジェクトの "Signing & Capabilities" タブでHealthKitケイパビリティが追加されていない
+- **確認方法**: Xcode > app target > "Signing & Capabilities" タブ
+- **証拠**: `grep "HealthKit" ios/app.xcodeproj/project.pbxproj` が空（SystemCapabilitiesセクションにHealthKitがない）
+- **影響**: iOSがHealthKit機能を認識せず、`HKHealthStore.isHealthDataAvailable()` が `false` を返す、または `requestAuthorizationToShareTypes` がサイレントに失敗
+- **解決**: Xcodeで手動でHealthKitケイパビリティを追加（2026-04-22 完了）
+
+**1.1 New Architecture（新アーキテクチャ）の不一致 [重大度: 致命的]** → **2026-04-22 修正済み**
+
+- **問題**: `app.config.ts` では `newArchEnabled: false` だが、`Info.plist` では `RCTNewArchEnabled: true` になっていた
+- **影響**: `react-native-health` はNew Architecture（Fabric/TurboModules）に対応していないため、ネイティブモジュールが動作しない
+- **エラー**: `[TypeError: undefined is not a function]` - ネイティブブリッジメソッドが認識されない
+- **解決**: `ios/app/Info.plist` の `RCTNewArchEnabled` を `false` に変更
+
+**2. health-recordsアクセスレベルが不適切 [重大度: 中]**
+
+- **現在の設定**:
+  ```typescript
+  // app.config.ts
+  entitlements: {
+    'com.apple.developer.healthkit.access': ['health-records'],
+  }
+  ```
+- **問題**: `health-records` は Clinical Health Records（臨床記録、医師の診断書など）用のアクセスレベル
+- **実際に必要なもの**: 基本的なワークアウトデータには `health-records` は不要
+- **影響**: 不要なアクセス要求により、権限が付与されない可能性
+
+**3. 初期化エラーがサイレントに処理されている [重大度: 中]**
+
+- **現在の動作**: `healthKitService.initialize()` がエラーを返しても、`console.log` のみで処理される
+- **問題**: Xcodeコンソールでログを確認しない限り、エラーの詳細が分からない
+- **確認が必要**: 実機テスト時のXcodeコンソールログ（`[HealthKit]` で始まるログ）
+
+### コードの流れ（問題発生箇所）
+
+```
+HomeScreen.tsx useEffect
+    ↓
+healthKitService.initialize()
+    ↓
+AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, callback)
+    ↓
+[ネイティブ] RCTAppleHealthKit.m:626 - initializeHealthKit
+    ↓
+[HKHealthStore isHealthDataAvailable] → false (ケイパビリティ未設定) または
+[HKHealthStore requestAuthorizationToShareTypes] → success=false (権限エラー)
+    ↓
+callback with error → ログ出力されるがUIには反映されない
+```
+
+### 解決策
+
+#### Phase 1: XcodeでHealthKitケイパビリティを手動追加 [手動作業]
+
+1. Xcodeで `app.xcworkspace` を開く
+2. Project Navigator で `app` ターゲットを選択
+3. "Signing & Capabilities" タブを開く
+4. "+" ボタンをクリック → "HealthKit" を検索して追加
+5. **重要**: "Clinical Health Records" にはチェックを入れない
+6. プロジェクトを保存して再ビルド
+
+#### Phase 2: entitlements設定の修正 [コード変更]
+
+```typescript
+// app.config.ts - 修正前
+entitlements: {
+  'com.apple.developer.healthkit': true,
+  'com.apple.developer.healthkit.access': ['health-records'], // ← 削除
+}
+
+// app.config.ts - 修正後
+entitlements: {
+  'com.apple.developer.healthkit': true,
+  // health-records は削除（ワークアウトには不要）
+}
+```
+
+#### Phase 3: デバッグログの強化 [コード変更]
+
+```typescript
+// healthKitService.ts
+async initialize(): Promise<boolean> {
+  // 追加: 詳細ログ
+  console.log('[HealthKit] Starting initialization...');
+
+  return new Promise((resolve) => {
+    AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, (error: string) => {
+      if (error) {
+        // 追加: エラーの詳細を出力
+        console.error('[HealthKit] Initialization failed:', error);
+        console.error('[HealthKit] This may indicate HealthKit capability is not enabled in Xcode');
+        resolve(false);
+        return;
+      }
+      console.log('[HealthKit] Initialization successful, permissions granted');
+      resolve(true);
+    });
+  });
+}
+```
+
+#### Phase 4: 再テスト
+
+1. prebuildを実行: `npx expo prebuild --clean --platform ios`
+2. XcodeでHealthKitケイパビリティを追加（手動）
+3. 実機ビルド・実行
+4. 初回起動時にHealthKit権限ダイアログが表示されることを確認
+5. スクワット完了後、ヘルスケアアプリに記録されることを確認
+
+### 確認が必要な情報
+
+**ユーザーに確認してほしい項目:**
+
+1. **Xcodeコンソールログ** - アプリ実行時に以下を検索:
+   - `[HealthKit]` で始まるログメッセージ
+   - `[HomeScreen] HealthKit` で始まるログメッセージ
+   - `Error with HealthKit authorization` を含むメッセージ
+
+2. **Xcode Signing & Capabilities** - 以下を確認:
+   - "Signing & Capabilities" タブに「HealthKit」が表示されているか
+   - 表示されている場合、チェックボックスの状態
+
+### 関連ファイル
+
+| ファイル | 役割 |
+|---------|------|
+| `app.config.ts:74-78` | HealthKit entitlements設定 |
+| `ios/app/app.entitlements:11-16` | 実際のentitlementsファイル |
+| `ios/app/Info.plist:57-60` | Usage description |
+| `src/services/healthKitService.ts` | HealthKitサービス実装 |
+| `src/screens/HomeScreen.tsx:97-112` | 初期化処理 |
+| `src/screens/SquatMeasureScreen.tsx:220-234` | ワークアウト保存処理 |
+
+### 技術的背景
+
+**HealthKit連携に必要な3つの要素:**
+
+1. **Entitlements** (`app.entitlements`): アプリがHealthKitを使用する権利を宣言
+2. **Capability** (Xcode設定): Xcodeプロジェクトでの有効化（自動署名に必要）
+3. **Usage Description** (`Info.plist`): ユーザーに表示する権限要求の説明文
+
+現在の問題は、1と3は設定済みだが、**2のXcodeでのケイパビリティ設定が欠けている**可能性が高い。
+
+Expo prebuildはentitlementsファイルとInfo.plistを生成するが、Xcodeの "Signing & Capabilities" への自動追加は保証されない場合がある。
+
+### 解決（2026-04-22）
+
+**根本原因の追加特定:**
+- `react-native-health` がNew Architecture（Fabric/TurboModules）に対応していない
+- `react-native-reanimated` v4.x がNew Architectureを必須化しているため、両ライブラリが共存不可能
+- Xcodeコンソールに `[TypeError: undefined is not a function]` エラーが発生
+
+**解決策:**
+1. `react-native-health` をアンインストール
+2. `@kingstinct/react-native-healthkit` をインストール（Nitro Modules対応でNew Architecture互換）
+3. `react-native-nitro-modules` を依存関係として追加
+4. `healthKitService.ts` を新APIで全面書き換え
+5. `app.config.ts` でプラグインを更新
+6. XcodeでHealthKitケイパビリティを手動追加（"Clinical Health Records"はチェックしない）
+
+**結果:**
+- ✅ 初回起動時にHealthKit権限ダイアログが正常に表示
+- ✅ スクワット完了後、ヘルスケアアプリに「機能的筋力トレーニング」が記録される
+
+**学び:**
+- New Architectureを使用するプロジェクトでは、ネイティブモジュールのNew Architecture対応を確認する必要がある
+- `@kingstinct/react-native-healthkit` はNitro Modulesを使用しており、New Architectureとの互換性が高い
+

@@ -32,9 +32,11 @@ export const saveXAccessToken = async (token: string): Promise<void> => {
  */
 export const getXAccessToken = async (): Promise<string | null> => {
   try {
-    return await SecureStore.getItemAsync(TOKEN_KEYS.X_ACCESS_TOKEN);
+    const token = await SecureStore.getItemAsync(TOKEN_KEYS.X_ACCESS_TOKEN);
+    console.log('[SecureToken] getXAccessToken:', token ? `Found (${token.substring(0, 10)}...)` : 'Not found');
+    return token;
   } catch (error) {
-    console.error('Error getting X access token:', error);
+    console.error('[SecureToken] getXAccessToken error:', error);
     return null;
   }
 };
@@ -56,9 +58,11 @@ export const saveXRefreshToken = async (token: string): Promise<void> => {
  */
 export const getXRefreshToken = async (): Promise<string | null> => {
   try {
-    return await SecureStore.getItemAsync(TOKEN_KEYS.X_REFRESH_TOKEN);
+    const token = await SecureStore.getItemAsync(TOKEN_KEYS.X_REFRESH_TOKEN);
+    console.log('[SecureToken] getXRefreshToken:', token ? `Found (${token.substring(0, 10)}...)` : 'Not found');
+    return token;
   } catch (error) {
-    console.error('Error getting X refresh token:', error);
+    console.error('[SecureToken] getXRefreshToken error:', error);
     return null;
   }
 };
@@ -83,9 +87,16 @@ export const saveXTokenExpiry = async (expiresIn: number): Promise<void> => {
 export const getXTokenExpiry = async (): Promise<number | null> => {
   try {
     const expiry = await SecureStore.getItemAsync(TOKEN_KEYS.X_TOKEN_EXPIRY);
-    return expiry ? parseInt(expiry, 10) : null;
+    const expiryNum = expiry ? parseInt(expiry, 10) : null;
+    console.log('[SecureToken] getXTokenExpiry:', {
+      raw: expiry,
+      parsed: expiryNum,
+      expiryDate: expiryNum ? new Date(expiryNum).toISOString() : null,
+      isExpired: expiryNum ? Date.now() >= expiryNum : 'N/A',
+    });
+    return expiryNum;
   } catch (error) {
-    console.error('Error getting X token expiry:', error);
+    console.error('[SecureToken] getXTokenExpiry error:', error);
     return null;
   }
 };
@@ -140,6 +151,7 @@ export const saveXTokens = async (
  * Get all X token data from secure storage
  */
 export const getXTokens = async (): Promise<XTokenData> => {
+  console.log('[SecureToken] getXTokens: Starting to retrieve all tokens');
   try {
     const [accessToken, refreshToken, expiresAt, username] = await Promise.all([
       getXAccessToken(),
@@ -148,14 +160,23 @@ export const getXTokens = async (): Promise<XTokenData> => {
       getXUsername(),
     ]);
 
-    return {
+    const result = {
       accessToken,
       refreshToken,
       expiresAt,
       username,
     };
+
+    console.log('[SecureToken] getXTokens: Retrieved tokens summary:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      expiresAt,
+      username,
+    });
+
+    return result;
   } catch (error) {
-    console.error('Error getting X tokens:', error);
+    console.error('[SecureToken] getXTokens error:', error);
     return {
       accessToken: null,
       refreshToken: null,
@@ -187,17 +208,28 @@ export const clearXTokens = async (): Promise<void> => {
  * Returns true if token will expire within the buffer time (default 5 minutes)
  */
 export const isXTokenExpired = async (bufferSeconds: number = 300): Promise<boolean> => {
+  console.log('[SecureToken] isXTokenExpired: Checking with buffer', bufferSeconds, 'seconds');
   try {
     const expiresAt = await getXTokenExpiry();
 
     if (!expiresAt) {
+      console.log('[SecureToken] isXTokenExpired: No expiry set, returning true (expired)');
       return true; // No expiry set, consider expired
     }
 
     const bufferMs = bufferSeconds * 1000;
-    return Date.now() >= expiresAt - bufferMs;
+    const isExpired = Date.now() >= expiresAt - bufferMs;
+    console.log('[SecureToken] isXTokenExpired: Calculation:', {
+      currentTime: Date.now(),
+      expiresAt,
+      bufferMs,
+      threshold: expiresAt - bufferMs,
+      isExpired,
+      timeUntilExpiry: Math.round((expiresAt - Date.now()) / 1000) + ' seconds',
+    });
+    return isExpired;
   } catch (error) {
-    console.error('Error checking X token expiry:', error);
+    console.error('[SecureToken] isXTokenExpired error:', error);
     return true; // Error occurred, consider expired for safety
   }
 };

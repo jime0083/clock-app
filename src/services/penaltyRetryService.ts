@@ -243,10 +243,21 @@ export const unregisterBackgroundRetryTask = async (): Promise<void> => {
  * If posting fails, adds to retry queue
  */
 export const postPenaltyWithRetry = async (): Promise<{ success: boolean; tweetId?: string; error?: string }> => {
+  console.log('[PenaltyRetry] postPenaltyWithRetry: Starting penalty post attempt');
+
   try {
+    console.log('[PenaltyRetry] postPenaltyWithRetry: Calling postPenaltyTweet()');
     const result = await postPenaltyTweet();
 
+    console.log('[PenaltyRetry] postPenaltyWithRetry: Result:', {
+      success: result.success,
+      tweetId: result.tweetId,
+      error: result.error,
+      requiresReauth: result.requiresReauth,
+    });
+
     if (result.success) {
+      console.log('[PenaltyRetry] postPenaltyWithRetry: Post successful!');
       // Record success
       await recordPostHistory({
         id: `post_${Date.now()}`,
@@ -258,6 +269,7 @@ export const postPenaltyWithRetry = async (): Promise<{ success: boolean; tweetI
       return result;
     }
 
+    console.log('[PenaltyRetry] postPenaltyWithRetry: Post failed, adding to retry queue');
     // Post failed, add to retry queue
     await addPendingPost();
     // Record initial failure
@@ -272,9 +284,14 @@ export const postPenaltyWithRetry = async (): Promise<{ success: boolean; tweetI
     // Ensure background task is registered
     await registerBackgroundRetryTask();
 
+    console.log('[PenaltyRetry] postPenaltyWithRetry: Failed post added to retry queue');
     return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[PenaltyRetry] postPenaltyWithRetry: Exception caught:', {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     // Add to retry queue on error
     await addPendingPost();

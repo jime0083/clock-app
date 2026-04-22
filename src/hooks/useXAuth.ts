@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { startXAuth, revokeXToken, refreshXToken } from '@/services/xAuthService';
-import { updateSNSConnection } from '@/services/userService';
+import { updateSNSConnection, getUserDocument } from '@/services/userService';
 import {
   saveXTokens,
   getXTokens,
@@ -226,33 +226,124 @@ export const useXAuth = (): UseXAuthReturn => {
   );
 
   /**
+   * Restore tokens from Firestore to Secure Storage
+   * Called when Secure Storage is empty but Firestore has tokens
+   */
+  const restoreTokensFromFirestore = useCallback(async (uid: string): Promise<SNSConnection | null> => {
+    console.log('[XAuth] restoreTokensFromFirestore: Attempting to restore tokens from Firestore');
+    try {
+      const userDoc = await getUserDocument(uid);
+
+      if (!userDoc?.snsConnections?.x) {
+        console.log('[XAuth] restoreTokensFromFirestore: No X connection in Firestore');
+        return null;
+      }
+
+      const xConnection = userDoc.snsConnections.x;
+      console.log('[XAuth] restoreTokensFromFirestore: Firestore connection status:', {
+        connected: xConnection.connected,
+        hasAccessToken: !!xConnection.accessToken,
+        hasRefreshToken: !!xConnection.refreshToken,
+        username: xConnection.username,
+      });
+
+      if (!xConnection.connected || !xConnection.accessToken || !xConnection.username) {
+        console.log('[XAuth] restoreTokensFromFirestore: Firestore has no valid tokens');
+        return null;
+      }
+
+      // Restore tokens to Secure Storage
+      console.log('[XAuth] restoreTokensFromFirestore: Saving tokens to Secure Storage');
+      await saveXTokens(
+        xConnection.accessToken,
+        xConnection.refreshToken || '',
+        7200, // Default 2 hours expiry
+        xConnection.username
+      );
+
+      console.log('[XAuth] restoreTokensFromFirestore: Tokens restored successfully');
+      return xConnection;
+    } catch (err) {
+      console.error('[XAuth] restoreTokensFromFirestore: Error:', err);
+      return null;
+    }
+  }, []);
+
+  /**
    * Initialize connection state from secure storage
    * Call this on app startup to restore X connection
+   * If Secure Storage is empty, tries to restore from Firestore
    */
   const initializeFromSecureStorage = useCallback(async (): Promise<SNSConnection | null> => {
+    console.log('[XAuth] initializeFromSecureStorage: Starting initialization');
     try {
       const hasTokensStored = await hasXTokens();
+      console.log('[XAuth] initializeFromSecureStorage: hasTokensStored:', hasTokensStored);
 
+      // If no tokens in Secure Storage, try to restore from Firestore
       if (!hasTokensStored) {
+        console.log('[XAuth] initializeFromSecureStorage: No tokens in Secure Storage, trying Firestore');
+        if (user?.uid) {
+          const restoredConnection = await restoreTokensFromFirestore(user.uid);
+          if (restoredConnection) {
+            console.log('[XAuth] initializeFromSecureStorage: Tokens restored from Firestore');
+            return {
+              connected: true,
+              accessToken: null, // Don't expose in return
+              refreshToken: null,
+              connectedAt: restoredConnection.connectedAt || Timestamp.now(),
+              username: restoredConnection.username,
+            };
+          }
+        }
+        console.log('[XAuth] initializeFromSecureStorage: No tokens available');
         return null;
       }
 
       const tokenData = await getXTokens();
 
       if (!tokenData.accessToken || !tokenData.username) {
+        console.log('[XAuth] initializeFromSecureStorage: Invalid token data, trying Firestore');
+        if (user?.uid) {
+          const restoredConnection = await restoreTokensFromFirestore(user.uid);
+          if (restoredConnection) {
+            return {
+              connected: true,
+              accessToken: null,
+              refreshToken: null,
+              connectedAt: restoredConnection.connectedAt || Timestamp.now(),
+              username: restoredConnection.username,
+            };
+          }
+        }
         return null;
       }
 
       // Check if token is still valid
       const isExpired = await isXTokenExpired(TOKEN_REFRESH_BUFFER_SECONDS);
+      console.log('[XAuth] initializeFromSecureStorage: Token expired:', isExpired);
 
       if (isExpired && tokenData.refreshToken) {
         // Try to refresh the token
+        console.log('[XAuth] initializeFromSecureStorage: Attempting token refresh');
         const result = await refreshXToken(tokenData.refreshToken);
 
         if (!result.success || !result.tokens) {
-          // Refresh failed, clear tokens
+          // Refresh failed, try to restore from Firestore
+          console.log('[XAuth] initializeFromSecureStorage: Refresh failed, trying Firestore');
           await clearXTokens();
+          if (user?.uid) {
+            const restoredConnection = await restoreTokensFromFirestore(user.uid);
+            if (restoredConnection) {
+              return {
+                connected: true,
+                accessToken: null,
+                refreshToken: null,
+                connectedAt: restoredConnection.connectedAt || Timestamp.now(),
+                username: restoredConnection.username,
+              };
+            }
+          }
           return null;
         }
 
@@ -265,6 +356,7 @@ export const useXAuth = (): UseXAuthReturn => {
         );
       }
 
+      console.log('[XAuth] initializeFromSecureStorage: Returning connection');
       return {
         connected: true,
         accessToken: null, // Don't expose in return
@@ -273,10 +365,10 @@ export const useXAuth = (): UseXAuthReturn => {
         username: tokenData.username,
       };
     } catch (err) {
-      console.error('Error initializing from secure storage:', err);
+      console.error('[XAuth] initializeFromSecureStorage: Error:', err);
       return null;
     }
-  }, []);
+  }, [user, restoreTokensFromFirestore]);
 
   return {
     isConnecting,

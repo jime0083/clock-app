@@ -35,19 +35,23 @@ function withAlarmSound(config) {
     const groupName = 'app';
     const group = xcodeProject.pbxGroupByName(groupName);
 
-    if (group) {
-      // Check if file is already added
+    // Add file to project resources
+    try {
       const hasFile = xcodeProject.hasFile(soundFileName);
 
       if (!hasFile) {
-        // Add file to project
-        xcodeProject.addResourceFile(soundFileName, {
+        // Add file to project with proper path
+        const filePath = `app/${soundFileName}`;
+        xcodeProject.addResourceFile(filePath, {
           target: xcodeProject.getFirstTarget().uuid,
         });
         console.log(`[withAlarmSound] Added ${soundFileName} to Xcode project`);
       } else {
         console.log(`[withAlarmSound] ${soundFileName} already in Xcode project`);
       }
+    } catch (error) {
+      console.warn(`[withAlarmSound] Could not add ${soundFileName} to Xcode project:`, error.message);
+      // Continue anyway - file is copied and may work
     }
 
     return config;

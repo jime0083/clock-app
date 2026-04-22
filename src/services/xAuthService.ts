@@ -330,6 +330,7 @@ export const uploadMedia = async (
   base64Data: string,
   mediaType: string = 'image/png'
 ): Promise<{ success: boolean; mediaId?: string; error?: string }> => {
+  console.log('[XAuth] uploadMedia: Starting media upload, data size:', base64Data.length);
   try {
     const response = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
       method: 'POST',
@@ -340,21 +341,34 @@ export const uploadMedia = async (
       body: `media_data=${encodeURIComponent(base64Data)}`,
     });
 
+    console.log('[XAuth] uploadMedia: Response status:', response.status);
+
     if (!response.ok) {
-      const errorData = await response.json();
-      return {
-        success: false,
-        error: errorData.errors?.[0]?.message || 'Failed to upload media',
-      };
+      const errorText = await response.text();
+      console.log('[XAuth] uploadMedia: Error response:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        return {
+          success: false,
+          error: errorData.errors?.[0]?.message || `HTTP ${response.status}`,
+        };
+      } catch {
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${errorText}`,
+        };
+      }
     }
 
     const data = await response.json();
+    console.log('[XAuth] uploadMedia: Success, mediaId:', data.media_id_string);
     return {
       success: true,
       mediaId: data.media_id_string,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[XAuth] uploadMedia: Exception:', errorMessage);
     return { success: false, error: errorMessage };
   }
 };
@@ -367,12 +381,15 @@ export const postTweet = async (
   text: string,
   mediaId?: string
 ): Promise<{ success: boolean; tweetId?: string; error?: string }> => {
+  console.log('[XAuth] postTweet: Starting tweet post, text length:', text.length, 'mediaId:', mediaId);
   try {
     const body: { text: string; media?: { media_ids: string[] } } = { text };
 
     if (mediaId) {
       body.media = { media_ids: [mediaId] };
     }
+
+    console.log('[XAuth] postTweet: Request body:', JSON.stringify(body));
 
     const response = await fetch('https://api.twitter.com/2/tweets', {
       method: 'POST',
@@ -383,21 +400,34 @@ export const postTweet = async (
       body: JSON.stringify(body),
     });
 
+    console.log('[XAuth] postTweet: Response status:', response.status);
+
     if (!response.ok) {
-      const errorData = await response.json();
-      return {
-        success: false,
-        error: errorData.detail || 'Failed to post tweet',
-      };
+      const errorText = await response.text();
+      console.log('[XAuth] postTweet: Error response:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        return {
+          success: false,
+          error: errorData.detail || errorData.title || `HTTP ${response.status}`,
+        };
+      } catch {
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${errorText}`,
+        };
+      }
     }
 
     const data = await response.json();
+    console.log('[XAuth] postTweet: Success, tweetId:', data.data?.id);
     return {
       success: true,
       tweetId: data.data?.id,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[XAuth] postTweet: Exception:', errorMessage);
     return { success: false, error: errorMessage };
   }
 };

@@ -363,10 +363,10 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 
 ---
 
-## Work 3: Critical Alert エンタイトルメント取得 [優先度: 中]
-※ Problem 4対応: サイレントモードでもアラーム音を鳴らすために必要
+## Work 3: Critical Alert エンタイトルメント取得 [却下 2026-04-22]
+※ Problem 4, Problem 14対応
 
-### Work 3.1: Apple への申請
+### Work 3.1: Apple への申請 [完了・却下]
 **申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
 
 **申請時に必要な情報**:
@@ -375,20 +375,111 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - App Store URL: (未公開の場合は空欄または「審査前」)
 - Description: アラームアプリ。ユーザーが設定した時間にアラームを鳴らし、スクワットを完了するまで止まらない。サイレントモードでも確実にユーザーを起こす必要があるため、Critical Alertが必要。
 
-**申請手順**:
+**申請結果**:
 - [x] Apple Developer Programにログイン
 - [x] 上記URLにアクセス
 - [x] フォームに必要事項を入力
 - [x] 申請を送信（2026-04-10 完了、Request ID: MDS6U7Y83W）
+- [x] **却下（2026-04-22）**: 「this API is not designed for the use you've identified」
 
-### Work 3.2: 承認待ち
-- [ ] Appleからの承認メールを待つ（通常1-2週間）
-- [ ] 承認されたらエンタイトルメントがアカウントに追加される
+**却下理由**:
+- Critical Alertは医療/健康、ホーム/セキュリティ、公共安全の3カテゴリに限定
+- アラームアプリとしての申請は承認されない
 
-### Work 3.3: Provisioning Profile更新（承認後）
+### Work 3.2〜3.3: [中止]
+~~- [ ] Appleからの承認メールを待つ~~
+~~- [ ] Provisioning Profile更新~~
+
+→ Work 4 (HealthKit連携後の再申請) へ移行
+
+---
+
+## Work 4: HealthKit連携とCritical Alert再申請 [新規]
+※ Phase 17.12.6.2対応: 健康/フィットネスアプリとして再申請
+
+### Work 4.0: XcodeでHealthKitケイパビリティを手動追加 [完了 2026-04-22]
+※ 2026-04-22 実機テストで発見: HealthKit権限ダイアログが表示されない問題
+
+**背景**:
+- Expo prebuildはentitlementsファイルとInfo.plistを生成するが、Xcodeの"Signing & Capabilities"への自動追加が保証されない
+- HealthKitを使用するには、Xcodeで明示的にケイパビリティを追加する必要がある
+- **追加対応**: `react-native-health`がNew Architecture非対応のため、`@kingstinct/react-native-healthkit`に置き換え
+
+**手順**:
+1. [x] Xcodeで `ios/app.xcworkspace` を開く
+2. [x] Project Navigatorで「app」ターゲットを選択
+3. [x] 「Signing & Capabilities」タブを開く
+4. [x] 左上の「+」ボタンをクリック
+5. [x] 「HealthKit」を検索して追加
+6. [x] **重要**: 「Clinical Health Records」にはチェックを入れない
+7. [x] Xcodeプロジェクトを保存（Cmd+S）
+8. [x] 実機でビルド・実行
+
+**完了条件**:
+- [x] HealthKit権限ダイアログが表示される ✓
+- [x] スクワット完了後にヘルスケアアプリに「機能的筋力トレーニング」が記録される ✓
+
+---
+
+### Work 4.1: App Storeカテゴリ変更
+**手順**:
+- [ ] App Store Connect にログイン
+- [ ] アプリのカテゴリを「Health & Fitness」に変更
+- [ ] 保存
+
+### Work 4.2: アプリ説明文の更新
+**手順**:
+- [ ] 以下の要素を強調した説明文に書き換え:
+  - 睡眠の質向上（規則正しい起床による概日リズム調整）
+  - 身体活動の促進（毎朝のスクワット運動）
+  - HealthKitとの連携（運動記録の保存）
+- [ ] 「アラームアプリ」ではなく「睡眠健康改善・運動促進アプリ」としてフレーミング
+
+### Work 4.3: プライバシーポリシーの更新
+**手順**:
+- [ ] HealthKitデータの使用について追記
+  - 収集するデータ: ワークアウト（スクワット運動）
+  - 使用目的: 運動記録の保存、ヘルスケアアプリとの連携
+  - 第三者への提供: なし
+- [ ] GitHub Pagesにデプロイ
+
+### Work 4.4: Critical Alert 再申請（HealthKit連携完了後）
+**申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
+
+**申請文案（英語）**:
+```
+Our app is a health intervention tool designed to improve sleep quality and
+promote physical activity. Users set a wake-up time, and the app requires
+them to complete a series of squat exercises to dismiss the alarm.
+
+Key health features:
+1. Integrates with HealthKit to record workout data
+2. Helps establish healthy circadian rhythms through consistent wake times
+3. Promotes morning exercise (squats) for improved cognitive function
+4. Reduces sedentary behavior (WHO-recognized health risk)
+
+Critical Alerts are essential because:
+- Missing the wake-up intervention disrupts the user's health routine
+- The squat exercise component is time-sensitive (morning-specific benefit)
+- Users with irregular sleep patterns NEED this health intervention
+
+Our app enforces health usage by:
+- Requiring physical exercise (squats) to dismiss the alarm
+- Recording all workouts to HealthKit for health monitoring
+- Preventing snooze/dismiss without exercise completion
+```
+
+**申請手順**:
+- [ ] HealthKit連携実装完了後に申請
+- [ ] 上記申請文を使用
+- [ ] スクワット運動の健康効果に関するエビデンス（論文等）を添付（任意）
+
+### Work 4.5: 承認後の対応
+- [ ] Appleからの承認メールを確認
 - [ ] Apple Developer Portal でProvisioning Profileを再生成
 - [ ] Critical Alertエンタイトルメントが含まれることを確認
 - [ ] Xcodeでプロファイルをダウンロード
+- [ ] Phase 17.12.6（旧タスク）の実装を再開
 
 ---
 

@@ -37,13 +37,16 @@ import {
 } from '@/services/weeklySummaryService';
 import { alarmService } from '@/services/alarmService';
 import { scheduleSuccessNotification, scheduleFailureNotification } from '@/services/notificationService';
+import { healthKitService } from '@/services/healthKitService';
 import SquatMeasureScreen from '@/screens/SquatMeasureScreen';
 import { UserDocument } from '@/types/firestore';
+import { useXAuth } from '@/hooks/useXAuth';
 
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { isSubscribed } = useSubscription();
+  const { initializeFromSecureStorage } = useXAuth();
   const [userData, setUserData] = useState<UserDocument | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -78,6 +81,35 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
+
+  // Initialize X tokens from Firestore if not in Secure Storage
+  useEffect(() => {
+    const initializeXTokens = async () => {
+      if (!user?.uid) return;
+      console.log('[HomeScreen] Initializing X tokens');
+      await initializeFromSecureStorage();
+    };
+
+    initializeXTokens();
+  }, [user?.uid, initializeFromSecureStorage]);
+
+  // Initialize HealthKit for workout tracking
+  useEffect(() => {
+    const initializeHealthKit = async () => {
+      try {
+        const initialized = await healthKitService.initialize();
+        if (initialized) {
+          console.log('[HomeScreen] HealthKit initialized successfully');
+        } else {
+          console.log('[HomeScreen] HealthKit not available or user declined');
+        }
+      } catch (error) {
+        console.error('[HomeScreen] Error initializing HealthKit:', error);
+      }
+    };
+
+    initializeHealthKit();
+  }, []);
 
   // Initialize alarm service and set up notification listener
   useEffect(() => {

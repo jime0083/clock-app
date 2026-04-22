@@ -3,7 +3,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineString } from "firebase-functions/params";
 
-// Version: 2026-04-18-v9 (Add checkSquatCompletion for X auto-post)
+// Version: 2026-04-20-v10 (Reduce penalty post time lag to under 1 minute)
 const serviceAccount = require("../serviceAccountKey.json");
 
 // X API configuration from environment
@@ -11,9 +11,6 @@ const xClientId = defineString("X_CLIENT_ID");
 
 // Penalty post window: 5 minutes in milliseconds
 const PENALTY_WINDOW_MS = 5 * 60 * 1000;
-
-// Tolerance for checking (1 minute window to avoid missing users)
-const CHECK_TOLERANCE_MS = 60 * 1000;
 
 // Penalty messages
 const PENALTY_MESSAGES = {
@@ -419,6 +416,7 @@ async function postPenaltyTweetForUser(
 /**
  * Scheduled function that runs every minute to check for squat completion
  * If user hasn't completed squats within 5 minutes of alarm, post penalty tweet
+ * Posts within ~1 minute of the 5-minute deadline
  */
 export const checkSquatCompletion = onSchedule(
   {
@@ -429,11 +427,12 @@ export const checkSquatCompletion = onSchedule(
   },
   async () => {
     const now = Date.now();
-    const targetTime = now - PENALTY_WINDOW_MS;
-    const minTime = targetTime - CHECK_TOLERANCE_MS;
-    const maxTime = targetTime + CHECK_TOLERANCE_MS;
+    // Users who had alarm sent 5+ minutes ago are eligible for penalty
+    const fiveMinutesAgo = now - PENALTY_WINDOW_MS;
+    // Limit to alarms sent within last 30 minutes to avoid processing old data
+    const thirtyMinutesAgo = now - 30 * 60 * 1000;
 
-    console.log(`Checking squat completion for alarms sent around ${new Date(targetTime).toISOString()}`);
+    console.log(`Checking squat completion: alarms before ${new Date(fiveMinutesAgo).toISOString()}`);
 
     try {
       // Get all users
@@ -458,8 +457,8 @@ export const checkSquatCompletion = onSchedule(
           lastAlarmSentAt.toMillis?.() ||
           new Date(lastAlarmSentAt).getTime();
 
-        // Check if alarm was sent approximately 5 minutes ago
-        if (alarmTime < minTime || alarmTime > maxTime) {
+        // Skip if alarm is too old (more than 30 minutes) or too recent (less than 5 minutes)
+        if (alarmTime < thirtyMinutesAgo || alarmTime > fiveMinutesAgo) {
           continue;
         }
 

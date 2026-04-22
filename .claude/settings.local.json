@@ -63,7 +63,11 @@
       "WebFetch(domain:notifee.app)",
       "Bash(node:*)",
       "Bash(ffprobe:*)",
-      "Bash(brew install:*)"
+      "Bash(brew install:*)",
+      "Bash(npm run deploy:*)",
+      "WebFetch(domain:postproxy.dev)",
+      "Bash(eas:*)",
+      "Bash(python3:*)"
     ]
   }
 }

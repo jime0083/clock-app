@@ -29,6 +29,7 @@ import { useAccelerometer } from '@/hooks/useAccelerometer';
 import { audioService } from '@/services/audioService';
 import { recordWakeUpHistoryOfflineAware } from '@/services/offlineService';
 import { postPenaltyWithRetry } from '@/services/penaltyRetryService';
+import { healthKitService } from '@/services/healthKitService';
 import { useAuth } from '@/contexts/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -64,6 +65,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
   const [isWarning, setIsWarning] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hasCompletedRef = useRef(false);
+  const workoutStartTimeRef = useRef<Date>(new Date());
 
   // Animation values
   const countScale = useSharedValue(1);
@@ -213,6 +215,22 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
       } catch (error) {
         console.error('Failed to record history:', error);
       }
+    }
+
+    // Save workout to HealthKit
+    try {
+      const workoutEndTime = new Date();
+      const saved = await healthKitService.saveSquatWorkout(
+        workoutStartTimeRef.current,
+        workoutEndTime,
+        TARGET_SQUATS
+      );
+      if (saved) {
+        console.log('[SquatMeasure] Workout saved to HealthKit');
+      }
+    } catch (error) {
+      // HealthKit save failure should not affect user experience
+      console.error('Failed to save workout to HealthKit:', error);
     }
 
     setScreenState('success');
