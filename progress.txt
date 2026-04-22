@@ -2,6 +2,20 @@
 
 ---
 
+## 重要URL一覧
+
+| 用途 | URL |
+|------|-----|
+| **サポートページ** | https://jime0083.github.io/okiroya-support/ |
+| **プライバシーポリシー** | https://jime0083.github.io/okiroya-support/privacy-policy.html |
+| **利用規約** | https://jime0083.github.io/okiroya-support/terms-of-service.html |
+| **Expoプロジェクト** | https://expo.dev/accounts/mikel0083/projects/okiroya |
+| **App Store Connect** | https://appstoreconnect.apple.com |
+| **Apple Developer** | https://developer.apple.com |
+| **Critical Alert申請** | https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/ |
+
+---
+
 ## Phase 17.12.5: アラーム不具合修正（Problem 1, 2, 3, 5対応）
 ※ 2026-04-09 実機テストで発見された問題への対応
 
@@ -352,6 +366,11 @@ Response status: 402
 ### Phase 18.1: App Store Connect設定
 ※ カテゴリを「Health & Fitness」に設定（Critical Alert再申請に必要）
 
+**AI実装タスク**:
+- [x] App Store Connect入力内容を生成（2026-04-22）
+  - ファイル: `App-Store-Content.txt`
+  - 日本語版・英語版両方を含む
+
 **手動タスク（Work 4.1 + Work 5.1統合）**:
 - [ ] App Store Connectでアプリを新規登録
 - [ ] バンドルID紐付け確認
@@ -360,12 +379,23 @@ Response status: 402
 
 ### Phase 18.2: アプリ情報作成
 ※ 健康/フィットネスアプリとしてフレーミング（Critical Alert再申請に必要）
+※ 入力内容は `App-Store-Content.txt` を参照
 
 **手動タスク（Work 4.2 + Work 5.2統合）**:
-- [ ] アプリ説明文（日本語）- 睡眠改善・運動促進を強調
-- [ ] アプリ説明文（英語）- 睡眠改善・運動促進を強調
-- [ ] キーワード設定（日本語・英語）
-- [ ] サポートURL準備
+- [ ] 日本語版を入力
+  - [ ] アプリ名: オキロヤ
+  - [ ] サブタイトル
+  - [ ] プロモーションテキスト
+  - [ ] 説明文
+  - [ ] キーワード
+- [ ] 英語版を追加（言語: English (U.S.)）
+  - [ ] アプリ名: Wake or Shame
+  - [ ] サブタイトル
+  - [ ] プロモーションテキスト
+  - [ ] 説明文
+  - [ ] キーワード
+- [ ] サポートURL設定
+- [ ] プライバシーポリシーURL設定
 
 ### Phase 18.3: プライバシーポリシー更新 [完了 2026-04-22]
 ※ HealthKitデータ使用の追記（Critical Alert再申請に必要）

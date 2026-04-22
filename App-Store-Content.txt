@@ -1,0 +1,176 @@
+================================================================================
+App Store Connect 入力内容
+================================================================================
+
+このファイルには、App Store Connectに入力する内容の日本語版と英語版が含まれています。
+
+
+================================================================================
+共通設定
+================================================================================
+
+バンドルID: com.okiroya.app
+プライマリカテゴリ: ヘルスケア/フィットネス (Health & Fitness)
+サブカテゴリ: ライフスタイル (Lifestyle)
+年齢制限: 4+
+価格: 無料（アプリ内課金あり）
+
+【URL情報】
+サポートURL: https://jime0083.github.io/okiroya-support/
+プライバシーポリシーURL: https://jime0083.github.io/okiroya-support/privacy-policy.html
+利用規約URL: https://jime0083.github.io/okiroya-support/terms-of-service.html
+
+【サブスクリプション】
+月額プラン: ¥200 / $1.99
+年額プラン: ¥2,000 / $19.99
+
+【年齢制限の詳細】
+暴力的なコンテンツ: なし
+性的なコンテンツ: なし
+ギャンブル: なし
+アルコール・タバコ・ドラッグ: なし
+医療情報: なし
+不快なコンテンツ: なし
+
+
+================================================================================
+日本語版
+================================================================================
+
+【アプリ名】
+オキロヤ
+
+【サブタイトル】
+起きてスクワット、健康習慣
+
+【プロモーションテキスト】（170文字以内）
+毎朝スクワットで目覚める新習慣。アラームを止めるにはスクワット完了が必須。運動記録はヘルスケアアプリに自動保存。サボったらXに自動投稿される緊張感で、二度寝知らずの健康的な朝を手に入れよう。
+
+【説明文】
+【オキロヤとは】
+オキロヤは、毎朝の起床と運動習慣を同時に身につける健康改善アプリです。設定した時間にアラームが鳴り、スクワットを完了するまで止められません。
+
+【主な機能】
+■ スクワット検知アラーム
+加速度センサーを使用してスクワット動作を自動検知。10回のスクワットを完了するとアラームが止まります。スヌーズボタンはありません。
+
+■ ヘルスケア連携
+完了したスクワット運動は、Apple HealthKitに「機能的筋力トレーニング」として自動記録。日々の運動習慣を可視化できます。
+
+■ SNSペナルティ機能
+X（旧Twitter）と連携すると、スクワットを5分以内に完了しなかった場合に自動で「寝坊報告」が投稿されます。フォロワーの目がある緊張感が、確実な起床をサポートします。
+
+【こんな方におすすめ】
+・二度寝がやめられない方
+・朝の運動習慣を身につけたい方
+・目覚ましを何度も止めてしまう方
+・健康的な生活リズムを作りたい方
+
+【健康効果】
+・規則正しい起床による概日リズムの調整
+・朝のスクワットによる代謝アップ
+・座りすぎ防止（WHO認定の健康リスク対策）
+・運動習慣の定着
+
+【サブスクリプション】
+・月額プラン: ¥200
+・年額プラン: ¥2,000（2ヶ月分お得）
+
+サブスクリプションはiTunesアカウントに請求されます。現在の期間が終了する24時間前までにキャンセルしない限り、自動更新されます。
+
+【お問い合わせ】
+ご質問やフィードバックは、アプリ内のお問い合わせ機能からお願いいたします。
+
+【キーワード】（100文字以内、カンマ区切り）
+目覚まし,アラーム,スクワット,朝活,二度寝防止,運動,健康,フィットネス,習慣,起床,ヘルスケア,ワークアウト,早起き
+
+【What's New】（アップデート時）
+・HealthKit連携機能を追加しました
+・スクワット運動がヘルスケアアプリに自動記録されます
+・パフォーマンスの改善とバグ修正
+
+【スクリーンショット用キャプション】
+1. ホーム画面: 毎朝のスクワットで健康習慣を
+2. アラーム設定: 起きたい時間を設定
+3. スクワット画面: 10回スクワットでアラームOFF
+4. ヘルスケア連携: 運動記録は自動でヘルスケアに保存
+5. X連携: サボったらXに自動投稿
+
+
+================================================================================
+英語版 (English)
+================================================================================
+
+【App Name】
+Wake or Shame
+
+【Subtitle】
+Wake Up & Squat for Health
+
+【Promotional Text】(170 characters max)
+Wake up with squats. To dismiss the alarm, complete squats first. Workouts sync to Apple Health. Skip it? Auto-post to X keeps you accountable. Build healthier mornings.
+
+【Description】
+【What is Wake or Shame?】
+Wake or Shame is a health improvement app that helps you build morning wake-up and exercise habits simultaneously. When your alarm goes off, you MUST complete squats to dismiss it. No snooze button. No excuses.
+
+【Key Features】
+
+■ Squat Detection Alarm
+Uses your device's accelerometer to automatically detect squat movements. Complete 10 squats to stop the alarm. There's no snooze button - you have to move to wake up.
+
+■ Apple Health Integration
+Completed squat exercises are automatically recorded to Apple HealthKit as "Functional Strength Training." Track your daily exercise habits and see your progress over time.
+
+■ Social Accountability (X Integration)
+Connect your X (formerly Twitter) account, and if you don't complete squats within 5 minutes of your alarm, an automatic "I slept in" post is shared. The pressure of your followers watching helps ensure you actually get up.
+
+【Who Is This For?】
+• People who can't stop hitting snooze
+• Those wanting to build morning exercise habits
+• Anyone who turns off alarms and falls back asleep
+• People seeking a healthier daily routine
+• Those who need external accountability to wake up
+
+【Health Benefits】
+• Circadian rhythm regulation through consistent wake times
+• Metabolism boost from morning exercise
+• Reduced sedentary behavior (a WHO-recognized health risk)
+• Building lasting exercise habits
+• Improved morning alertness and energy
+
+【How It Works】
+1. Set your wake-up time
+2. When the alarm rings, stand up and do squats
+3. The app detects your movements automatically
+4. Complete 10 squats to dismiss the alarm
+5. Your workout is saved to Apple Health
+
+【Subscription Plans】
+• Monthly Plan: $1.99/month
+• Annual Plan: $19.99/year (Save 2 months!)
+
+Subscriptions are charged to your iTunes account. Auto-renewal occurs unless cancelled at least 24 hours before the current period ends. You can manage subscriptions in your Account Settings.
+
+【Privacy】
+Your health data stays on your device. We never sell or share your HealthKit data with third parties. See our privacy policy for details.
+
+【Contact Us】
+Questions or feedback? Use the in-app contact feature or visit our support page.
+
+Wake up. Squat. Start your day right.
+
+【Keywords】(100 characters max, comma-separated)
+alarm,wake up,squat,morning,exercise,fitness,health,workout,habit,no snooze,accountability,routine
+
+【What's New】(for updates)
+• Added HealthKit integration
+• Squat workouts are now automatically saved to Apple Health
+• Performance improvements and bug fixes
+
+【Screenshot Captions】
+1. Home Screen: Build healthy morning habits
+2. Alarm Setting: Set your wake-up time
+3. Squat Screen: 10 squats to dismiss the alarm
+4. Health Integration: Workouts auto-save to Apple Health
+5. X Integration: Skip squats? Auto-post keeps you accountable
