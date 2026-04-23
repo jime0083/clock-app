@@ -352,10 +352,12 @@ Response status: 402
 
 ### Phase 17.12.7: テスト・検証
 - [x] testAlarm API動作テスト（成功 2026-04-13）
-- [ ] スケジュールアラーム動作テスト（通常モード・バックグラウンド）← **Problem 9で調査中**
-- [ ] サイレントモードでのアラーム動作テスト（Critical Alert承認後）
-- [ ] ロック画面状態でのアラーム動作テスト
-- [ ] アプリ終了状態でのアラーム動作テスト
+- [x] スケジュールアラーム動作テスト（通常モード・バックグラウンド）（成功 2026-04-16）
+- [x] ロック画面状態でのアラーム動作テスト（成功 2026-04-16）
+- [x] アプリ終了状態でのアラーム動作テスト（成功 2026-04-16）
+
+**先送り（Critical Alert承認後 - 5/1以降）**:
+- [ ] サイレントモードでのアラーム動作テスト
 - [ ] Do Not Disturb（おやすみモード）での動作確認
 
 ---
@@ -409,12 +411,10 @@ Response status: 402
 - [x] GitHub Pagesに再デプロイ（2026-04-22）
   - URL: https://jime0083.github.io/okiroya-support/privacy-policy.html
 
-### Phase 18.4: スクリーンショット作成
+### Phase 18.4: スクリーンショット作成 [完了 2026-04-22]
 
 **手動タスク（Work 5.3）**:
-- [ ] 6.7インチ（iPhone 15 Pro Max）
-- [ ] 6.5インチ（iPhone 11 Pro Max）
-- [ ] 5.5インチ（iPhone 8 Plus）
+- [x] スクリーンショット作成済み（2026-04-22）
 
 ### Phase 18.5: ビルド設定・本番ビルド
 
@@ -432,16 +432,27 @@ Response status: 402
 - [ ] TestFlight配信: `eas submit --platform ios`
   ※ submit設定はApp Store Connect登録後にeas.jsonに追加が必要
 
-### Phase 18.6: Critical Alert再申請
+### Phase 18.6: Critical Alert再申請 [完了 2026-04-22]
 
 **手動タスク（Work 4.4）**:
-- [ ] Apple Developer PortalでCritical Alertを再申請
+- [x] Apple Developer PortalでCritical Alertを再申請（2026-04-22）
   - 申請URL: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
   - 健康/フィットネスアプリとしてフレーミング
   - HealthKit連携を強調
+  - 入力内容は `App-Store-Content.txt` を参照
 - [ ] Appleからの承認を待つ
 
-### Phase 18.7: 審査申請
+### Phase 18.7: サイレントモードテスト [先送り - Critical Alert承認後]
+※ Critical Alert承認後に実施
+
+**手動タスク**:
+- [ ] Critical Alertエンタイトルメント実装
+- [ ] サイレントモードでのアラーム動作テスト
+- [ ] ロック画面状態でのアラーム動作テスト
+- [ ] Do Not Disturb（おやすみモード）での動作確認
+
+### Phase 18.8: 審査申請 [先送り - サイレントモードテスト後]
+※ サイレントモードテスト完了後に実施（5/1以降予定）
 
 **手動タスク（Work 5.5）**:
 - [ ] ビルドアップロード

@@ -443,36 +443,14 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
   - 第三者への提供: なし
 - [ ] GitHub Pagesにデプロイ
 
-### Work 4.4: Critical Alert 再申請（HealthKit連携完了後）
+### Work 4.4: Critical Alert 再申請（HealthKit連携完了後）[申請済み 2026-04-22]
 **申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
 
-**申請文案（英語）**:
-```
-Our app is a health intervention tool designed to improve sleep quality and
-promote physical activity. Users set a wake-up time, and the app requires
-them to complete a series of squat exercises to dismiss the alarm.
-
-Key health features:
-1. Integrates with HealthKit to record workout data
-2. Helps establish healthy circadian rhythms through consistent wake times
-3. Promotes morning exercise (squats) for improved cognitive function
-4. Reduces sedentary behavior (WHO-recognized health risk)
-
-Critical Alerts are essential because:
-- Missing the wake-up intervention disrupts the user's health routine
-- The squat exercise component is time-sensitive (morning-specific benefit)
-- Users with irregular sleep patterns NEED this health intervention
-
-Our app enforces health usage by:
-- Requiring physical exercise (squats) to dismiss the alarm
-- Recording all workouts to HealthKit for health monitoring
-- Preventing snooze/dismiss without exercise completion
-```
-
-**申請手順**:
-- [ ] HealthKit連携実装完了後に申請
-- [ ] 上記申請文を使用
-- [ ] スクワット運動の健康効果に関するエビデンス（論文等）を添付（任意）
+**申請状況**:
+- [x] HealthKit連携実装完了後に申請（2026-04-22）
+- [x] 健康/フィットネスアプリとしてフレーミング
+- [x] 入力内容は `App-Store-Content.txt` 末尾のCritical Alert申請フォーム入力内容を参照
+- [ ] Appleからの承認を待つ
 
 ### Work 4.5: 承認後の対応
 - [ ] Appleからの承認メールを確認
