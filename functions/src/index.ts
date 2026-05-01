@@ -350,6 +350,8 @@ async function postPenaltyTweetForUser(
 ): Promise<boolean> {
   const xConnection = userData.snsConnections?.x;
 
+  console.log(`User ${userId}: X connection status - connected: ${xConnection?.connected}, hasAccessToken: ${!!xConnection?.accessToken}, hasRefreshToken: ${!!xConnection?.refreshToken}`);
+
   if (!xConnection?.connected || !xConnection?.accessToken) {
     console.log(`User ${userId}: X not connected, skipping penalty post`);
     return false;
@@ -361,7 +363,9 @@ async function postPenaltyTweetForUser(
 
   // Try to refresh token first (tokens may have expired)
   if (refreshToken) {
+    console.log(`User ${userId}: Attempting to refresh X token...`);
     const refreshResult = await refreshXToken(refreshToken);
+
     if (refreshResult.success && refreshResult.tokens) {
       accessToken = refreshResult.tokens.access_token;
 
@@ -371,8 +375,12 @@ async function postPenaltyTweetForUser(
         "snsConnections.x.refreshToken": refreshResult.tokens.refresh_token,
       });
 
-      console.log(`User ${userId}: X tokens refreshed`);
+      console.log(`User ${userId}: X tokens refreshed successfully`);
+    } else {
+      console.error(`User ${userId}: X token refresh failed: ${refreshResult.error}`);
     }
+  } else {
+    console.log(`User ${userId}: No refresh token available, using existing access token`);
   }
 
   // Get penalty message based on user's language

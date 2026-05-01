@@ -13,7 +13,7 @@ const X_TOKEN_ENDPOINT = 'https://api.twitter.com/2/oauth2/token';
 const X_REVOKE_ENDPOINT = 'https://api.twitter.com/2/oauth2/revoke';
 const X_USER_ENDPOINT = 'https://api.twitter.com/2/users/me';
 
-const REDIRECT_URI = 'okiroya://oauth-callback';
+const REDIRECT_URI = 'okiroya://';
 const SCOPES = ['tweet.write', 'tweet.read', 'users.read', 'offline.access'];
 
 interface XTokenResponse {

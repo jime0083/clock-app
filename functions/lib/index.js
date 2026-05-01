@@ -315,6 +315,7 @@ async function postTweet(accessToken, text) {
  */
 async function postPenaltyTweetForUser(userId, userData) {
     const xConnection = userData.snsConnections?.x;
+    console.log(`User ${userId}: X connection status - connected: ${xConnection?.connected}, hasAccessToken: ${!!xConnection?.accessToken}, hasRefreshToken: ${!!xConnection?.refreshToken}`);
     if (!xConnection?.connected || !xConnection?.accessToken) {
         console.log(`User ${userId}: X not connected, skipping penalty post`);
         return false;
@@ -324,6 +325,7 @@ async function postPenaltyTweetForUser(userId, userData) {
     const language = userData.settings?.language || "ja";
     // Try to refresh token first (tokens may have expired)
     if (refreshToken) {
+        console.log(`User ${userId}: Attempting to refresh X token...`);
         const refreshResult = await refreshXToken(refreshToken);
         if (refreshResult.success && refreshResult.tokens) {
             accessToken = refreshResult.tokens.access_token;
@@ -332,8 +334,14 @@ async function postPenaltyTweetForUser(userId, userData) {
                 "snsConnections.x.accessToken": refreshResult.tokens.access_token,
                 "snsConnections.x.refreshToken": refreshResult.tokens.refresh_token,
             });
-            console.log(`User ${userId}: X tokens refreshed`);
+            console.log(`User ${userId}: X tokens refreshed successfully`);
         }
+        else {
+            console.error(`User ${userId}: X token refresh failed: ${refreshResult.error}`);
+        }
+    }
+    else {
+        console.log(`User ${userId}: No refresh token available, using existing access token`);
     }
     // Get penalty message based on user's language
     const penaltyMessage = PENALTY_MESSAGES[language] ||
