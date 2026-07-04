@@ -499,9 +499,12 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 ※ progress.txt Phase 19〜27 に対応
 
 ### Work 6.1: Firebase Functions の再デプロイ（Phase 19.1 / 23 / 24 完了ごと）
-- [ ] `cd functions && npm run build` でビルド確認
+- [x] `cd functions && npm run build` でビルド確認（Phase 19.1分 2026-07-04 完了）
+- [x] TEST_API_KEY を生成して `functions/.env` に追記済み（2026-07-04。値は functions/.env を参照）
 - [ ] `firebase deploy --only functions` でデプロイ
-- [ ] Phase 19.1 実施時: TEST_API_KEY を環境変数に設定（`functions/.env` に追記）し、キーなしアクセスが403になることを curl で確認
+- [ ] デプロイ後の確認（curl）:
+  - キーなし → 403: `curl -X POST https://asia-northeast1-okiroya-9af3f.cloudfunctions.net/testAlarm -H "Content-Type: application/json" -d '{"userId":"<uid>"}'`
+  - キーあり → 200: 上記に `-H "x-api-key: <functions/.envのTEST_API_KEY>"` を追加
 
 ### Work 6.2: Firestoreセキュリティルールのデプロイ・検証（Phase 19.2）
 - [ ] `firebase deploy --only firestore:rules` でルールをデプロイ

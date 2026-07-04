@@ -29,7 +29,6 @@ jest.mock('expo-constants', () => ({
     extra: {
       x: {
         clientId: 'test-client-id',
-        clientSecret: 'test-client-secret',
       },
     },
   },

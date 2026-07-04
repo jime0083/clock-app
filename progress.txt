@@ -484,29 +484,32 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ※ リリース前必須。他Phaseより最優先
 
 ### 19.1 テスト用公開エンドポイントの保護（Problem 17）
-- [ ] functions/src/index.ts: `testAlarm` と `testPenalty` に認証を追加する
+※ 方針決定（2026-07-04）: 削除ではなく「APIキー保護」を採用（ユーザー承認済み）
+- [x] functions/src/index.ts: `testAlarm` と `testPenalty` に認証を追加する（2026-07-04）
   - 環境変数 `TEST_API_KEY`（defineString）を定義し、リクエストヘッダ `x-api-key` と一致しない場合は 403 を返す
-  - もしくは両関数を削除（ユーザーに確認して方針決定）
-- [ ] `invoker: "public"` の妥当性を再検討（保護後は public のままでも可）
+  - TEST_API_KEY 未設定時は全リクエスト403（フェイルセーフ）
+- [x] `invoker: "public"` の妥当性を再検討 → APIキー保護のため public のまま（2026-07-04）
+- [x] TEST_API_KEY を functions/.env に生成・追加（2026-07-04）
+- [x] functions ビルド確認（npm run build 成功、2026-07-04）
 - [ ] Firebase Functions を再デプロイ（手動: manual-work.txt Work 6.1）
 
 ### 19.2 Firestoreセキュリティルールの作成（Problem 18）
-- [ ] プロジェクトルートに `firestore.rules` を新規作成
+- [x] プロジェクトルートに `firestore.rules` を新規作成（2026-07-04）
   - `users/{uid}`: request.auth.uid == uid のみ read/write 可
   - `users/{uid}/history/{doc}`: 同上
-  - `adminUsers/{doc}`: read は認証済みユーザーのみ（自分のuidに一致するdocのみ推奨）、write は不可（Consoleからのみ）
-  - `alarmHistory`, `penaltyPosts`: クライアントからの read/write を全面禁止（Admin SDKはルール対象外）
-  - 上記以外のパスはデフォルト拒否
-- [ ] `firestore.indexes.json` を新規作成（users/{uid}/history の date 昇順/降順クエリが単一フィールドインデックスで足りるか確認し、必要な複合インデックスを定義。不要なら空定義）
+  - `adminUsers/{doc}`: read は自分のuidに一致するdocのみ（checkIsAdminのwhereクエリと整合）、write は不可（Consoleからのみ）
+  - `alarmHistory`, `penaltyPosts` を含む他パス: `match /{document=**}` で全拒否（Admin SDKはルール対象外）
+- [x] `firestore.indexes.json` を新規作成（2026-07-04）
+  - history の date クエリは同一フィールドの範囲＋orderBy のみのため単一フィールド自動インデックスで足りる → 空定義
 - [ ] ルールのデプロイと動作確認（手動: manual-work.txt Work 6.2）
   - 確認項目: 本人のusersドキュメント読み書き可 / 他人のドキュメント読み取り不可 / adminUsersへの書き込み不可
 
 ### 19.3 X clientSecret の除去（Problem 31）
-- [ ] src/services/xAuthService.ts: `getXCredentials()` から clientSecret を削除し、clientId のみ必須とする
-- [ ] app.config.ts: extra.x.clientSecret を削除
-- [ ] .env.example: X_CLIENT_SECRET の行を削除
-- [ ] jest.setup.js のモック（expo-constants）から clientSecret を削除
-- [ ] 型チェック（npx tsc --noEmit）
+- [x] src/services/xAuthService.ts: `getXCredentials()` から clientSecret を削除し、clientId のみ必須とする（2026-07-04）
+- [x] app.config.ts: extra.x.clientSecret を削除（型定義含む）（2026-07-04）
+- [x] .env.example: X_CLIENT_SECRET の行を削除（2026-07-04）
+- [x] jest.setup.js のモック（expo-constants）から clientSecret を削除（2026-07-04）
+- [x] 型チェック（npx tsc --noEmit 成功）（2026-07-04）
 
 ---
 
