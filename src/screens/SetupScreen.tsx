@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { PACKAGE_TYPE } from 'react-native-purchases';
 
 import { Colors } from '@/constants/colors';
+import { TERMS_URL, PRIVACY_URL } from '@/constants/urls';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { updateUserSettings, getUserDocument } from '@/services/userService';
@@ -53,7 +54,13 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { connectX, isConnecting } = useXAuth();
-  const { isSubscribed, offerings, purchase, isLoading: isSubscriptionLoading } = useSubscription();
+  const {
+    isSubscribed,
+    offerings,
+    purchase,
+    restore,
+    isLoading: isSubscriptionLoading,
+  } = useSubscription();
 
   const [currentStep, setCurrentStep] = useState<SetupStep>('alarm_time');
   const [isXConnected, setIsXConnected] = useState(false);
@@ -71,6 +78,8 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   // Subscription state
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const hasAutoCompletedRef = useRef(false);
 
   // Check X connection status on mount (Firestore is the source of truth)
   useEffect(() => {
@@ -300,6 +309,8 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
     try {
       await updateUserSettings(user.uid, {
         setupCompleted: true,
+        // Server-side alarm checks need the user's timezone (Problem 26)
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       onComplete();
     } catch (error) {
@@ -307,12 +318,49 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
     }
   };
 
+  // Admins (adminUsers collection) and already-subscribed users skip the
+  // purchase step automatically (Problem 23)
+  useEffect(() => {
+    if (
+      currentStep === 'subscription' &&
+      !isSubscriptionLoading &&
+      isSubscribed &&
+      !hasAutoCompletedRef.current
+    ) {
+      hasAutoCompletedRef.current = true;
+      handleCompleteSetup();
+    }
+  }, [currentStep, isSubscribed, isSubscriptionLoading]);
+
+  const handleRestore = async () => {
+    if (isRestoring || isPurchasing) return;
+
+    setIsRestoring(true);
+    try {
+      const success = await restore();
+      if (success) {
+        Alert.alert(
+          t('paywall.restoreSuccessTitle'),
+          t('paywall.restoreSuccessMessage'),
+          [{ text: t('common.ok'), onPress: handleCompleteSetup }]
+        );
+      } else {
+        Alert.alert(t('paywall.restoreFailTitle'), t('paywall.restoreFailMessage'));
+      }
+    } catch (error) {
+      console.error('Restore error:', error);
+      Alert.alert(t('paywall.restoreFailTitle'), t('paywall.restoreFailMessage'));
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const openTermsOfService = () => {
-    Linking.openURL('https://okiroya.com/terms');
+    Linking.openURL(TERMS_URL);
   };
 
   const openPrivacyPolicy = () => {
-    Linking.openURL('https://okiroya.com/privacy');
+    Linking.openURL(PRIVACY_URL);
   };
 
   // Step 1: Time Selection
@@ -592,6 +640,20 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text style={styles.primaryButtonText}>{t('paywall.subscribe')}</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Restore Purchases */}
+      <TouchableOpacity
+        style={styles.restoreButton}
+        onPress={handleRestore}
+        activeOpacity={0.7}
+        disabled={isRestoring || isPurchasing}
+      >
+        {isRestoring ? (
+          <ActivityIndicator size="small" color={Colors.textSecondary} />
+        ) : (
+          <Text style={styles.restoreButtonText}>{t('paywall.restore')}</Text>
         )}
       </TouchableOpacity>
 
@@ -898,6 +960,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: Colors.textPrimary,
+  },
+  restoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  restoreButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.textSecondary,
   },
   footerLinks: {
     flexDirection: 'row',

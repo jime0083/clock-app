@@ -3,8 +3,8 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineString } from "firebase-functions/params";
 
-// Version: 2026-04-20-v10 (Reduce penalty post time lag to under 1 minute)
-const serviceAccount = require("../serviceAccountKey.json");
+// Version: 2026-07-04-v11 (Timezone-aware alarms, localized notifications,
+// robust alarm matching, default credentials)
 
 // X API configuration from environment
 const xClientId = defineString("X_CLIENT_ID");
@@ -33,47 +33,78 @@ const PENALTY_MESSAGES = {
   en: "I overslept...\nI am a foolish person who cannot wake up on time and easily oversleeps.\n#WakeOrShame",
 };
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: "okiroya-9af3f",
-});
+// Alarm notification messages (localized by user's language setting)
+const ALARM_MESSAGES = {
+  ja: {
+    title: "起床時間となりました",
+    body: "アプリを開きスクワットを行ってください",
+  },
+  en: {
+    title: "Time to wake up!",
+    body: "Open the app and do your squats",
+  },
+};
+
+// Fallback timezone for users who have not saved settings.timezone yet
+const DEFAULT_TIMEZONE = "Asia/Tokyo";
+
+// Skip users whose alarm was already sent within this window (prevents
+// double sends now that the time match covers a 2-minute window)
+const ALARM_DEDUPE_WINDOW_MS = 10 * 60 * 1000;
+
+// Uses Application Default Credentials — the function's runtime service
+// account (okiroya-9af3f@appspot.gserviceaccount.com) already has the
+// required Firestore / FCM roles
+admin.initializeApp();
 
 const db = admin.firestore();
 const messaging = admin.messaging();
 
-/**
- * Get the current day of week (0 = Sunday, 1 = Monday, etc.)
- * Adjusted for Japan timezone (UTC+9)
- */
-function getCurrentDayOfWeekJST(): number {
-  const now = new Date();
-  const jstOffset = 9 * 60;
-  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-  const jstMinutes = utcMinutes + jstOffset;
+const WEEKDAY_TO_NUMBER: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
 
-  let jstDate = new Date(now);
-  if (jstMinutes >= 24 * 60) {
-    jstDate.setUTCDate(jstDate.getUTCDate() + 1);
+/**
+ * Get the local time ("HH:mm") and day of week (0 = Sunday) for a given
+ * IANA timezone at the given instant. Falls back to Asia/Tokyo for
+ * invalid/unknown timezones.
+ */
+function getLocalTimeAndDay(
+  timezone: string,
+  date: Date
+): { time: string; day: number } {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(date);
+
+    const get = (type: string): string =>
+      parts.find((p) => p.type === type)?.value ?? "";
+
+    // Some ICU versions format midnight as "24" with hour12: false
+    let hour = get("hour");
+    if (hour === "24") {
+      hour = "00";
+    }
+
+    return {
+      time: `${hour}:${get("minute")}`,
+      day: WEEKDAY_TO_NUMBER[get("weekday")] ?? 0,
+    };
+  } catch (error) {
+    console.warn(`Invalid timezone "${timezone}", falling back to ${DEFAULT_TIMEZONE}`);
+    return getLocalTimeAndDay(DEFAULT_TIMEZONE, date);
   }
-
-  return jstDate.getUTCDay();
-}
-
-/**
- * Get current time in HH:mm format (Japan timezone)
- */
-function getCurrentTimeJST(): string {
-  const now = new Date();
-  const jstOffset = 9 * 60;
-  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-  let jstMinutes = (utcMinutes + jstOffset) % (24 * 60);
-
-  const hours = Math.floor(jstMinutes / 60);
-  const minutes = jstMinutes % 60;
-
-  return `${hours.toString().padStart(2, "0")}:${minutes
-    .toString()
-    .padStart(2, "0")}`;
 }
 
 /**
@@ -84,8 +115,13 @@ function getCurrentTimeJST(): string {
  */
 async function sendAlarmNotification(
   fcmToken: string,
-  userId: string
+  userId: string,
+  language: string
 ): Promise<boolean> {
+  const alarmMessage =
+    ALARM_MESSAGES[language as keyof typeof ALARM_MESSAGES] ||
+    ALARM_MESSAGES.ja;
+
   try {
     const message: admin.messaging.Message = {
       token: fcmToken,
@@ -103,8 +139,8 @@ async function sendAlarmNotification(
         payload: {
           aps: {
             alert: {
-              title: "起床時間となりました",
-              body: "アプリを開きスクワットを行ってください",
+              title: alarmMessage.title,
+              body: alarmMessage.body,
             },
             sound: "alarm.caf",
             badge: 1,
@@ -116,8 +152,8 @@ async function sendAlarmNotification(
       android: {
         priority: "high" as const,
         notification: {
-          title: "起床時間となりました",
-          body: "アプリを開きスクワットを行ってください",
+          title: alarmMessage.title,
+          body: alarmMessage.body,
           sound: "default",
           channelId: "alarm-channel",
         },
@@ -144,51 +180,76 @@ export const checkAlarms = onSchedule(
     serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
   },
   async () => {
-    const currentTime = getCurrentTimeJST();
-    const currentDay = getCurrentDayOfWeekJST();
+    const now = new Date();
+    // Match against the current minute AND the previous minute so an alarm is
+    // not missed when the scheduler runs late or skips a minute.
+    // lastAlarmSentAt dedupe below prevents double sends.
+    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
-    console.log(`Checking alarms for time: ${currentTime}, day: ${currentDay}`);
+    console.log(`Checking alarms at ${now.toISOString()}`);
 
     try {
       const allUsersSnapshot = await db.collection("users").get();
 
-      const matchingUsers: { id: string; data: admin.firestore.DocumentData }[] = [];
-
-      for (const doc of allUsersSnapshot.docs) {
-        const data = doc.data();
-        const alarmTimeValue = data.settings?.alarmTime;
-
-        if (alarmTimeValue === currentTime) {
-          matchingUsers.push({ id: doc.id, data });
-        }
-      }
-
-      if (matchingUsers.length === 0) {
-        console.log("No users found with alarm at this time");
-        return;
-      }
-
-      console.log(`Found ${matchingUsers.length} users with alarm at ${currentTime}`);
-
       const sendPromises: Promise<void>[] = [];
 
-      for (const user of matchingUsers) {
-        const userData = user.data;
-        const alarmDays = userData.settings?.alarmDays || [];
-        const fcmToken = userData.fcmToken;
-        const userId = user.id;
+      for (const doc of allUsersSnapshot.docs) {
+        const userId = doc.id;
+        const userData = doc.data();
+        const alarmTimeValue = userData.settings?.alarmTime;
 
-        if (!alarmDays.includes(currentDay)) {
-          console.log(`User ${userId}: Alarm not set for today (day ${currentDay})`);
+        if (!alarmTimeValue) {
           continue;
         }
 
+        // Evaluate the alarm in the user's own timezone (Problem 26)
+        const timezone = userData.settings?.timezone || DEFAULT_TIMEZONE;
+        const candidates = [
+          getLocalTimeAndDay(timezone, now),
+          getLocalTimeAndDay(timezone, oneMinuteAgo),
+        ];
+        const matched = candidates.find((c) => c.time === alarmTimeValue);
+
+        if (!matched) {
+          continue;
+        }
+
+        // Empty alarmDays means "every day" (same behavior as the client)
+        const alarmDays: number[] = userData.settings?.alarmDays || [];
+        const daysToCheck =
+          alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6];
+
+        if (!daysToCheck.includes(matched.day)) {
+          console.log(`User ${userId}: Alarm not set for today (day ${matched.day})`);
+          continue;
+        }
+
+        const fcmToken = userData.fcmToken;
         if (!fcmToken) {
           console.log(`User ${userId}: No FCM token found`);
           continue;
         }
 
-        const sendPromise = sendAlarmNotification(fcmToken, userId).then(
+        // Dedupe: skip if an alarm was already sent within the window
+        const lastAlarmSentAt = userData.lastAlarmSentAt;
+        if (lastAlarmSentAt) {
+          const lastSent =
+            lastAlarmSentAt.toMillis?.() || new Date(lastAlarmSentAt).getTime();
+          if (now.getTime() - lastSent < ALARM_DEDUPE_WINDOW_MS) {
+            console.log(`User ${userId}: Alarm already sent recently, skipping`);
+            continue;
+          }
+        }
+
+        console.log(
+          `User ${userId}: Sending alarm (${alarmTimeValue} in ${timezone})`
+        );
+
+        const language = userData.settings?.language || "ja";
+        const currentTime = alarmTimeValue;
+        const currentDay = matched.day;
+
+        const sendPromise = sendAlarmNotification(fcmToken, userId, language).then(
           async (success) => {
             if (success) {
               // Record alarm history
@@ -264,7 +325,8 @@ export const testAlarm = onRequest(
         return;
       }
 
-      const success = await sendAlarmNotification(fcmToken, userId);
+      const language = userData?.settings?.language || "ja";
+      const success = await sendAlarmNotification(fcmToken, userId, language);
 
       if (success) {
         res.status(200).send("Alarm notification sent successfully");

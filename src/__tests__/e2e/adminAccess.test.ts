@@ -80,6 +80,7 @@ describe('E2E: Admin Free Access Flow', () => {
       calibration: null,
       language: 'ja',
       setupCompleted: true,
+      timezone: null,
     },
     snsConnections: {
       x: {

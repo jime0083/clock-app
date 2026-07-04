@@ -236,6 +236,36 @@ class AlarmService {
     await audioService.stopAlarmSound();
     await cancelAlarmRepeatNotifications();
     await dismissAllNotifications();
+
+    // Re-schedule the local backup notifications: the alarm was handled, so
+    // this week's backup (alarm time + 1 min) must not fire — rescheduling
+    // moves every backup to its next occurrence
+    await this.rescheduleLocalBackup();
+  }
+
+  /**
+   * Re-schedule local backup notifications from the saved user settings
+   */
+  private async rescheduleLocalBackup(): Promise<void> {
+    if (!this.currentUserId) {
+      return;
+    }
+
+    try {
+      const userData = await getUserDocument(this.currentUserId);
+      const alarmTime = userData?.settings?.alarmTime;
+      if (!alarmTime) {
+        return;
+      }
+
+      await this.scheduleAlarm({
+        alarmTime,
+        alarmDays: userData?.settings?.alarmDays || [],
+        customAlarmSound: userData?.settings?.customAlarmSound || null,
+      });
+    } catch (error) {
+      console.error('[Alarm] Error rescheduling local backup:', error);
+    }
   }
 
   /**

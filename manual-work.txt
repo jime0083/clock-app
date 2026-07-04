@@ -517,8 +517,9 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [ ] progress.txt Phase 27.4 のチェックリストを実機で実施
 - [ ] X API のクレジット残量を事前に確認（https://developer.twitter.com/en/portal/dashboard）
 
-### Work 6.4: RevenueCat 復元動作の確認（Phase 22.1）
+### Work 6.4: RevenueCat 復元動作・管理者バイパスの確認（Phase 22.1）
 - [x] App Store ConnectでSandboxテスターアカウント作成済み（2026-07-04 確認・6件）
+- [ ] 管理者バイパス設定: Firebase Console > Firestore > `adminUsers` コレクションに自分のUIDでドキュメントを作成（フィールド: uid=<自分のUID>, email, role="admin", createdAt）→ アプリ再起動でセットアップの課金ステップが自動スキップされることを確認
 - [ ] iPhone側: 設定 > App Store > サンドボックスアカウント に上記テスターでサインイン（未実施。「InApp購入を行う権限がありません」エラーはこれが原因の可能性が高い）
 - [ ] Sandboxテスターで購入→アプリ再インストール→「購入を復元」でセットアップを通過できることを確認
 - [ ] adminUsers に登録したUIDで課金なしにセットアップ完了できることを確認

@@ -116,6 +116,7 @@ describe('E2E: Language Switch Flow', () => {
       calibration: null,
       language: 'ja',
       setupCompleted: true,
+      timezone: null,
     },
     snsConnections: {
       x: {

@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AlarmCard } from '@/components/home/AlarmCard';
 import { StatCard } from '@/components/home/StatCard';
 import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
@@ -24,7 +23,6 @@ import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
 import { SNSConnectionModal } from '@/components/modals/SNSConnectionModal';
 import { WeeklySummaryModal } from '@/components/modals/WeeklySummaryModal';
 import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
-import PaywallScreen from '@/screens/PaywallScreen';
 import CalibrationScreen from '@/screens/CalibrationScreen';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { SquatDetectionConfig } from '@/services/accelerometerService';
@@ -41,7 +39,6 @@ import { UserDocument } from '@/types/firestore';
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
-  const { isSubscribed } = useSubscription();
   const [userData, setUserData] = useState<UserDocument | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -50,7 +47,6 @@ const HomeScreen: React.FC = () => {
   const [isAlarmSettingVisible, setIsAlarmSettingVisible] = useState(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
-  const [isPaywallVisible, setIsPaywallVisible] = useState(false);
   const [isCalibrationVisible, setIsCalibrationVisible] = useState(false);
   const [isSNSModalVisible, setIsSNSModalVisible] = useState(false);
   const [isWeeklySummaryVisible, setIsWeeklySummaryVisible] = useState(false);
@@ -365,16 +361,6 @@ const HomeScreen: React.FC = () => {
         onClose={() => setIsDeleteAccountModalVisible(false)}
         onConfirm={handleDeleteAccount}
       />
-
-      {/* Paywall Modal */}
-      {isPaywallVisible && (
-        <View style={StyleSheet.absoluteFill}>
-          <PaywallScreen
-            onClose={() => setIsPaywallVisible(false)}
-            onSuccess={() => setIsPaywallVisible(false)}
-          />
-        </View>
-      )}
 
       {/* Calibration Screen */}
       {isCalibrationVisible && (

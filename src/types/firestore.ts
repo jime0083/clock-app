@@ -29,6 +29,7 @@ export interface UserSettings {
   calibration: CalibrationData | null;
   language: 'ja' | 'en';
   setupCompleted: boolean;
+  timezone: string | null; // IANA timezone (e.g. "Asia/Tokyo") for server-side alarm checks
 }
 
 export interface SNSConnection {
@@ -113,6 +114,7 @@ export const defaultUserSettings: UserSettings = {
   calibration: null,
   language: 'ja',
   setupCompleted: false,
+  timezone: null,
 };
 
 export const defaultSNSConnection: SNSConnection = {

@@ -141,6 +141,9 @@ export const updateUserSettings = async (
     if (settings.setupCompleted !== undefined) {
       updates['settings.setupCompleted'] = settings.setupCompleted;
     }
+    if (settings.timezone !== undefined) {
+      updates['settings.timezone'] = settings.timezone;
+    }
 
     await updateDoc(userRef, updates);
   } catch (error) {

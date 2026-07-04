@@ -107,8 +107,15 @@ const getNextOccurrence = (
   return targetDate;
 };
 
+// Local notifications are a BACKUP for the server-side FCM alarm: they fire
+// this many milliseconds after the alarm time, and are re-scheduled (skipping
+// the already-handled occurrence) when the user responds to the FCM alarm.
+// This avoids double notifications while keeping an offline fallback.
+const LOCAL_BACKUP_DELAY_MS = 60 * 1000;
+
 /**
- * Schedule alarm notifications with Full-screen Intent for Android
+ * Schedule backup alarm notifications with Full-screen Intent for Android
+ * (fires 1 minute after the FCM alarm as an offline fallback)
  */
 export const scheduleAlarmNotification = async (
   alarmTime: string, // "HH:mm" format
@@ -128,7 +135,11 @@ export const scheduleAlarmNotification = async (
   const daysToSchedule = alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6];
 
   for (const day of daysToSchedule) {
-    const triggerDate = getNextOccurrence(day, hours, minutes);
+    // Compute the next occurrence from the alarm time itself, then add the
+    // backup delay — so re-scheduling right after the alarm fires moves this
+    // week's (already-handled) backup to next week
+    const baseDate = getNextOccurrence(day, hours, minutes);
+    const triggerDate = new Date(baseDate.getTime() + LOCAL_BACKUP_DELAY_MS);
 
     // Create timestamp trigger
     const trigger: TimestampTrigger = {

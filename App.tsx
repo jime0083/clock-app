@@ -16,7 +16,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 // Services
 import { initializeOfflineService } from '@/services/offlineService';
-import { getUserDocument } from '@/services/userService';
+import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { alarmService } from '@/services/alarmService';
 import {
   scheduleSuccessNotification,
@@ -147,6 +147,16 @@ const AppNavigator: React.FC = () => {
 
       // Initialize FCM
       await initializeFCM(user.uid);
+
+      // Keep the user's timezone up to date for server-side alarm checks
+      // (covers existing users and travel across timezones)
+      try {
+        await updateUserSettings(user.uid, {
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+      } catch (error) {
+        console.error('[App] Error saving timezone:', error);
+      }
 
       // Handle foreground messages
       foregroundUnsubscribe = setForegroundMessageHandler(async (message) => {

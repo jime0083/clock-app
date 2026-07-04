@@ -160,6 +160,7 @@ describe('Data Sync Integration', () => {
         calibration: null,
         language: 'ja',
         setupCompleted: true,
+        timezone: null,
       },
       snsConnections: {
         x: {
@@ -264,6 +265,7 @@ describe('Data Sync Integration', () => {
         calibration: null,
         language: 'ja',
         setupCompleted: true,
+        timezone: null,
       },
       snsConnections: {
         x: {

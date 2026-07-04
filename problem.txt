@@ -1170,7 +1170,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 23: セットアップの課金ステップに購入以外の完了経路がない (2026-07-04)
+## Problem 23: セットアップの課金ステップに購入以外の完了経路がない (2026-07-04) [修正済み 2026-07-04: 管理者/既契約者の自動通過＋復元ボタンを実装。PaywallScreenはユーザー決定により削除。実機確認待ち]
 
 ### 症状（コード解析で発見）
 - `SetupScreen.tsx` の subscription ステップは「購入成功」時のみ `setupCompleted: true` になる
@@ -1190,7 +1190,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 24: 利用規約・プライバシーポリシーのリンク先URLが誤り (2026-07-04)
+## Problem 24: 利用規約・プライバシーポリシーのリンク先URLが誤り (2026-07-04) [解決済み 2026-07-04: constants/urls.ts に定数化し正しいGitHub Pages URLへ置換]
 
 ### 症状
 - `SetupScreen.tsx` が `https://okiroya.com/terms` / `https://okiroya.com/privacy` を開く（未所有ドメイン）
@@ -1218,7 +1218,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 26: Cloud FunctionsがJST固定・毎分全ユーザー全件取得・通知文言が日本語固定 (2026-07-04)
+## Problem 26: Cloud FunctionsがJST固定・毎分全ユーザー全件取得・通知文言が日本語固定 (2026-07-04) [大部分修正済み 2026-07-04: タイムゾーン対応・通知多言語化・2分ウィンドウ判定＋二重送信防止・alarmDays空=毎日に統一・ローカル通知をバックアップ化。残: 全件取得のクエリ効率化（Phase 23.4・リリース後でも可）]
 
 ### 症状（コード解析で発見）
 1. `checkAlarms` はJST（UTC+9）固定で時刻比較 → **海外ユーザー（英語対応の対象）はアラームが正しい時刻に鳴らない**
