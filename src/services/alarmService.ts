@@ -383,6 +383,29 @@ class AlarmService {
   }
 
   /**
+   * Record alarm failure (squats not completed within the time limit) in Firestore
+   * The server (checkSquatCompletion) posts the penalty tweet based on this record
+   */
+  async recordAlarmFailure(): Promise<void> {
+    if (!this.currentUserId) {
+      console.warn('[Alarm] recordAlarmFailure: No userId');
+      return;
+    }
+
+    try {
+      await updateUserDocument(this.currentUserId, {
+        alarmFailedAt: Timestamp.now(),
+      });
+      console.log('[Alarm] Alarm failure recorded');
+
+      // Stop the alarm
+      await this.stopAlarm();
+    } catch (error) {
+      console.error('[Alarm] Error recording alarm failure:', error);
+    }
+  }
+
+  /**
    * Clean up resources
    */
   cleanup(): void {

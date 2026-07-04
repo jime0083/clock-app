@@ -501,15 +501,16 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 ### Work 6.1: Firebase Functions の再デプロイ（Phase 19.1 / 23 / 24 完了ごと）
 - [x] `cd functions && npm run build` でビルド確認（Phase 19.1分 2026-07-04 完了）
 - [x] TEST_API_KEY を生成して `functions/.env` に追記済み（2026-07-04。値は functions/.env を参照）
-- [ ] `firebase deploy --only functions` でデプロイ
-- [ ] デプロイ後の確認（curl）:
-  - キーなし → 403: `curl -X POST https://asia-northeast1-okiroya-9af3f.cloudfunctions.net/testAlarm -H "Content-Type: application/json" -d '{"userId":"<uid>"}'`
-  - キーあり → 200: 上記に `-H "x-api-key: <functions/.envのTEST_API_KEY>"` を追加
+- [x] `firebase deploy --only functions` でデプロイ（2026-07-04 完了・4関数更新成功）
+- [x] デプロイ後の確認（curl・2026-07-04 完了）:
+  - キーなし → 403 確認済み / 誤ったキー → 403 確認済み
+  - 正しいキー＋実在しないuserId → 404 "User not found"（認証通過を確認）
 
 ### Work 6.2: Firestoreセキュリティルールのデプロイ・検証（Phase 19.2）
-- [ ] `firebase deploy --only firestore:rules` でルールをデプロイ
-- [ ] Firebase Console > Firestore > ルール で適用を確認
-- [ ] 動作確認: アプリから自分のデータ読み書きが正常 / Firebase Consoleのルールプレイグラウンドで他人のusersドキュメント読み取りが拒否されること
+※ 2026-07-04 ユーザー判断: 実機確認はSandbox課金の問題（下記Work 6.4）解消後に先送り。Phase 22.1（管理者バイパス）実装後にセットアップを通過して確認する
+- [x] `firebase deploy --only firestore:rules` でルールをデプロイ（2026-07-04 完了・コンパイル成功/リリース済み）
+- [ ] 動作確認（実機・先送り）: アプリから自分のデータ読み書き（ログイン・アラーム設定・履歴表示）が正常に動くこと ※ルール適用後の必須確認
+- [ ] Firebase Console のルールプレイグラウンドで他人のusersドキュメント読み取りが拒否されること
 - [ ] adminUsers コレクションへのクライアント書き込みが拒否されることを確認
 
 ### Work 6.3: 実機E2Eテスト（Phase 27.4）
@@ -517,6 +518,8 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [ ] X API のクレジット残量を事前に確認（https://developer.twitter.com/en/portal/dashboard）
 
 ### Work 6.4: RevenueCat 復元動作の確認（Phase 22.1）
+- [x] App Store ConnectでSandboxテスターアカウント作成済み（2026-07-04 確認・6件）
+- [ ] iPhone側: 設定 > App Store > サンドボックスアカウント に上記テスターでサインイン（未実施。「InApp購入を行う権限がありません」エラーはこれが原因の可能性が高い）
 - [ ] Sandboxテスターで購入→アプリ再インストール→「購入を復元」でセットアップを通過できることを確認
 - [ ] adminUsers に登録したUIDで課金なしにセットアップ完了できることを確認
 

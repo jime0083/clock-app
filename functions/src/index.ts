@@ -202,6 +202,7 @@ export const checkAlarms = onSchedule(
               await db.collection("users").doc(userId).update({
                 lastAlarmSentAt: admin.firestore.FieldValue.serverTimestamp(),
                 squatCompletedAt: null, // Reset squat completion status
+                alarmFailedAt: null, // Reset failure status for the new alarm
               });
             }
           }
@@ -422,15 +423,10 @@ async function postPenaltyTweetForUser(
       alarmSentAt: userData.lastAlarmSentAt,
     });
 
-    // Update user stats
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const stats = userData.stats || {};
-    const isNewMonth = stats.currentMonth !== currentMonth;
-
+    // NOTE: Failure stats (stats.totalFailures / monthlyFailures) are recorded
+    // by the client (recordWakeUpHistory) to avoid double counting.
+    // penaltyPostedAt prevents duplicate penalty posts for the same alarm.
     await db.collection("users").doc(userId).update({
-      "stats.totalFailures": admin.firestore.FieldValue.increment(1),
-      "stats.monthlyFailures": isNewMonth ? 1 : admin.firestore.FieldValue.increment(1),
-      "stats.currentMonth": currentMonth,
       penaltyPostedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -474,6 +470,7 @@ export const checkSquatCompletion = onSchedule(
         const lastAlarmSentAt = userData.lastAlarmSentAt;
         const squatCompletedAt = userData.squatCompletedAt;
         const penaltyPostedAt = userData.penaltyPostedAt;
+        const alarmFailedAt = userData.alarmFailedAt;
 
         // Skip if no alarm was sent
         if (!lastAlarmSentAt) {
@@ -485,8 +482,24 @@ export const checkSquatCompletion = onSchedule(
           lastAlarmSentAt.toMillis?.() ||
           new Date(lastAlarmSentAt).getTime();
 
-        // Skip if alarm is too old (more than 30 minutes) or too recent (less than 5 minutes)
-        if (alarmTime < thirtyMinutesAgo || alarmTime > fiveMinutesAgo) {
+        // Skip if alarm is too old (more than 30 minutes)
+        if (alarmTime < thirtyMinutesAgo) {
+          continue;
+        }
+
+        // Client records alarmFailedAt when the 5-minute squat timer expires.
+        // If present for this alarm, post the penalty immediately (no need to
+        // wait for the 5-minute window on the server side)
+        const failedForThisAlarm = (() => {
+          if (!alarmFailedAt) return false;
+          const failedTime =
+            alarmFailedAt.toMillis?.() || new Date(alarmFailedAt).getTime();
+          return failedTime > alarmTime;
+        })();
+
+        // Skip if alarm is too recent (less than 5 minutes) and the client
+        // has not reported a failure yet
+        if (alarmTime > fiveMinutesAgo && !failedForThisAlarm) {
           continue;
         }
 

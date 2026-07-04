@@ -7,8 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 
 // i18n initialization
-import './src/locales';
-import { loadSavedLanguage, hasLanguageBeenSelected } from '@/locales';
+import i18n, { loadSavedLanguage, hasLanguageBeenSelected } from '@/locales';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -19,6 +18,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 import { initializeOfflineService } from '@/services/offlineService';
 import { getUserDocument } from '@/services/userService';
 import { alarmService } from '@/services/alarmService';
+import {
+  scheduleSuccessNotification,
+  scheduleFailureNotification,
+} from '@/services/notificationService';
 import {
   initializeFCM,
   setForegroundMessageHandler,
@@ -200,8 +203,21 @@ const AppNavigator: React.FC = () => {
 
   // Handle squat measurement completion
   const handleSquatComplete = useCallback(async (success: boolean, squatCount: number) => {
-    // Record squat completion to Firestore (this also stops the alarm)
-    await alarmService.recordSquatCompletion();
+    if (success) {
+      // Record squat completion to Firestore (this also stops the alarm)
+      await alarmService.recordSquatCompletion();
+      await scheduleSuccessNotification(
+        i18n.t('wakeup.successTitle'),
+        i18n.t('notification.squatConfirmed')
+      );
+    } else {
+      // Record failure; the server posts the penalty tweet based on this record
+      await alarmService.recordAlarmFailure();
+      await scheduleFailureNotification(
+        i18n.t('wakeup.failureTitle'),
+        i18n.t('notification.oversleepPosted')
+      );
+    }
     setIsAlarmRinging(false);
 
     // Clear pending alarm flag

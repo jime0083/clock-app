@@ -28,7 +28,6 @@ import Animated, {
 import { useAccelerometer } from '@/hooks/useAccelerometer';
 import { audioService } from '@/services/audioService';
 import { recordWakeUpHistoryOfflineAware } from '@/services/offlineService';
-import { postPenaltyWithRetry } from '@/services/penaltyRetryService';
 import { healthKitService } from '@/services/healthKitService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -66,6 +65,9 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hasCompletedRef = useRef(false);
   const workoutStartTimeRef = useRef<Date>(new Date());
+  // The countdown interval is created once on mount; call handleTimeout via a ref
+  // so it always sees the latest squatCount (avoids stale closure recording 0 squats)
+  const handleTimeoutRef = useRef<() => Promise<void>>(async () => {});
 
   // Animation values
   const countScale = useSharedValue(1);
@@ -90,7 +92,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
       timerRef.current = setInterval(() => {
         setRemainingSeconds((prev) => {
           if (prev <= 1) {
-            handleTimeout();
+            handleTimeoutRef.current();
             return 0;
           }
           return prev - 1;
@@ -175,15 +177,8 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
       }
     }
 
-    // Post penalty tweet with retry support (X連携は必須)
-    try {
-      const result = await postPenaltyWithRetry();
-      if (!result.success) {
-        console.error('Failed to post penalty tweet (will retry):', result.error);
-      }
-    } catch (error) {
-      console.error('Error posting penalty tweet:', error);
-    }
+    // NOTE: Penalty tweet is posted server-side (checkSquatCompletion) based on
+    // squatCompletedAt / alarmFailedAt recorded in Firestore. No client-side posting.
 
     setScreenState('failure');
     Vibration.vibrate([0, 500, 200, 500]);
@@ -193,6 +188,11 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
       onComplete(false, squatCount);
     }, 3000);
   }, [squatCount, user?.uid, onComplete, stopListening]);
+
+  // Keep the ref pointing at the latest handleTimeout (fresh squatCount)
+  useEffect(() => {
+    handleTimeoutRef.current = handleTimeout;
+  }, [handleTimeout]);
 
   // Handle success
   const handleSuccess = useCallback(async () => {

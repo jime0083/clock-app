@@ -21,9 +21,8 @@ import { PACKAGE_TYPE } from 'react-native-purchases';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { updateUserSettings } from '@/services/userService';
+import { updateUserSettings, getUserDocument } from '@/services/userService';
 import { useXAuth } from '@/hooks/useXAuth';
-import { hasXTokens } from '@/services/secureTokenService';
 import { accelerometerService, AccelerometerData } from '@/services/accelerometerService';
 import { alarmService } from '@/services/alarmService';
 
@@ -73,14 +72,19 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
 
-  // Check X connection status on mount
+  // Check X connection status on mount (Firestore is the source of truth)
   useEffect(() => {
     const checkXConnection = async () => {
-      const hasTokens = await hasXTokens();
-      setIsXConnected(hasTokens);
+      if (!user?.uid) return;
+      try {
+        const userDoc = await getUserDocument(user.uid);
+        setIsXConnected(userDoc?.snsConnections?.x?.connected ?? false);
+      } catch (error) {
+        console.error('Error checking X connection:', error);
+      }
     };
     checkXConnection();
-  }, []);
+  }, [user?.uid]);
 
   // Cleanup accelerometer on unmount
   useEffect(() => {

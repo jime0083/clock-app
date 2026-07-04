@@ -72,7 +72,9 @@
       "Bash(npx eslint *)",
       "Bash(git -C /Users/jime0083/clock-app status --short)",
       "Bash(sed -i '' '/^X_CLIENT_SECRET=/d' .env.example)",
-      "Bash(grep -rn \"clientSecret\\\\|X_CLIENT_SECRET\" src app.config.ts .env.example jest.setup.js functions/src)"
+      "Bash(grep -rn \"clientSecret\\\\|X_CLIENT_SECRET\" src app.config.ts .env.example jest.setup.js functions/src)",
+      "Bash(firebase --version)",
+      "Bash(firebase projects:list)"
     ]
   }
 }

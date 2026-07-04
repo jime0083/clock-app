@@ -517,28 +517,29 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ※ 「スクワットしたのに寝坊投稿される」を根絶する。アプリのコア価値に直結
 
 ### 20.1 スクワット画面表示の一元化（Problem 19）
-- [ ] src/screens/HomeScreen.tsx: 以下を削除
+- [x] src/screens/HomeScreen.tsx: 以下を削除（2026-07-04）
   - `alarmService.setOnAlarmTriggered(() => setIsSquatMeasureVisible(true))` の登録
   - `isSquatMeasureVisible` state と HomeScreen 内の `<SquatMeasureScreen>` レンダリング
   - HomeScreen 内の `handleSquatComplete`（成功/失敗通知の表示は App.tsx 側へ移動）
-  - `alarmService.initialize(user.uid)` の呼び出し（App.tsx に一元化。アラーム再スケジュールは alarmService.scheduleAlarm のみ残す）
-- [ ] App.tsx: `handleSquatComplete` に成功/失敗のローカル通知表示（scheduleSuccessNotification / scheduleFailureNotification）を統合
-- [ ] 動作確認観点: FCM受信（フォアグラウンド）/ 通知タップ / アプリアイコン起動（5分以内）/ バックグラウンド復帰 の4経路すべてでスクワット画面が1枚だけ表示されること
+  - `alarmService.initialize(user.uid)` の呼び出し（App.tsx に一元化。アラーム再スケジュール scheduleAlarm のみ残置）
+- [x] App.tsx: `handleSquatComplete` に成功/失敗のローカル通知表示（scheduleSuccessNotification / scheduleFailureNotification）を統合（2026-07-04）
+- [ ] 動作確認観点（実機・Work 6.3で実施）: FCM受信（フォアグラウンド）/ 通知タップ / アプリアイコン起動（5分以内）/ バックグラウンド復帰 の4経路すべてでスクワット画面が1枚だけ表示されること
 
 ### 20.2 ペナルティ投稿の重複防止と完了記録の整理（Problem 20）
 ※ 方針: 投稿はサーバー（checkSquatCompletion）に一本化する
-- [ ] src/screens/SquatMeasureScreen.tsx: `postPenaltyWithRetry()` 呼び出しを削除（失敗履歴の記録 recordWakeUpHistoryOfflineAware は残す）
-- [ ] src/services/alarmService.ts: 失敗時用に `recordAlarmFailure()` を追加（squatCompletedAt ではなく `alarmFailedAt: Timestamp.now()` を記録）
-- [ ] App.tsx: `handleSquatComplete(success, count)` で success の場合のみ `recordSquatCompletion()`、失敗の場合は `recordAlarmFailure()` を呼ぶ
-- [ ] functions/src/index.ts: `checkSquatCompletion` はこれまで通り squatCompletedAt で成功判定（alarmFailedAt があっても5分経過を待たず即投稿してよい: タイムラグ改善）
-- [ ] src/services/penaltyRetryService.ts: クライアント投稿廃止に伴い削除（xPostService の postPenaltyTweet も未使用になるため削除。postCustomTweet 等の使用箇所を grep で確認してから削除）
-- [ ] 統計の二重計上確認: クライアント（recordWakeUpHistory）とサーバー（postPenaltyTweetForUser）の両方が stats.totalFailures を increment していないか確認し、サーバー側の stats 更新を削除（クライアント記録に一本化。オフライン時はサーバー記録を採用する場合はその逆）
-- [ ] 型チェック（npx tsc --noEmit）
+- [x] src/screens/SquatMeasureScreen.tsx: `postPenaltyWithRetry()` 呼び出しを削除（失敗履歴の記録 recordWakeUpHistoryOfflineAware は残置）（2026-07-04）
+- [x] src/services/alarmService.ts: 失敗時用に `recordAlarmFailure()` を追加（`alarmFailedAt: Timestamp.now()` を記録しアラーム停止）（2026-07-04）
+- [x] App.tsx: `handleSquatComplete(success, count)` で success 時は `recordSquatCompletion()`、失敗時は `recordAlarmFailure()` を呼ぶ（2026-07-04）
+- [x] functions/src/index.ts: checkAlarms でアラーム送信時に alarmFailedAt をリセット / checkSquatCompletion で alarmFailedAt があれば5分経過を待たず即投稿（2026-07-04）
+- [x] src/services/penaltyRetryService.ts と xPostService.ts を削除（使用箇所grep確認済み。旧wakeUpFlow.test.ts は import 不能になるため wakeUpFlow.test.ts.disabled にリネーム → Phase 27.2 で新フロー用に書き直し）（2026-07-04）
+- [x] 統計の二重計上解消: サーバー側（postPenaltyTweetForUser）の stats 更新を削除し、クライアント（recordWakeUpHistory）に一本化。penaltyPostedAt の記録は重複投稿防止のため残置（2026-07-04）
+- [x] 型チェック（npx tsc --noEmit）・functions ビルド成功（2026-07-04）
+- [x] Firebase Functions デプロイ（2026-07-04）
 
 ### 20.3 タイムアウト時のスクワット数記録修正（Problem 22）
-- [ ] src/screens/SquatMeasureScreen.tsx: `handleTimeout` / `handleSuccess` を useRef に格納し、setInterval からは ref 経由で最新版を呼ぶ
-  - もしくは squatCount を ref（useAccelerometer の内部refを公開 or 画面側で同期）で参照する
-- [ ] タイムアウト時に実際のスクワット回数が履歴に記録されることを確認
+- [x] src/screens/SquatMeasureScreen.tsx: `handleTimeout` を `handleTimeoutRef` に格納し、setInterval からは ref 経由で最新版を呼ぶ（2026-07-04）
+  ※ handleSuccess は useEffect([squatCount]) から呼ばれ毎レンダー最新のため対応不要
+- [ ] タイムアウト時に実際のスクワット回数が履歴に記録されることを確認（実機・Work 6.3で実施）
 
 ---
 
@@ -546,18 +547,18 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ※ Phase 20 でサーバー投稿一本化が完了している前提
 
 ### 21.1 トークンの正本をFirestoreに統一（Problem 21）
-- [ ] クライアントでのトークンリフレッシュを廃止する
-  - src/services/xPostService.ts: クライアント投稿廃止（Phase 20.2）に伴い、残存する場合は getValidToken のリフレッシュ処理を削除
-  - src/hooks/useXAuth.ts: `refreshTokenIfNeeded` / `getValidAccessToken` を削除（連携状態の表示に必要なのは username と connected のみ）
-  - initializeFromSecureStorage は「連携状態の表示」用に簡素化（Firestoreの snsConnections.x.connected / username を読むだけにする）
-- [ ] Secure Storage への保存は「連携時のバックアップ」のみに整理（または完全撤去。撤去する場合 secureTokenService.ts を削除）
-- [ ] リフレッシュはサーバー（postPenaltyTweetForUser）のみが行い、新トークンをFirestoreに書き戻す（既存実装のまま）
-- [ ] 型チェック（npx tsc --noEmit）
+- [x] クライアントでのトークンリフレッシュを廃止（2026-07-04）
+  - src/hooks/useXAuth.ts: 全面書き換え。`refreshTokenIfNeeded` / `getValidAccessToken` / `initializeFromSecureStorage` / `restoreTokensFromFirestore` を削除し、connectX（Firestoreへ保存）と disconnectX（revoke＋Firestoreクリア）のみに簡素化
+  - src/services/xAuthService.ts: `refreshXToken` を削除（リフレッシュはサーバー専任）
+- [x] Secure Storage は完全撤去: secureTokenService.ts を削除。SetupScreen のX連携チェックは Firestore（snsConnections.x.connected）参照に変更。HomeScreen の initializeFromSecureStorage 呼び出しを削除（2026-07-04）
+- [x] リフレッシュはサーバー（postPenaltyTweetForUser）のみが行い、新トークンをFirestoreに書き戻す（既存実装のまま・変更なし）
+- [x] 型チェック（npx tsc --noEmit 成功）（2026-07-04）
+- [x] 旧フロー前提の setupFlow.test.ts を setupFlow.test.ts.disabled にリネーム（Phase 27.2 で書き直し）（2026-07-04）
 
 ### 21.2 画像付き投稿の扱いを決定（Problem 35）
-- [ ] 仕様確認: X投稿に画像を添付するか（現仕様書ではXはテキスト投稿。画像はInstagram用）→ ユーザーに確認
-- [ ] 添付しない場合: PENALTY_IMAGES / uploadMedia / expo-asset・expo-file-system 依存を削除
-- [ ] 添付する場合: サーバー側で X API v2 `POST /2/media/upload` を実装し、動作確認
+- [x] 仕様確認: 「テキストのみ」で確定（2026-07-04 ユーザー承認。画像は将来のInstagram連携用）
+- [x] クライアントの画像投稿コードを削除: PENALTY_IMAGES / uploadMedia / postTweet（クライアント側）は Phase 20 の xPostService 削除および本Phaseの xAuthService 整理で削除済み（2026-07-04）
+  ※ expo-asset / expo-file-system パッケージ自体は他用途の可能性を考慮し残置（削除する場合は prebuild が必要なため Phase 28 前に判断）
 
 ---
 

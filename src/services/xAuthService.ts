@@ -258,43 +258,9 @@ const getXUserInfo = async (
   }
 };
 
-/**
- * Refresh access token using refresh token
- */
-export const refreshXToken = async (
-  refreshToken: string
-): Promise<{ success: boolean; tokens?: XTokenResponse; error?: string }> => {
-  try {
-    const { clientId } = getXCredentials();
-
-    const params = new URLSearchParams();
-    params.set('grant_type', 'refresh_token');
-    params.set('refresh_token', refreshToken);
-    params.set('client_id', clientId);
-
-    const response = await fetch(X_TOKEN_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      return {
-        success: false,
-        error: errorData.error_description || 'Token refresh failed',
-      };
-    }
-
-    const tokens: XTokenResponse = await response.json();
-    return { success: true, tokens };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: errorMessage };
-  }
-};
+// NOTE: Token refresh is server-side only (functions/src/index.ts).
+// X rotates refresh tokens on every use, so refreshing from the client
+// would invalidate the server's stored refresh token (Problem 21).
 
 /**
  * Revoke X access token (disconnect)
@@ -322,112 +288,6 @@ export const revokeXToken = async (accessToken: string): Promise<boolean> => {
   }
 };
 
-/**
- * Upload media to X API
- */
-export const uploadMedia = async (
-  accessToken: string,
-  base64Data: string,
-  mediaType: string = 'image/png'
-): Promise<{ success: boolean; mediaId?: string; error?: string }> => {
-  console.log('[XAuth] uploadMedia: Starting media upload, data size:', base64Data.length);
-  try {
-    const response = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `media_data=${encodeURIComponent(base64Data)}`,
-    });
-
-    console.log('[XAuth] uploadMedia: Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('[XAuth] uploadMedia: Error response:', errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        return {
-          success: false,
-          error: errorData.errors?.[0]?.message || `HTTP ${response.status}`,
-        };
-      } catch {
-        return {
-          success: false,
-          error: `HTTP ${response.status}: ${errorText}`,
-        };
-      }
-    }
-
-    const data = await response.json();
-    console.log('[XAuth] uploadMedia: Success, mediaId:', data.media_id_string);
-    return {
-      success: true,
-      mediaId: data.media_id_string,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[XAuth] uploadMedia: Exception:', errorMessage);
-    return { success: false, error: errorMessage };
-  }
-};
-
-/**
- * Post a tweet using the X API
- */
-export const postTweet = async (
-  accessToken: string,
-  text: string,
-  mediaId?: string
-): Promise<{ success: boolean; tweetId?: string; error?: string }> => {
-  console.log('[XAuth] postTweet: Starting tweet post, text length:', text.length, 'mediaId:', mediaId);
-  try {
-    const body: { text: string; media?: { media_ids: string[] } } = { text };
-
-    if (mediaId) {
-      body.media = { media_ids: [mediaId] };
-    }
-
-    console.log('[XAuth] postTweet: Request body:', JSON.stringify(body));
-
-    const response = await fetch('https://api.twitter.com/2/tweets', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    console.log('[XAuth] postTweet: Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('[XAuth] postTweet: Error response:', errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        return {
-          success: false,
-          error: errorData.detail || errorData.title || `HTTP ${response.status}`,
-        };
-      } catch {
-        return {
-          success: false,
-          error: `HTTP ${response.status}: ${errorText}`,
-        };
-      }
-    }
-
-    const data = await response.json();
-    console.log('[XAuth] postTweet: Success, tweetId:', data.data?.id);
-    return {
-      success: true,
-      tweetId: data.data?.id,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[XAuth] postTweet: Exception:', errorMessage);
-    return { success: false, error: errorMessage };
-  }
-};
+// NOTE: Tweet posting (text-only per spec) is server-side only — see
+// postTweet in functions/src/index.ts. The former client-side postTweet /
+// uploadMedia (legacy v1.1 media API) were removed in Phase 21.

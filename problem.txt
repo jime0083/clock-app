@@ -1066,7 +1066,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 17: testAlarm / testPenalty が認証なしの公開エンドポイント (2026-07-04)
+## Problem 17: testAlarm / testPenalty が認証なしの公開エンドポイント (2026-07-04) [解決済み 2026-07-04: APIキー保護を実装・デプロイ・curl検証済み]
 
 ### 症状（コード解析で発見）
 - `functions/src/index.ts` の `testAlarm`・`testPenalty` が `invoker: "public"` で公開されている
@@ -1083,7 +1083,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 18: Firestoreセキュリティルールがリポジトリに存在しない (2026-07-04)
+## Problem 18: Firestoreセキュリティルールがリポジトリに存在しない (2026-07-04) [対応済み 2026-07-04: ルール作成・デプロイ済み。実機での回帰確認待ち（Work 6.2）]
 
 ### 症状
 - `firebase.json` は `firestore.rules` / `firestore.indexes.json` を参照しているが、**両ファイルともリポジトリに存在しない**
@@ -1101,7 +1101,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 19: アラームコールバックの二重登録により、起床成功してもペナルティ投稿される恐れ (2026-07-04)
+## Problem 19: アラームコールバックの二重登録により、起床成功してもペナルティ投稿される恐れ (2026-07-04) [修正済み 2026-07-04: App.tsxに一元化。実機4経路確認待ち（Work 6.3）]
 
 ### 症状（コード解析で発見）
 - `App.tsx` と `HomeScreen.tsx` の両方が `alarmService.setOnAlarmTriggered()` を呼んでおり、後勝ちで上書きされる（HomeScreenが後にマウントされるため通常HomeScreen側が有効）
@@ -1120,7 +1120,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 20: ペナルティ投稿がクライアント/サーバー二重経路で重複投稿リスク (2026-07-04)
+## Problem 20: ペナルティ投稿がクライアント/サーバー二重経路で重複投稿リスク (2026-07-04) [修正済み 2026-07-04: サーバー一本化・alarmFailedAt導入・stats一本化。実機E2E確認待ち]
 
 ### 症状（コード解析で発見）
 - タイムアウト時にクライアント（SquatMeasureScreen → postPenaltyWithRetry）が投稿
@@ -1138,7 +1138,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 21: Xトークンリフレッシュのローテーション競合（クライアント⇔サーバー非同期）(2026-07-04)
+## Problem 21: Xトークンリフレッシュのローテーション競合（クライアント⇔サーバー非同期）(2026-07-04) [修正済み 2026-07-04: トークン正本をFirestoreに一元化・クライアントリフレッシュ全廃。実機確認待ち]
 
 ### 症状（コード解析で発見）
 - X OAuth2のリフレッシュトークンは**使い捨て（ローテーション）**。一度使うと旧refresh_tokenは無効になる
@@ -1155,7 +1155,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 22: 失敗時の記録スクワット回数が常に0になる（stale closure）(2026-07-04)
+## Problem 22: 失敗時の記録スクワット回数が常に0になる（stale closure）(2026-07-04) [修正済み 2026-07-04: ref経由呼び出しに変更。実機確認待ち]
 
 ### 症状（コード解析で発見）
 - `SquatMeasureScreen.tsx` のカウントダウンは mount 時の `setInterval` 内から `handleTimeout()` を呼ぶ
@@ -1305,7 +1305,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 31: X clientSecret がアプリバンドルに埋め込まれる (2026-07-04)
+## Problem 31: X clientSecret がアプリバンドルに埋め込まれる (2026-07-04) [解決済み 2026-07-04: clientSecret依存を全除去]
 
 ### 症状
 - `app.config.ts` extra.x.clientSecret に `X_CLIENT_SECRET` を注入しており、ビルド成果物から抽出可能
@@ -1349,7 +1349,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 35: X画像アップロードが旧v1.1 APIでOAuth2トークンと不整合の可能性 (2026-07-04)
+## Problem 35: X画像アップロードが旧v1.1 APIでOAuth2トークンと不整合の可能性 (2026-07-04) [解決済み 2026-07-04: 「テキストのみ投稿」で仕様確定しクライアント画像投稿コードを削除]
 
 ### 症状
 - `xAuthService.uploadMedia()` が `upload.twitter.com/1.1/media/upload.json` に OAuth2 Bearer（ユーザートークン）で POST している

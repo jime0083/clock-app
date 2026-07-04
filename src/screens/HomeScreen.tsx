@@ -35,17 +35,13 @@ import {
   markWeeklySummaryShown,
 } from '@/services/weeklySummaryService';
 import { alarmService } from '@/services/alarmService';
-import { scheduleSuccessNotification, scheduleFailureNotification } from '@/services/notificationService';
 import { healthKitService } from '@/services/healthKitService';
-import SquatMeasureScreen from '@/screens/SquatMeasureScreen';
 import { UserDocument } from '@/types/firestore';
-import { useXAuth } from '@/hooks/useXAuth';
 
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { isSubscribed } = useSubscription();
-  const { initializeFromSecureStorage } = useXAuth();
   const [userData, setUserData] = useState<UserDocument | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -63,9 +59,6 @@ const HomeScreen: React.FC = () => {
     squatCount: number;
   } | null>(null);
 
-  // Squat measure screen state
-  const [isSquatMeasureVisible, setIsSquatMeasureVisible] = useState(false);
-
   const fetchUserData = useCallback(async () => {
     if (!user?.uid) return;
     try {
@@ -79,17 +72,6 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
-
-  // Initialize X tokens from Firestore if not in Secure Storage
-  useEffect(() => {
-    const initializeXTokens = async () => {
-      if (!user?.uid) return;
-      console.log('[HomeScreen] Initializing X tokens');
-      await initializeFromSecureStorage();
-    };
-
-    initializeXTokens();
-  }, [user?.uid, initializeFromSecureStorage]);
 
   // Initialize HealthKit for workout tracking
   useEffect(() => {
@@ -109,21 +91,14 @@ const HomeScreen: React.FC = () => {
     initializeHealthKit();
   }, []);
 
-  // Initialize alarm service and set up notification listener
+  // Re-schedule local alarm notifications when settings exist
+  // NOTE: alarm service initialization, alarm-triggered callback, and the squat
+  // screen are all managed by App.tsx (single source of truth) — see Problem 19
   useEffect(() => {
-    const initializeAlarm = async () => {
+    const rescheduleAlarm = async () => {
       if (!user?.uid) return;
 
       try {
-        // Initialize alarm service
-        await alarmService.initialize(user.uid);
-
-        // Set callback for when alarm triggers
-        alarmService.setOnAlarmTriggered(() => {
-          setIsSquatMeasureVisible(true);
-        });
-
-        // Re-schedule alarm if settings exist
         if (userData?.settings?.alarmTime && userData?.settings?.alarmDays) {
           await alarmService.scheduleAlarm({
             alarmTime: userData.settings.alarmTime,
@@ -132,11 +107,11 @@ const HomeScreen: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error('Error initializing alarm:', error);
+        console.error('Error scheduling alarm:', error);
       }
     };
 
-    initializeAlarm();
+    rescheduleAlarm();
   }, [user?.uid, userData?.settings?.alarmTime, userData?.settings?.alarmDays]);
 
   // Check for weekly summary on mount
@@ -230,28 +205,6 @@ const HomeScreen: React.FC = () => {
     } catch (error) {
       console.error('Error saving alarm settings:', error);
     }
-  };
-
-  // Handle squat measurement completion
-  const handleSquatComplete = async (success: boolean, squatCount: number) => {
-    setIsSquatMeasureVisible(false);
-
-    if (success) {
-      // Show success notification
-      await scheduleSuccessNotification(
-        t('wakeup.successTitle'),
-        t('notification.squatConfirmed')
-      );
-    } else {
-      // Show failure notification (X posting is handled in SquatMeasureScreen)
-      await scheduleFailureNotification(
-        t('wakeup.failureTitle'),
-        t('notification.oversleepPosted')
-      );
-    }
-
-    // Refresh user data to update stats
-    await fetchUserData();
   };
 
   const handleSaveLanguage = async (language: 'ja' | 'en') => {
@@ -429,15 +382,6 @@ const HomeScreen: React.FC = () => {
           <CalibrationScreen
             onComplete={handleCalibrationComplete}
             onClose={() => setIsCalibrationVisible(false)}
-          />
-        </View>
-      )}
-
-      {/* Squat Measure Screen (Alarm triggered) */}
-      {isSquatMeasureVisible && (
-        <View style={StyleSheet.absoluteFill}>
-          <SquatMeasureScreen
-            onComplete={handleSquatComplete}
           />
         </View>
       )}
