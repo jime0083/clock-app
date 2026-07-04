@@ -42,6 +42,19 @@ const params_1 = require("firebase-functions/params");
 const serviceAccount = require("../serviceAccountKey.json");
 // X API configuration from environment
 const xClientId = (0, params_1.defineString)("X_CLIENT_ID");
+// API key for test-only HTTP endpoints (testAlarm / testPenalty)
+const testApiKey = (0, params_1.defineString)("TEST_API_KEY");
+/**
+ * Verify the x-api-key header for test-only endpoints.
+ * Rejects all requests when TEST_API_KEY is not configured.
+ */
+function isAuthorizedTestRequest(req) {
+    const configuredKey = testApiKey.value();
+    if (!configuredKey) {
+        return false;
+    }
+    return req.headers["x-api-key"] === configuredKey;
+}
 // Penalty post window: 5 minutes in milliseconds
 const PENALTY_WINDOW_MS = 5 * 60 * 1000;
 // Penalty messages
@@ -213,6 +226,10 @@ exports.testAlarm = (0, https_1.onRequest)({
     invoker: "public",
     serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
 }, async (req, res) => {
+    if (!isAuthorizedTestRequest(req)) {
+        res.status(403).send("Forbidden");
+        return;
+    }
     if (req.method !== "POST") {
         res.status(405).send("Method not allowed");
         return;
@@ -456,6 +473,10 @@ exports.testPenalty = (0, https_1.onRequest)({
     invoker: "public",
     serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
 }, async (req, res) => {
+    if (!isAuthorizedTestRequest(req)) {
+        res.status(403).send("Forbidden");
+        return;
+    }
     if (req.method !== "POST") {
         res.status(405).send("Method not allowed");
         return;

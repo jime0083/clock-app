@@ -492,3 +492,32 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [ ] 審査情報入力
 - [ ] 審査提出
 
+
+---
+
+## Work 6: セキュリティ修正・完成タスクに伴う手動作業（2026-07-04 追加）
+※ progress.txt Phase 19〜27 に対応
+
+### Work 6.1: Firebase Functions の再デプロイ（Phase 19.1 / 23 / 24 完了ごと）
+- [ ] `cd functions && npm run build` でビルド確認
+- [ ] `firebase deploy --only functions` でデプロイ
+- [ ] Phase 19.1 実施時: TEST_API_KEY を環境変数に設定（`functions/.env` に追記）し、キーなしアクセスが403になることを curl で確認
+
+### Work 6.2: Firestoreセキュリティルールのデプロイ・検証（Phase 19.2）
+- [ ] `firebase deploy --only firestore:rules` でルールをデプロイ
+- [ ] Firebase Console > Firestore > ルール で適用を確認
+- [ ] 動作確認: アプリから自分のデータ読み書きが正常 / Firebase Consoleのルールプレイグラウンドで他人のusersドキュメント読み取りが拒否されること
+- [ ] adminUsers コレクションへのクライアント書き込みが拒否されることを確認
+
+### Work 6.3: 実機E2Eテスト（Phase 27.4）
+- [ ] progress.txt Phase 27.4 のチェックリストを実機で実施
+- [ ] X API のクレジット残量を事前に確認（https://developer.twitter.com/en/portal/dashboard）
+
+### Work 6.4: RevenueCat 復元動作の確認（Phase 22.1）
+- [ ] Sandboxテスターで購入→アプリ再インストール→「購入を復元」でセットアップを通過できることを確認
+- [ ] adminUsers に登録したUIDで課金なしにセットアップ完了できることを確認
+
+### Work 6.5: Critical Alert 再申請の結果確認（Phase 25.4）
+- [ ] Appleからの返信メールを確認（2026-04-22 申請済み）
+- [ ] 承認された場合: entitlement実装タスクを progress.txt に追加して実装
+- [ ] 却下の場合: サイレントモード注意喚起UI（Phase 25.4）の実装可否を決定

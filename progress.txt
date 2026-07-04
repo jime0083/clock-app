@@ -468,3 +468,230 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [ ] 審査情報入力
 - [ ] 審査提出
 
+
+---
+---
+
+# 2026-07-04 アプリ完成に向けた追加タスク（コード全体解析による洗い出し）
+
+※ 対応する問題の詳細は problem.txt の Problem 17〜36 を参照
+※ 実施順序: Phase 19 → 20 → 21 → 22 → 23 → 24 → 25 → 26 → 27（テスト）→ 28（ビルド・リリース、既存Phase 18の手動作業を含む）
+※ 各Phase完了ごとに作業を止めてユーザーの指示を仰ぐこと（CLAUDE.mdルール4）
+
+---
+
+## Phase 19: セキュリティ緊急対応（Problem 17, 18, 31）
+※ リリース前必須。他Phaseより最優先
+
+### 19.1 テスト用公開エンドポイントの保護（Problem 17）
+- [ ] functions/src/index.ts: `testAlarm` と `testPenalty` に認証を追加する
+  - 環境変数 `TEST_API_KEY`（defineString）を定義し、リクエストヘッダ `x-api-key` と一致しない場合は 403 を返す
+  - もしくは両関数を削除（ユーザーに確認して方針決定）
+- [ ] `invoker: "public"` の妥当性を再検討（保護後は public のままでも可）
+- [ ] Firebase Functions を再デプロイ（手動: manual-work.txt Work 6.1）
+
+### 19.2 Firestoreセキュリティルールの作成（Problem 18）
+- [ ] プロジェクトルートに `firestore.rules` を新規作成
+  - `users/{uid}`: request.auth.uid == uid のみ read/write 可
+  - `users/{uid}/history/{doc}`: 同上
+  - `adminUsers/{doc}`: read は認証済みユーザーのみ（自分のuidに一致するdocのみ推奨）、write は不可（Consoleからのみ）
+  - `alarmHistory`, `penaltyPosts`: クライアントからの read/write を全面禁止（Admin SDKはルール対象外）
+  - 上記以外のパスはデフォルト拒否
+- [ ] `firestore.indexes.json` を新規作成（users/{uid}/history の date 昇順/降順クエリが単一フィールドインデックスで足りるか確認し、必要な複合インデックスを定義。不要なら空定義）
+- [ ] ルールのデプロイと動作確認（手動: manual-work.txt Work 6.2）
+  - 確認項目: 本人のusersドキュメント読み書き可 / 他人のドキュメント読み取り不可 / adminUsersへの書き込み不可
+
+### 19.3 X clientSecret の除去（Problem 31）
+- [ ] src/services/xAuthService.ts: `getXCredentials()` から clientSecret を削除し、clientId のみ必須とする
+- [ ] app.config.ts: extra.x.clientSecret を削除
+- [ ] .env.example: X_CLIENT_SECRET の行を削除
+- [ ] jest.setup.js のモック（expo-constants）から clientSecret を削除
+- [ ] 型チェック（npx tsc --noEmit）
+
+---
+
+## Phase 20: 起床判定フローの重大バグ修正（Problem 19, 20, 22）
+※ 「スクワットしたのに寝坊投稿される」を根絶する。アプリのコア価値に直結
+
+### 20.1 スクワット画面表示の一元化（Problem 19）
+- [ ] src/screens/HomeScreen.tsx: 以下を削除
+  - `alarmService.setOnAlarmTriggered(() => setIsSquatMeasureVisible(true))` の登録
+  - `isSquatMeasureVisible` state と HomeScreen 内の `<SquatMeasureScreen>` レンダリング
+  - HomeScreen 内の `handleSquatComplete`（成功/失敗通知の表示は App.tsx 側へ移動）
+  - `alarmService.initialize(user.uid)` の呼び出し（App.tsx に一元化。アラーム再スケジュールは alarmService.scheduleAlarm のみ残す）
+- [ ] App.tsx: `handleSquatComplete` に成功/失敗のローカル通知表示（scheduleSuccessNotification / scheduleFailureNotification）を統合
+- [ ] 動作確認観点: FCM受信（フォアグラウンド）/ 通知タップ / アプリアイコン起動（5分以内）/ バックグラウンド復帰 の4経路すべてでスクワット画面が1枚だけ表示されること
+
+### 20.2 ペナルティ投稿の重複防止と完了記録の整理（Problem 20）
+※ 方針: 投稿はサーバー（checkSquatCompletion）に一本化する
+- [ ] src/screens/SquatMeasureScreen.tsx: `postPenaltyWithRetry()` 呼び出しを削除（失敗履歴の記録 recordWakeUpHistoryOfflineAware は残す）
+- [ ] src/services/alarmService.ts: 失敗時用に `recordAlarmFailure()` を追加（squatCompletedAt ではなく `alarmFailedAt: Timestamp.now()` を記録）
+- [ ] App.tsx: `handleSquatComplete(success, count)` で success の場合のみ `recordSquatCompletion()`、失敗の場合は `recordAlarmFailure()` を呼ぶ
+- [ ] functions/src/index.ts: `checkSquatCompletion` はこれまで通り squatCompletedAt で成功判定（alarmFailedAt があっても5分経過を待たず即投稿してよい: タイムラグ改善）
+- [ ] src/services/penaltyRetryService.ts: クライアント投稿廃止に伴い削除（xPostService の postPenaltyTweet も未使用になるため削除。postCustomTweet 等の使用箇所を grep で確認してから削除）
+- [ ] 統計の二重計上確認: クライアント（recordWakeUpHistory）とサーバー（postPenaltyTweetForUser）の両方が stats.totalFailures を increment していないか確認し、サーバー側の stats 更新を削除（クライアント記録に一本化。オフライン時はサーバー記録を採用する場合はその逆）
+- [ ] 型チェック（npx tsc --noEmit）
+
+### 20.3 タイムアウト時のスクワット数記録修正（Problem 22）
+- [ ] src/screens/SquatMeasureScreen.tsx: `handleTimeout` / `handleSuccess` を useRef に格納し、setInterval からは ref 経由で最新版を呼ぶ
+  - もしくは squatCount を ref（useAccelerometer の内部refを公開 or 画面側で同期）で参照する
+- [ ] タイムアウト時に実際のスクワット回数が履歴に記録されることを確認
+
+---
+
+## Phase 21: Xトークン管理の一元化（Problem 21, 35）
+※ Phase 20 でサーバー投稿一本化が完了している前提
+
+### 21.1 トークンの正本をFirestoreに統一（Problem 21）
+- [ ] クライアントでのトークンリフレッシュを廃止する
+  - src/services/xPostService.ts: クライアント投稿廃止（Phase 20.2）に伴い、残存する場合は getValidToken のリフレッシュ処理を削除
+  - src/hooks/useXAuth.ts: `refreshTokenIfNeeded` / `getValidAccessToken` を削除（連携状態の表示に必要なのは username と connected のみ）
+  - initializeFromSecureStorage は「連携状態の表示」用に簡素化（Firestoreの snsConnections.x.connected / username を読むだけにする）
+- [ ] Secure Storage への保存は「連携時のバックアップ」のみに整理（または完全撤去。撤去する場合 secureTokenService.ts を削除）
+- [ ] リフレッシュはサーバー（postPenaltyTweetForUser）のみが行い、新トークンをFirestoreに書き戻す（既存実装のまま）
+- [ ] 型チェック（npx tsc --noEmit）
+
+### 21.2 画像付き投稿の扱いを決定（Problem 35）
+- [ ] 仕様確認: X投稿に画像を添付するか（現仕様書ではXはテキスト投稿。画像はInstagram用）→ ユーザーに確認
+- [ ] 添付しない場合: PENALTY_IMAGES / uploadMedia / expo-asset・expo-file-system 依存を削除
+- [ ] 添付する場合: サーバー側で X API v2 `POST /2/media/upload` を実装し、動作確認
+
+---
+
+## Phase 22: 課金・セットアップフロー修正（Problem 23, 24）
+
+### 22.1 課金ステップのバイパス経路追加（Problem 23）
+- [ ] src/screens/SetupScreen.tsx: subscription ステップ表示時に `isSubscribed === true`（管理者含む）なら自動で handleCompleteSetup を実行
+- [ ] SetupScreen の subscription ステップに「購入を復元」ボタンを追加（PaywallScreen と同じ restore 処理・既存の paywall.restore 文言を使用。デザインは既存の footerLink スタイルに合わせ、新規デザイン要素は追加しない）
+- [ ] 復元成功時も handleCompleteSetup を実行
+- [ ] HomeScreen の未使用 PaywallScreen の方針決定（サブスク失効時に表示するのか、削除するのか → ユーザーに確認。失効時表示の場合: isSubscribed=false かつ isLoading=false で isPaywallVisible=true にする）
+
+### 22.2 規約・ポリシーURLの修正（Problem 24）
+- [ ] src/constants/urls.ts を新規作成し、SUPPORT_URL / TERMS_URL / PRIVACY_URL を定義
+  - TERMS_URL = https://jime0083.github.io/okiroya-support/terms-of-service.html
+  - PRIVACY_URL = https://jime0083.github.io/okiroya-support/privacy-policy.html
+- [ ] SetupScreen.tsx / PaywallScreen.tsx / その他 `okiroya.com` を参照する箇所を全置換（grep で確認）
+- [ ] 型チェック（npx tsc --noEmit）
+
+---
+
+## Phase 23: サーバー処理の改善（Problem 26）
+
+### 23.1 タイムゾーン対応
+- [ ] src: セットアップ完了時と起動時に `Intl.DateTimeFormat().resolvedOptions().timeZone` を users/{uid}.settings.timezone に保存
+- [ ] functions/src/index.ts: checkAlarms でユーザーごとに timezone を使ってローカル時刻・曜日を計算して判定（timezone 未設定ユーザーは Asia/Tokyo にフォールバック）
+- [ ] JST固定ヘルパー（getCurrentTimeJST / getCurrentDayOfWeekJST）を timezone 引数対応に書き換え
+
+### 23.2 通知文言の多言語化
+- [ ] functions/src/index.ts: ALARM_MESSAGES 定数（ja/en）を追加し、userData.settings.language で title/body を出し分け（PENALTY_MESSAGES と同方式）
+
+### 23.3 アラーム判定の堅牢化・整理
+- [ ] checkAlarms: 「HH:mm完全一致」から「前回チェック時刻以降〜現在まで」の範囲判定に変更（cronスキップ・遅延でも取りこぼさない。users/{uid}.lastAlarmSentAt で同一アラームの二重送信を防止）
+- [ ] alarmDays が空の場合の仕様統一: サーバーも「毎日」として扱う（クライアント notificationService と一致させる）
+- [ ] ローカル通知（notifee週次スケジュール）とFCMの二重通知を整理: FCMを主、ローカル通知はオフライン時のフォールバックとして残すか削除するかを決定（ユーザーに確認）
+
+### 23.4 クエリ効率化（リリース後でも可・優先度低）
+- [ ] alarmTime/alarmDays/timezone をトップレベルの複合フィールド（例: alarmIndex: "HH:mm"）に複製保存し、where クエリで絞り込む
+- [ ] checkSquatCompletion も lastAlarmSentAt の範囲 where クエリに変更（要インデックス）
+
+### 23.5 デプロイ
+- [ ] functions のビルド・デプロイ（手動: manual-work.txt Work 6.1）
+- [ ] serviceAccountKey.json 依存の廃止: `admin.initializeApp()`（デフォルト認証）に変更して動作確認（Phase 17.12.5 で一度実施済みの方式に戻す）
+
+---
+
+## Phase 24: データモデル統一・アカウント削除対応（Problem 28, 29）
+
+### 24.1 ユーザードキュメント作成の一本化（Problem 28）
+- [ ] src/services/authService.ts: `createOrUpdateUserProfile` の新規作成分岐を `userService.createUserDocument()` 呼び出しに置換（profile 情報を引数で渡す）
+- [ ] 既存ユーザーの欠損フィールド（settings.setupCompleted / stats.monthlySquats / subscription 等)を初回読み込み時に補完するマイグレーション処理を getUserDocument 呼び出し側 or createOrUpdateUserProfile の update 分岐に追加
+- [ ] `calibrationData`（旧フィールド）の残骸があれば削除
+- [ ] 型チェック（npx tsc --noEmit）
+
+### 24.2 アカウント削除の完全化（Problem 29）
+- [ ] functions/src/index.ts: onCall 関数 `deleteUserData` を追加（認証必須・本人のみ）
+  - users/{uid}/history サブコレクションを一括削除（admin.firestore().recursiveDelete を使用）
+  - users/{uid} 本体、alarmHistory / penaltyPosts の該当ユーザードキュメントを削除
+- [ ] src/services/authService.ts: deleteAccount を deleteUserData 呼び出し→ auth削除 の順に変更
+- [ ] `auth/requires-recent-login` エラー時: 再ログインを促すアラートを表示し、再ログイン後に削除を再実行するフローを DeleteAccountModal に追加
+- [ ] Functions デプロイ（手動: Work 6.1）
+
+---
+
+## Phase 25: 仕様未達・小規模修正（Problem 32, 33, 34）
+
+### 25.1 メニューに「アラーム設定」を追加（Problem 33）
+- [ ] src/components/menu/MenuDrawer.tsx: MenuItemId に 'alarmSetting' を追加し、settings セクションの先頭に項目追加（icon: 'alarm-outline', labelKey: 'settings.alarmSetting'）
+- [ ] src/locales/ja.json / en.json: settings.alarmSetting（"アラーム設定" / "Alarm Settings"）を追加
+- [ ] src/screens/HomeScreen.tsx: handleMenuItemPress に 'alarmSetting' → setIsAlarmSettingVisible(true) を追加
+- ※ 既存デザイン・既存画面（AlarmSettingScreen）をそのまま使用し、新規デザインは作らない
+
+### 25.2 WeeklySummaryModal の i18n 対応（Problem 34）
+- [ ] ja.json / en.json に weekly.title（"先週のふりかえり" / "Weekly Summary"）を追加
+- [ ] WeeklySummaryModal.tsx のハードコード "Weekly Summary" を t('weekly.title') に置換
+
+### 25.3 FCMバックグラウンドハンドラの方針決定（Problem 32）
+- [ ] index.ts のコメントアウトされた setBackgroundMessageHandler を削除 or 再有効化（ユーザーに確認。現状APNs表示で成立しているため削除推奨）
+- [ ] 削除する場合は fcmService.ts の setBackgroundMessageHandler 関数も削除
+
+### 25.4 サイレントモード注意喚起（Problem 14 選択肢Bの未実装分）
+- [ ] Critical Alert 再申請の結果確認（手動: Work 4.4）
+- [ ] 却下または未承認のままリリースする場合: ホーム画面表示時にサイレントスイッチ注意のアラート（初回のみ / AsyncStorage でフラグ管理）を表示するタスクを実施するか、ユーザーに確認
+
+---
+
+## Phase 26: リファクタリング（Problem 30, 36）
+
+### 26.1 未使用コード削除（2026-07-04 実施済み）
+- [x] src/components/modals/AlarmSettingModal.tsx を削除（未使用）
+- [x] src/components/modals/AudioSettingModal.tsx を削除（到達不能UI・CLAUDE.mdルール6違反）
+- [x] src/services/storageService.ts を削除（AudioSettingModal専用）
+- [x] src/hooks/useAlarm.ts を削除（未使用）
+- [x] src/hooks/useOffline.ts を削除（未使用)
+- [x] HomeScreen.tsx から AudioSettingModal 関連（import / state / handleSaveAudio / レンダリング）を削除
+- [x] 型チェック（npx tsc --noEmit）
+
+### 26.2 ログ・Lint環境の整理（Problem 36, 37・未実施）
+- [ ] ESLint設定を Flat Config（eslint.config.js）へ移行し、npx eslint が実行できる状態にする（Problem 37）
+- [ ] src/utils/logger.ts を新規作成（__DEV__ のときのみ console 出力する log/warn/error ラッパー）
+- [ ] src 配下の console.* を logger に一括置換（error は本番でも残す方針可）
+- [ ] トークン値・ユーザーIDなど機微情報を出力している箇所（secureTokenService の token.substring 等）はログ自体を削除
+- [ ] ESLint に no-console ルールを追加
+
+### 26.3 大型ファイルの分割（任意・優先度低）
+- [ ] SetupScreen.tsx（911行）: ステップごとのコンポーネント分割（デザイン変更なし）
+- [ ] CalibrationScreen.tsx（651行）: フェーズ表示部の分割（デザイン変更なし）
+
+---
+
+## Phase 27: テスト修復・拡充（Problem 25）※ 全実装タスクの最後に実施
+
+### 27.1 テスト基盤の修復
+- [ ] jest.setup.js: expo-av モックを削除し、expo-audio のモック（createAudioPlayer / setAudioModeAsync / AudioPlayer）に置換
+- [ ] jest.setup.js: 削除済みモジュール（storageService等）への参照が残っていないか確認
+- [ ] npx jest で全スイートが「実行」されることを確認（失敗はこの時点では許容）
+
+### 27.2 既存テストの修復
+- [ ] 11スイートを1つずつ実行し、実装乖離（Phase 19〜26 の変更を含む）で落ちるテストを現行仕様に合わせて修正
+- [ ] 特に wakeUpFlow.test.ts は Phase 20 の新フロー（サーバー投稿一本化・alarmFailedAt）に合わせて書き直し
+
+### 27.3 追加テスト（見逃し検証を最優先）
+- [ ] accelerometerService: 「疑わしい動作はスクワットと認める」方向の境界値テスト（閾値ぎりぎり・ゆっくり・浅いスクワットで False Negative が出ないこと）
+- [ ] alarmService.checkAlarmWindow の境界値テスト（4:59経過 / 5:01経過 / squatCompletedAt が alarm 前後）
+- [ ] functions: checkAlarms のタイムゾーン別判定・checkSquatCompletion の重複投稿防止のユニットテスト（可能なら firebase-functions-test を導入）
+- [ ] カバレッジ80%以上を確認（npx jest --coverage）
+
+### 27.4 実機E2Eテスト（手動: manual-work.txt Work 6.3）
+- [ ] アラーム4経路（フォアグラウンド/通知タップ/アイコン起動/バックグラウンド復帰）でスクワット画面が1枚だけ表示される
+- [ ] スクワット10回成功 → X投稿されない・統計が正しく加算される
+- [ ] スクワット未完了 → 5分後にX投稿が1件だけ行われる
+- [ ] X連携解除→再連携、トークン期限切れ後（2時間放置）の自動投稿成功
+- [ ] 管理者アカウントで課金なしにセットアップ完了できる
+- [ ] 言語切替（en）でアラーム通知・投稿文言が英語になる
+
+---
+
+## Phase 28: ビルド・リリース ※ Phase 27 完了後
+- [ ] npx tsc --noEmit / npx jest / ESLint が全て通ることを最終確認
+- [ ] 本番ビルド作成: eas build --platform ios --profile production（手動: 既存 Phase 18.5）
+- [ ] TestFlight 配信・App Store 審査申請（手動: 既存 Phase 18.1〜18.8 / Work 5.x を実施）

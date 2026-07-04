@@ -1063,3 +1063,323 @@ No users found with alarm at this time
 - [ ] バックグラウンドアラームテスト
 - [ ] X自動投稿E2Eテスト
 
+
+---
+
+## Problem 17: testAlarm / testPenalty が認証なしの公開エンドポイント (2026-07-04)
+
+### 症状（コード解析で発見）
+- `functions/src/index.ts` の `testAlarm`・`testPenalty` が `invoker: "public"` で公開されている
+- 認証・認可チェックが一切ない
+
+### 影響 [重大度: 致命的・セキュリティ]
+- URLとuserIdを知っていれば**誰でも任意ユーザーのXアカウントに「寝坊しました」を強制投稿できる**
+- 誰でも任意ユーザーにアラーム通知を送りつけられる
+- userIdは総当たりも可能
+
+### 解決策
+- リリース前に両エンドポイントを削除する、または
+- 管理者専用のシークレットヘッダ / Firebase Auth IDトークン検証を必須にする
+
+---
+
+## Problem 18: Firestoreセキュリティルールがリポジトリに存在しない (2026-07-04)
+
+### 症状
+- `firebase.json` は `firestore.rules` / `firestore.indexes.json` を参照しているが、**両ファイルともリポジトリに存在しない**
+- ルールがコード管理されておらず、現在本番に何が適用されているか不明
+
+### 影響 [重大度: 致命的・セキュリティ]
+- usersドキュメントには **Xのaccess/refreshトークン** が保存されている（Problem 11対応で導入）
+- ルールが甘い場合、他ユーザーのトークン・個人データが読み取り可能
+- `adminUsers` コレクションが書き込み可能だと課金バイパスが可能
+
+### 解決策
+1. `firestore.rules` を作成: users/{uid} は本人のみ読み書き、adminUsers はクライアント書き込み禁止、alarmHistory/penaltyPosts はクライアントアクセス禁止（サーバーのみ）
+2. `firestore.indexes.json` を作成（history の date クエリ用）
+3. デプロイして実機確認
+
+---
+
+## Problem 19: アラームコールバックの二重登録により、起床成功してもペナルティ投稿される恐れ (2026-07-04)
+
+### 症状（コード解析で発見）
+- `App.tsx` と `HomeScreen.tsx` の両方が `alarmService.setOnAlarmTriggered()` を呼んでおり、後勝ちで上書きされる（HomeScreenが後にマウントされるため通常HomeScreen側が有効）
+- スクワット画面の表示経路が2つ存在する:
+  - App.tsx: `isAlarmRinging` → SquatMeasureScreen（onComplete で `recordSquatCompletion()` を呼ぶ）
+  - HomeScreen.tsx: `isSquatMeasureVisible` → SquatMeasureScreen（onComplete で **`recordSquatCompletion()` を呼ばない**）
+
+### 影響 [重大度: 致命的]
+- HomeScreen経由でスクワット画面が表示・完了した場合、`squatCompletedAt` がFirestoreに記録されない
+- サーバーの `checkSquatCompletion` は squatCompletedAt を見て判定するため、**スクワットを完了したのにペナルティ投稿される**（起床成功の誤判定）
+- 両経路が同時に成立し、スクワット画面が二重に出る可能性もある
+
+### 解決策
+- スクワット画面の表示・完了処理を App.tsx に一元化し、HomeScreen 側の `setOnAlarmTriggered` / SquatMeasureScreen レンダリング / alarmService.initialize を削除
+- onComplete → recordSquatCompletion の呼び出しを単一経路に
+
+---
+
+## Problem 20: ペナルティ投稿がクライアント/サーバー二重経路で重複投稿リスク (2026-07-04)
+
+### 症状（コード解析で発見）
+- タイムアウト時にクライアント（SquatMeasureScreen → postPenaltyWithRetry）が投稿
+- サーバー（checkSquatCompletion、毎分実行）も5分超過ユーザーに投稿
+- 重複防止は「クライアントがタイムアウト3秒後に `handleSquatComplete` → `recordSquatCompletion()` で squatCompletedAt を書く」ことに依存
+
+### 問題点
+1. **競合ウィンドウ**: サーバーのcronがタイムアウト直後〜squatCompletedAt書き込み前に走ると**同じ寝坊で2回投稿**される
+2. **設計矛盾**: 失敗時にも `squatCompletedAt`（スクワット完了時刻）を記録しており、データとして「失敗したのに完了扱い」になる
+3. クライアント投稿はネットワーク・アプリ強制終了で失敗し得る（リトライはBackgroundFetch頼み → Problem 27）
+
+### 解決策（方針）
+- 投稿責務をサーバーに一本化（クライアントは失敗事実の記録のみ）し、クライアント側の直接投稿を廃止する
+- または、クライアント投稿成功時に `penaltyPostedAt` をFirestoreへ即時記録し、サーバーはそれを見てスキップ。失敗時のsquatCompletedAt記録は廃止し、別フィールド（例: alarmHandledAt）で「対応済み」を表現する
+
+---
+
+## Problem 21: Xトークンリフレッシュのローテーション競合（クライアント⇔サーバー非同期）(2026-07-04)
+
+### 症状（コード解析で発見）
+- X OAuth2のリフレッシュトークンは**使い捨て（ローテーション）**。一度使うと旧refresh_tokenは無効になる
+- クライアント `xPostService.getValidToken()` はリフレッシュ後 **Secure Storage にのみ**保存し、Firestoreを更新しない
+- サーバー `postPenaltyTweetForUser()` はリフレッシュ後 **Firestore のみ**更新する
+
+### 影響 [重大度: 高]
+- どちらかがリフレッシュすると、もう一方が持つrefresh_tokenが無効化される
+- 次回リフレッシュが `invalid_request` で失敗 → トークン全削除 → **X連携が勝手に切れる**（Problem 12の再発要因）
+
+### 解決策
+- トークンの正本をFirestoreに一本化し、クライアントもリフレッシュ成功時に必ずFirestoreへ書き戻す
+- （Problem 20でサーバー一本化する場合、クライアントのリフレッシュ処理自体を廃止できる）
+
+---
+
+## Problem 22: 失敗時の記録スクワット回数が常に0になる（stale closure）(2026-07-04)
+
+### 症状（コード解析で発見）
+- `SquatMeasureScreen.tsx` のカウントダウンは mount 時の `setInterval` 内から `handleTimeout()` を呼ぶ
+- `handleTimeout` は `useCallback([squatCount, ...])` で毎回作り直されるが、**intervalは初回レンダー時の関数を掴んだまま**
+
+### 影響 [重大度: 中]
+- タイムアウト時に記録される `squatCount` が常に初期値 **0** になる
+- 履歴・統計（stats.totalSquats等）に実際のスクワット回数が反映されない
+
+### 解決策
+- `handleTimeout` を ref 経由で呼ぶ（`handleTimeoutRef.current()`）か、squatCount を ref で参照する
+
+---
+
+## Problem 23: セットアップの課金ステップに購入以外の完了経路がない (2026-07-04)
+
+### 症状（コード解析で発見）
+- `SetupScreen.tsx` の subscription ステップは「購入成功」時のみ `setupCompleted: true` になる
+- 「購入の復元（Restore）」ボタンがない（App Store審査ガイドライン上必須）
+- `isSubscribed`（管理者判定込み）をチェックしておらず、**管理者・既契約者も再購入以外で先に進めない**
+- HomeScreenの `PaywallScreen`（復元ボタンあり）は表示トリガーが存在せず到達不能
+
+### 影響 [重大度: 致命的・リリースブロッカー]
+- CLAUDE.md の管理者無料アクセス仕様が機能しない
+- 再インストール済み課金ユーザーが詰む
+- 復元ボタン欠如は審査リジェクト事由
+
+### 解決策
+1. subscription ステップ表示時に `isSubscribed === true` なら自動でセットアップ完了
+2. 「購入を復元」ボタンを追加し、復元成功でセットアップ完了
+3. 到達不能な PaywallScreen の扱いを決定（課金切れ時の表示トリガー実装 or 削除）
+
+---
+
+## Problem 24: 利用規約・プライバシーポリシーのリンク先URLが誤り (2026-07-04)
+
+### 症状
+- `SetupScreen.tsx` が `https://okiroya.com/terms` / `https://okiroya.com/privacy` を開く（未所有ドメイン）
+- 正しくは https://jime0083.github.io/okiroya-support/terms-of-service.html / privacy-policy.html
+
+### 影響 [重大度: 中] リンク切れ。課金画面の規約リンクは審査でチェックされる
+
+### 解決策
+- URLを定数化して正しいURLに修正（PaywallScreen等他画面のリンクも横断確認）
+
+---
+
+## Problem 25: テストスイートが全滅（11/11 スイート実行不能）(2026-07-04)
+
+### 症状
+- `npx jest` で全11テストスイートが `Cannot find module 'expo-av' from 'jest.setup.js'` で実行不能
+- expo-av は expo-audio への移行時にアンインストール済みだが、jest.setup.js のモックが残存
+
+### 影響 [重大度: 高]
+- テストが1件も走っておらず、リグレッション検知が不可能（カバレッジ80%ルールも未達）
+
+### 解決策
+1. jest.setup.js の expo-av モックを expo-audio（createAudioPlayer/setAudioModeAsync）モックに置換
+2. 全スイートを実行し、実装乖離で落ちるテストを現行仕様に合わせて修復
+
+---
+
+## Problem 26: Cloud FunctionsがJST固定・毎分全ユーザー全件取得・通知文言が日本語固定 (2026-07-04)
+
+### 症状（コード解析で発見）
+1. `checkAlarms` はJST（UTC+9）固定で時刻比較 → **海外ユーザー（英語対応の対象）はアラームが正しい時刻に鳴らない**
+2. `checkAlarms`・`checkSquatCompletion` とも毎分 `users` コレクションを全件取得 → ユーザー増で読み取りコスト・レイテンシが線形増加
+3. FCM通知の title/body が「起床時間となりました」固定 → 言語設定 en のユーザーにも日本語通知
+4. アラーム時刻の一致判定が「HH:mm 完全一致」→ cron実行が1分ずれる/スキップされた場合そのアラームは鳴らない
+5. クライアントの `scheduleAlarmNotification`（notifeeローカル通知）とサーバーFCMが**同時刻に二重に通知**を出す設計になっている
+6. alarmDays が空の場合、クライアントは全曜日にスケジュールするがサーバーは送信しない（挙動不整合）
+
+### 解決策（方針）
+- users に timezone を保存し、Functionsでユーザーごとのローカル時刻で判定
+- alarmTime/alarmDays をトップレベルフィールド化 or インデックス対応クエリで絞り込み
+- 通知文言を settings.language で出し分け
+- ローカル通知とFCMの役割を整理（どちらを主にするか決めて片方はフォールバック化）
+- 曜日未選択時の仕様を統一
+
+---
+
+## Problem 27: ペナルティ投稿リトライのバックグラウンド実行がiOSで機能しない (2026-07-04)
+
+### 症状（コード解析で発見）
+- `penaltyRetryService.ts` は expo-background-fetch でリトライタスクを登録するが、
+  `app.config.ts` の `UIBackgroundModes` は `['remote-notification', 'audio']` のみで **`fetch` がない**
+- また expo-background-fetch は SDK 53以降非推奨（expo-background-task へ移行推奨）
+
+### 影響 [重大度: 中]
+- 投稿失敗時のリトライはアプリがフォアグラウンドに戻らない限り実行されない
+
+### 解決策
+- Problem 20 でサーバー一本化するならリトライ機構ごと削除
+- クライアント投稿を残すなら UIBackgroundModes に fetch を追加し、expo-background-task へ移行
+
+---
+
+## Problem 28: ユーザードキュメント作成スキーマが型定義・別実装と不一致 (2026-07-04)
+
+### 症状（コード解析で発見)
+- 実際に使われるのは `authService.createOrUpdateUserProfile()` だが、作成されるドキュメントは
+  `UserDocument` 型・`userService.createUserDocument()`（こちらは未使用）と乖離:
+  - settings に `setupCompleted` がない / `calibration` ではなく `calibrationData` を作る
+  - stats に `monthlySquats` がない
+  - `subscription` フィールドがない
+  - snsConnections.x に `refreshToken` / `username` がない
+
+### 影響 [重大度: 中]
+- `userDoc.data() as UserDocument` のキャストが実データと不一致（?? で救われているが潜在バグ源）
+- ドキュメント作成ロジックが2箇所にあり、今後のフィールド追加で必ずズレる
+
+### 解決策
+- 作成処理を `userService.createUserDocument`（defaultUserSettings等を使用）に一本化し、authService から呼び出す
+
+---
+
+## Problem 29: アカウント削除が不完全（サブコレクション残存・再認証未対応）(2026-07-04)
+
+### 症状（コード解析で発見）
+- `authService.deleteAccount()` は users/{uid} を deleteDoc するだけ
+  - **users/{uid}/history サブコレクションは削除されない**（Firestoreの仕様）
+  - alarmHistory / penaltyPosts コレクション内の該当ユーザーデータも残る
+- `currentUser.delete()` はログインから時間が経つと `auth/requires-recent-login` で失敗する（ハンドリングなし）
+
+### 影響 [重大度: 中] 個人データが残存（プライバシーポリシーとの不整合）、削除操作が失敗し得る
+
+### 解決策
+- Cloud Function（onCall）でサブコレクション含む一括削除を実装
+- requires-recent-login 時は再ログインを促すフローを追加
+
+---
+
+## Problem 30: 未使用コード・到達不能UIの残存 (2026-07-04)
+
+### 発見内容
+| 対象 | 状態 |
+|------|------|
+| `src/components/modals/AlarmSettingModal.tsx` | どこからも未使用（AlarmSettingScreenが使われている） |
+| `src/components/modals/AudioSettingModal.tsx` | HomeScreenに組み込まれているが表示トリガーが存在せず到達不能。**CLAUDE.mdルール6（音源選択UIを実装しない）に反するUI** |
+| `src/services/storageService.ts` | AudioSettingModal専用（音源アップロード用）で実質未使用 |
+| `src/hooks/useAlarm.ts` | 未使用 |
+| `src/hooks/useOffline.ts` | 未使用 |
+| `notificationService.scheduleOneTimeAlarm` 等 | 未使用エクスポート |
+
+### 対応
+- リファクタリングで削除（2026-07-04 実施）
+
+---
+
+## Problem 31: X clientSecret がアプリバンドルに埋め込まれる (2026-07-04)
+
+### 症状
+- `app.config.ts` extra.x.clientSecret に `X_CLIENT_SECRET` を注入しており、ビルド成果物から抽出可能
+- PKCEパブリッククライアントでは clientSecret は不要だが、`xAuthService.getXCredentials()` が未設定時に throw するため、環境変数がないと X連携自体が壊れる
+
+### 解決策
+- clientSecret を app.config.ts / xAuthService / .env.example から除去（PKCEのみで動作させる）
+
+---
+
+## Problem 32: FCMバックグラウンドメッセージハンドラが「一時的に」無効化されたまま (2026-07-04)
+
+### 症状
+- `index.ts` で `setBackgroundMessageHandler()` が「TEMPORARILY DISABLED for debugging」のままコメントアウト放置
+
+### 影響 [重大度: 低] data-onlyメッセージのバックグラウンド処理が行われない（現状の通知はAPNs表示のみで成立しているため実害は小さいが、意図が不明瞭）
+
+### 解決策
+- 恒久方針を決定（不要なら関連コードごと削除、必要なら再有効化して動作確認）
+
+---
+
+## Problem 33: メニューに「アラーム設定」項目がない（仕様差異）(2026-07-04)
+
+### 症状
+- 仕様: 「右上のメニューから『アラーム設定』という項目をタップしアラーム時間を設定」
+- 実装: MenuDrawer の項目は キャリブレーション/SNS連携/言語/アカウント/ログアウト/退会 のみ。アラーム変更はホームのAlarmCardのボタンからのみ可能
+
+### 解決策
+- MenuDrawer に alarmSetting 項目を追加し、既存の AlarmSettingScreen を開く（既存デザイン踏襲）
+
+---
+
+## Problem 34: WeeklySummaryModal のタイトルがハードコード英語 (2026-07-04)
+
+### 症状
+- タイトルが `Weekly Summary` 固定で i18n 未対応（日本語UIでも英語表示）
+
+### 解決策
+- `weekly.title` キーを ja/en に追加して置換
+
+---
+
+## Problem 35: X画像アップロードが旧v1.1 APIでOAuth2トークンと不整合の可能性 (2026-07-04)
+
+### 症状
+- `xAuthService.uploadMedia()` が `upload.twitter.com/1.1/media/upload.json` に OAuth2 Bearer（ユーザートークン）で POST している
+- v1.1 media/upload は歴史的に OAuth 1.0a 前提。X API v2 では `POST /2/media/upload` が提供されている
+- 失敗時は画像なしでテキストのみ投稿にフォールバックするため致命ではないが、画像投稿が常に失敗している可能性がある
+
+### 解決策
+- 実機ログで uploadMedia の成否を確認し、失敗する場合は v2 media/upload へ移行（またはProblem 20のサーバー一本化に合わせサーバー側で実装）
+
+---
+
+## Problem 36: console.log が本番コードに293箇所残存 (2026-07-04)
+
+### 症状
+- src/ + App.tsx + index.ts に console.* が293箇所（トークン先頭10文字を出力する箇所もあり）
+
+### 影響 [重大度: 低〜中] 本番でのログ露出（トークン断片・ユーザーID等）、コーディング規約違反
+
+### 解決策
+- `__DEV__` ゲート付きの logger ユーティリティを導入して一括置換、機微情報のログは削除
+
+---
+
+## Problem 37: ESLintが実行不能（v9系に対し設定が旧.eslintrc.jsのまま）(2026-07-04)
+
+### 症状
+- `npx eslint <file>` が「ESLint couldn't find an eslint.config.(js|mjs|cjs) file」で失敗
+- devDependencies は ESLint 9.x だが、設定ファイルが旧形式（.eslintrc.js）のまま
+
+### 影響 [重大度: 低] Lintが一切機能しておらず、未使用変数・no-console等の検出ができない
+
+### 解決策
+- eslint.config.js（Flat Config）へ移行するか、ESLint 8系にダウングレードする

@@ -21,7 +21,6 @@ import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
 import AlarmSettingScreen from '@/screens/AlarmSettingScreen';
 import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
 import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
-import { AudioSettingModal } from '@/components/modals/AudioSettingModal';
 import { SNSConnectionModal } from '@/components/modals/SNSConnectionModal';
 import { WeeklySummaryModal } from '@/components/modals/WeeklySummaryModal';
 import { MenuDrawer, MenuItemId } from '@/components/menu/MenuDrawer';
@@ -53,7 +52,6 @@ const HomeScreen: React.FC = () => {
   // Modal states
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isAlarmSettingVisible, setIsAlarmSettingVisible] = useState(false);
-  const [isAudioModalVisible, setIsAudioModalVisible] = useState(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
@@ -256,18 +254,6 @@ const HomeScreen: React.FC = () => {
     await fetchUserData();
   };
 
-  const handleSaveAudio = async (audioUrl: string | null) => {
-    if (!user?.uid) return;
-    try {
-      await updateUserSettings(user.uid, {
-        customAlarmSound: audioUrl,
-      });
-      await fetchUserData();
-    } catch (error) {
-      console.error('Error saving audio settings:', error);
-    }
-  };
-
   const handleSaveLanguage = async (language: 'ja' | 'en') => {
     if (!user?.uid) return;
     try {
@@ -410,17 +396,6 @@ const HomeScreen: React.FC = () => {
             initialDays={settings?.alarmDays ?? []}
           />
         </View>
-      )}
-
-      {/* Audio Setting Modal */}
-      {user?.uid && (
-        <AudioSettingModal
-          visible={isAudioModalVisible}
-          onClose={() => setIsAudioModalVisible(false)}
-          onSave={handleSaveAudio}
-          currentAudioUrl={settings?.customAlarmSound ?? null}
-          uid={user.uid}
-        />
       )}
 
       {/* Language Setting Modal */}

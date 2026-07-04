@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ユーザードキュメント: 本人のみ読み書き可
+    // （snsConnections.x にXトークンが含まれるため、他ユーザーからのアクセスは厳禁）
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // 起床履歴サブコレクション: 本人のみ読み書き可
+      match /history/{historyId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // 管理者リスト: 自分のUIDに一致するドキュメントのみ読み取り可（管理者判定用クエリを許可）
+    // 書き込みはクライアントから不可（Firebase Consoleからのみ管理）
+    match /adminUsers/{docId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    // alarmHistory / penaltyPosts はサーバー（Admin SDK）専用のためクライアントアクセス禁止
+    // 上記以外のパスも含め、明示的に全拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

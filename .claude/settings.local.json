@@ -67,7 +67,10 @@
       "Bash(npm run deploy:*)",
       "WebFetch(domain:postproxy.dev)",
       "Bash(eas:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npx jest *)",
+      "Bash(npx eslint *)",
+      "Bash(git -C /Users/jime0083/clock-app status --short)"
     ]
   }
 }

@@ -73,17 +73,17 @@ const generateState = async (): Promise<string> => {
 
 /**
  * Get X API credentials from config
+ * PKCE public client: only the client ID is required (no client secret)
  */
-const getXCredentials = (): { clientId: string; clientSecret: string } => {
+const getXCredentials = (): { clientId: string } => {
   const xConfig = Constants.expoConfig?.extra?.x;
 
-  if (!xConfig?.clientId || !xConfig?.clientSecret) {
+  if (!xConfig?.clientId) {
     throw new Error('X API credentials are not configured');
   }
 
   return {
     clientId: xConfig.clientId,
-    clientSecret: xConfig.clientSecret,
   };
 };
 

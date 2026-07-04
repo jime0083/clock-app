@@ -48,7 +48,6 @@ interface ExtendedExpoConfig {
     };
     x: {
       clientId: string | undefined;
-      clientSecret: string | undefined;
     };
   };
 }
@@ -141,7 +140,6 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
     },
     x: {
       clientId: process.env.X_CLIENT_ID,
-      clientSecret: process.env.X_CLIENT_SECRET,
     },
   },
 });

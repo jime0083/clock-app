@@ -9,6 +9,21 @@ const serviceAccount = require("../serviceAccountKey.json");
 // X API configuration from environment
 const xClientId = defineString("X_CLIENT_ID");
 
+// API key for test-only HTTP endpoints (testAlarm / testPenalty)
+const testApiKey = defineString("TEST_API_KEY");
+
+/**
+ * Verify the x-api-key header for test-only endpoints.
+ * Rejects all requests when TEST_API_KEY is not configured.
+ */
+function isAuthorizedTestRequest(req: { headers: Record<string, unknown> }): boolean {
+  const configuredKey = testApiKey.value();
+  if (!configuredKey) {
+    return false;
+  }
+  return req.headers["x-api-key"] === configuredKey;
+}
+
 // Penalty post window: 5 minutes in milliseconds
 const PENALTY_WINDOW_MS = 5 * 60 * 1000;
 
@@ -215,6 +230,11 @@ export const testAlarm = onRequest(
     serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
   },
   async (req, res) => {
+    if (!isAuthorizedTestRequest(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+
     if (req.method !== "POST") {
       res.status(405).send("Method not allowed");
       return;
@@ -528,6 +548,11 @@ export const testPenalty = onRequest(
     serviceAccount: "okiroya-9af3f@appspot.gserviceaccount.com",
   },
   async (req, res) => {
+    if (!isAuthorizedTestRequest(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+
     if (req.method !== "POST") {
       res.status(405).send("Method not allowed");
       return;
