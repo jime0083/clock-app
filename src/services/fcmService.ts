@@ -120,26 +120,6 @@ export const setForegroundMessageHandler = (
 };
 
 /**
- * Set up background message handler
- * NOTE: This must be called outside of React component lifecycle (e.g., in index.ts)
- *
- * For iOS: The notification display and sound are handled by iOS itself
- * based on the APNs payload. This handler is for data processing only.
- */
-export const setBackgroundMessageHandler = (): void => {
-  messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log('Background message received:', remoteMessage);
-
-    // Handle alarm notification - just log, let iOS handle display and sound
-    if (remoteMessage.data?.type === 'alarm') {
-      console.log('Alarm notification received in background');
-      // iOS handles the notification display and sound via APNs payload
-      // We don't need to do anything here for the notification itself
-    }
-  });
-};
-
-/**
  * Get initial notification (when app is opened from notification)
  */
 export const getInitialNotification =

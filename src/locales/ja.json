@@ -9,7 +9,8 @@
     "uploading": "アップロード中...",
     "error": "エラーが発生しました",
     "retry": "再試行",
-    "close": "閉じる"
+    "close": "閉じる",
+    "signInAgain": "再度サインイン"
   },
   "language": {
     "title": "言語を選択してください",
@@ -119,6 +120,7 @@
     "postText": "寝坊しました...\n私は決まった時間に起床することができず平気で寝過ごしてしまう愚かな人間です\n#オキロヤ"
   },
   "weekly": {
+    "title": "先週のふりかえり",
     "summary": "先週は{{successCount}}回起床に成功し{{squatCount}}回スクワットしました"
   },
   "settings": {
@@ -130,6 +132,9 @@
     "account": "アカウント情報",
     "deleteAccount": "退会",
     "deleteAccountConfirm": "本当に退会しますか？この操作は取り消せません。",
+    "reauthRequiredTitle": "再ログインが必要です",
+    "reauthRequiredMessage": "セキュリティのため、退会には再度のログインが必要です。もう一度サインインしてください。",
+    "reauthFailedMessage": "再ログインに失敗しました。もう一度お試しください。",
     "upgrade": "すべての機能をアンロック"
   },
   "calibration": {

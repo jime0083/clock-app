@@ -1,10 +1,10 @@
 import * as admin from "firebase-admin";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onRequest } from "firebase-functions/v2/https";
+import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineString } from "firebase-functions/params";
 
-// Version: 2026-07-04-v11 (Timezone-aware alarms, localized notifications,
-// robust alarm matching, default credentials)
+// Version: 2026-07-05-v12 (Timezone-aware alarms, localized notifications,
+// robust alarm matching, default credentials, deleteUserData callable)
 
 // X API configuration from environment
 const xClientId = defineString("X_CLIENT_ID");
@@ -664,6 +664,47 @@ export const testPenalty = onRequest(
     } catch (error) {
       console.error("Error in testPenalty:", error);
       res.status(500).send("Internal server error");
+    }
+  }
+);
+
+/**
+ * Deletes all Firestore data for the authenticated user (account deletion,
+ * Problem 29). The Firebase Auth account itself is deleted client-side
+ * immediately after this call succeeds.
+ */
+export const deleteUserData = onCall(
+  {
+    region: "asia-northeast1",
+    invoker: "public",
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Authentication required");
+    }
+
+    try {
+      // Deletes the user document and all its subcollections (e.g. history)
+      const userRef = db.collection("users").doc(uid);
+      await db.recursiveDelete(userRef);
+
+      // Delete this user's records in top-level collections
+      const [alarmHistorySnapshot, penaltyPostsSnapshot] = await Promise.all([
+        db.collection("alarmHistory").where("userId", "==", uid).get(),
+        db.collection("penaltyPosts").where("userId", "==", uid).get(),
+      ]);
+
+      const batch = db.batch();
+      alarmHistorySnapshot.docs.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+      penaltyPostsSnapshot.docs.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+      await batch.commit();
+
+      console.log(`User ${uid}: account data deleted`);
+      return { success: true };
+    } catch (error) {
+      console.error(`User ${uid}: Error deleting account data:`, error);
+      throw new HttpsError("internal", "Failed to delete account data");
     }
   }
 );

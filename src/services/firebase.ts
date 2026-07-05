@@ -4,6 +4,7 @@ import { initializeAuth, getAuth, Auth } from 'firebase/auth';
 import { getReactNativePersistence } from '@firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getFunctions, Functions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -34,5 +35,7 @@ if (getApps().length === 0) {
 // Initialize services
 const db: Firestore = getFirestore(app);
 const storage: FirebaseStorage = getStorage(app);
+// Functions are deployed to asia-northeast1 (see functions/src/index.ts)
+const functions: Functions = getFunctions(app, 'asia-northeast1');
 
-export { app, auth, db, storage };
+export { app, auth, db, storage, functions };

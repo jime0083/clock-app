@@ -443,14 +443,57 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
   - 第三者への提供: なし
 - [ ] GitHub Pagesにデプロイ
 
-### Work 4.4: Critical Alert 再申請（HealthKit連携完了後）[申請済み 2026-04-22]
+### Work 4.4: Critical Alert 再申請（HealthKit連携完了後）[却下 2026-07-06]
 **申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
 
 **申請状況**:
 - [x] HealthKit連携実装完了後に申請（2026-04-22）
 - [x] 健康/フィットネスアプリとしてフレーミング
 - [x] 入力内容は `App-Store-Content.txt` 末尾のCritical Alert申請フォーム入力内容を参照
-- [ ] Appleからの承認を待つ
+- [x] **却下確認（2026-07-06）**: 2026-04-22の1回目申請（単純なアラーム申請）と一字一句同じ定型文で却下
+- 原因分析は problem.txt Problem 14「追記（2026-07-06）」参照。提出文面で "alarm notifications" "wake-up time" "ensure the user wakes up" 等、目覚まし用途を明示する語を多用していたことが再却下の一因と推測
+
+### Work 4.6: Critical Alert 3回目の再申請 [ユーザー方針: 実施する]
+**申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
+
+⚠️ **前提の共有（重要）**: 1回目・2回目とも一字一句同一の定型文で却下されており、Appleはこのカテゴリの申請を機械的／方針的に除外している可能性が高いです。以下の改訂文案は「alarm」「wake up」等の目覚まし用途を想起させる語を避け、運動介入としての健康上の必然性を前面に出したものですが、**アプリの実態（毎日決まった時刻に鳴りスクワットを要求する）自体は変わらないため、3回目も却下される可能性が高いことをご了承の上で提出してください**。虚偽の医療的効能を主張する内容にはしていません（Apple Developer Programの規約違反リスクを避けるため）。
+
+**改訂版フォーム入力内容（案）**:
+- 【アプリの種類】: Health & Fitness
+- 【アプリについて説明してください】:
+  ```
+  Wake or Shame (Okiroya) is a health behavior intervention app that combats
+  sedentary lifestyle and irregular sleep-wake rhythms. At a time the user
+  schedules in advance, the app issues a notification that requires the user
+  to complete a set of physical exercises (squats), which are recorded to
+  Apple HealthKit as functional strength training workouts. The scheduled
+  time is user-configured and fixed, functioning as a recurring health
+  checkpoint rather than a general-purpose reminder.
+  ```
+- 【クリティカルアラートとして、どのような種類の通知を送信しますか？】:
+  ```
+  A single daily health-checkpoint notification tied to the user's chosen
+  physical activity schedule. If this notification is silenced, the user
+  misses the scheduled exercise checkpoint entirely for that day, undermining
+  the habit-formation protocol the app is built around.
+  ```
+- 【緊急アラートはどのくらいの頻度で送信されますか？】: Once per day（変更なし）
+- 【この権限が必要な理由と、アプリ内でどのように使用されるかを説明してください】:
+  ```
+  This app's entire function depends on the user reliably receiving a single
+  daily notification at a pre-scheduled time and responding with physical
+  activity. Unlike general reminder apps, a missed notification here cannot
+  be caught up later in the day - the health-checkpoint window is tied to
+  the user's chosen time and is not repeated. We are requesting this
+  entitlement narrowly: exactly one notification per day, only at the
+  user's own pre-configured time, never triggered by any other event or
+  third party.
+  ```
+- 上記はあくまで案です。送信前に内容をご確認ください
+
+**手順**:
+- [x] 上記文案で https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/ から再申請（2026-07-06 送信済み・App Type: Healthcare / How frequently: Regularly scheduled で提出）
+- [ ] Appleからの回答を確認し、problem.txt / manual-work.txt に結果を追記（回答には数日〜数週間かかる見込み）
 
 ### Work 4.5: 承認後の対応
 - [ ] Appleからの承認メールを確認
@@ -458,6 +501,7 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [ ] Critical Alertエンタイトルメントが含まれることを確認
 - [ ] Xcodeでプロファイルをダウンロード
 - [ ] Phase 17.12.6（旧タスク）の実装を再開
+- ※ 却下された場合は Phase 25.4 の警告UI実装（選択肢B）に切り替える
 
 ---
 

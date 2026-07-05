@@ -33,13 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testPenalty = exports.checkSquatCompletion = exports.testAlarm = exports.checkAlarms = void 0;
+exports.deleteUserData = exports.testPenalty = exports.checkSquatCompletion = exports.testAlarm = exports.checkAlarms = void 0;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
-// Version: 2026-07-04-v11 (Timezone-aware alarms, localized notifications,
-// robust alarm matching, default credentials)
+// Version: 2026-07-05-v12 (Timezone-aware alarms, localized notifications,
+// robust alarm matching, default credentials, deleteUserData callable)
 // X API configuration from environment
 const xClientId = (0, params_1.defineString)("X_CLIENT_ID");
 // API key for test-only HTTP endpoints (testAlarm / testPenalty)
@@ -568,6 +568,40 @@ exports.testPenalty = (0, https_1.onRequest)({
     catch (error) {
         console.error("Error in testPenalty:", error);
         res.status(500).send("Internal server error");
+    }
+});
+/**
+ * Deletes all Firestore data for the authenticated user (account deletion,
+ * Problem 29). The Firebase Auth account itself is deleted client-side
+ * immediately after this call succeeds.
+ */
+exports.deleteUserData = (0, https_1.onCall)({
+    region: "asia-northeast1",
+    invoker: "public",
+}, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication required");
+    }
+    try {
+        // Deletes the user document and all its subcollections (e.g. history)
+        const userRef = db.collection("users").doc(uid);
+        await db.recursiveDelete(userRef);
+        // Delete this user's records in top-level collections
+        const [alarmHistorySnapshot, penaltyPostsSnapshot] = await Promise.all([
+            db.collection("alarmHistory").where("userId", "==", uid).get(),
+            db.collection("penaltyPosts").where("userId", "==", uid).get(),
+        ]);
+        const batch = db.batch();
+        alarmHistorySnapshot.docs.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+        penaltyPostsSnapshot.docs.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+        await batch.commit();
+        console.log(`User ${uid}: account data deleted`);
+        return { success: true };
+    }
+    catch (error) {
+        console.error(`User ${uid}: Error deleting account data:`, error);
+        throw new https_1.HttpsError("internal", "Failed to delete account data");
     }
 });
 //# sourceMappingURL=index.js.map

@@ -27,6 +27,9 @@ import CalibrationScreen from '@/screens/CalibrationScreen';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { SquatDetectionConfig } from '@/services/accelerometerService';
 import { signOut, deleteAccount } from '@/services/authService';
+import { auth } from '@/services/firebase';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { useAppleAuth } from '@/hooks/useAppleAuth';
 import {
   shouldShowWeeklySummary,
   getWeeklySummary,
@@ -50,6 +53,16 @@ const HomeScreen: React.FC = () => {
   const [isCalibrationVisible, setIsCalibrationVisible] = useState(false);
   const [isSNSModalVisible, setIsSNSModalVisible] = useState(false);
   const [isWeeklySummaryVisible, setIsWeeklySummaryVisible] = useState(false);
+  // Re-authentication (used only when account deletion hits 'auth/requires-recent-login')
+  const { signIn: reauthWithGoogle } = useGoogleAuth(
+    () => {},
+    (error) => console.error('Re-auth (Google) error:', error)
+  );
+  const { signIn: reauthWithApple } = useAppleAuth(
+    () => {},
+    (error) => console.error('Re-auth (Apple) error:', error)
+  );
+
   const [weeklySummaryData, setWeeklySummaryData] = useState<{
     successCount: number;
     squatCount: number;
@@ -155,6 +168,9 @@ const HomeScreen: React.FC = () => {
     // Small delay to allow menu close animation
     setTimeout(() => {
       switch (itemId) {
+        case 'alarmSetting':
+          setIsAlarmSettingVisible(true);
+          break;
         case 'squatCalibration':
           setIsCalibrationVisible(true);
           break;
@@ -229,6 +245,34 @@ const HomeScreen: React.FC = () => {
     try {
       await deleteAccount(user.uid);
     } catch (error) {
+      // Session is stale (e.g. signed in a while ago) — the Firestore data
+      // has already been deleted by this point (Problem 29). Prompt the
+      // user to sign in again, then retry so the Auth account is removed too.
+      const errorCode = (error as { code?: string })?.code;
+      if (errorCode === 'auth/requires-recent-login') {
+        Alert.alert(t('settings.reauthRequiredTitle'), t('settings.reauthRequiredMessage'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.signInAgain'),
+            onPress: async () => {
+              try {
+                const providerId = auth.currentUser?.providerData[0]?.providerId;
+                if (providerId === 'apple.com') {
+                  await reauthWithApple();
+                } else {
+                  await reauthWithGoogle();
+                }
+                await deleteAccount(user.uid);
+                setIsDeleteAccountModalVisible(false);
+              } catch (retryError) {
+                console.error('Error re-authenticating for account deletion:', retryError);
+                Alert.alert(t('common.error'), t('settings.reauthFailedMessage'));
+              }
+            },
+          },
+        ]);
+        return;
+      }
       console.error('Error deleting account:', error);
       throw error;
     }

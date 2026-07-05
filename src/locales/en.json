@@ -9,7 +9,8 @@
     "uploading": "Uploading...",
     "error": "An error occurred",
     "retry": "Retry",
-    "close": "Close"
+    "close": "Close",
+    "signInAgain": "Sign In Again"
   },
   "language": {
     "title": "言語を選択してください",
@@ -119,6 +120,7 @@
     "postText": "I overslept...\nI am a foolish person who cannot wake up on time and easily oversleeps.\n#WakeOrShame"
   },
   "weekly": {
+    "title": "Weekly Summary",
     "summary": "Last week you woke up successfully {{successCount}} times and did {{squatCount}} squats"
   },
   "settings": {
@@ -130,6 +132,9 @@
     "account": "Account Info",
     "deleteAccount": "Delete Account",
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone.",
+    "reauthRequiredTitle": "Sign In Again Required",
+    "reauthRequiredMessage": "For security, please sign in again to delete your account.",
+    "reauthFailedMessage": "Re-authentication failed. Please try again.",
     "upgrade": "Unlock all features"
   },
   "calibration": {

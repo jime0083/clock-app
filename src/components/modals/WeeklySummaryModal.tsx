@@ -72,7 +72,7 @@ export const WeeklySummaryModal: React.FC<WeeklySummaryModalProps> = ({
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>Weekly Summary</Text>
+            <Text style={styles.title}>{t('weekly.title')}</Text>
 
             {/* Summary Message */}
             <Text style={styles.summaryText}>

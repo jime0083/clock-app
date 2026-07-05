@@ -609,40 +609,42 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ## Phase 24: データモデル統一・アカウント削除対応（Problem 28, 29）
 
 ### 24.1 ユーザードキュメント作成の一本化（Problem 28）
-- [ ] src/services/authService.ts: `createOrUpdateUserProfile` の新規作成分岐を `userService.createUserDocument()` 呼び出しに置換（profile 情報を引数で渡す）
-- [ ] 既存ユーザーの欠損フィールド（settings.setupCompleted / stats.monthlySquats / subscription 等)を初回読み込み時に補完するマイグレーション処理を getUserDocument 呼び出し側 or createOrUpdateUserProfile の update 分岐に追加
-- [ ] `calibrationData`（旧フィールド）の残骸があれば削除
-- [ ] 型チェック（npx tsc --noEmit）
+- [x] src/services/authService.ts: `createOrUpdateUserProfile` の新規作成分岐を `userService.createUserDocument()` 呼び出しに置換（profile 情報を引数で渡す）（2026-07-05）
+- [x] 既存ユーザーの欠損フィールド（settings.setupCompleted / settings.timezone / settings.calibration / stats.monthlySquats / subscription / snsConnections.x.refreshToken,username 等）を補完する `userService.migrateUserDocumentFields()` を追加し、`createOrUpdateUserProfile` の update 分岐（サインインの都度）から呼び出し（2026-07-05）
+- [x] `calibrationData`（旧フィールド）の残骸は migrateUserDocumentFields 内で `deleteField()` により削除（2026-07-05）
+- [x] 型チェック（npx tsc --noEmit）: アプリ・functions ともに成功（2026-07-05）
 
 ### 24.2 アカウント削除の完全化（Problem 29）
-- [ ] functions/src/index.ts: onCall 関数 `deleteUserData` を追加（認証必須・本人のみ）
-  - users/{uid}/history サブコレクションを一括削除（admin.firestore().recursiveDelete を使用）
-  - users/{uid} 本体、alarmHistory / penaltyPosts の該当ユーザードキュメントを削除
-- [ ] src/services/authService.ts: deleteAccount を deleteUserData 呼び出し→ auth削除 の順に変更
-- [ ] `auth/requires-recent-login` エラー時: 再ログインを促すアラートを表示し、再ログイン後に削除を再実行するフローを DeleteAccountModal に追加
-- [ ] Functions デプロイ（手動: Work 6.1）
+- [x] functions/src/index.ts: onCall 関数 `deleteUserData` を追加（認証必須・request.auth.uid のみ・本人以外は unauthenticated エラー）（2026-07-05）
+  - users/{uid} を `db.recursiveDelete()` で削除（history サブコレクション含む）
+  - alarmHistory / penaltyPosts を userId で検索し該当ドキュメントを削除
+- [x] src/services/authService.ts: deleteAccount を httpsCallable(`deleteUserData`) 呼び出し→ auth削除 の順に変更（2026-07-05）
+- [x] `auth/requires-recent-login` エラー時: HomeScreen.handleDeleteAccount でエラーコードを判定しAlertで再ログインを促し、Google/Appleいずれかで再サインイン後に削除を再実行（DeleteAccountModal自体は変更せず、HomeScreen側のフローで対応）（2026-07-05）
+- [x] Functions デプロイ完了（2026-07-05・5関数更新/1関数新規作成 成功）
 
 ---
 
 ## Phase 25: 仕様未達・小規模修正（Problem 32, 33, 34）
 
 ### 25.1 メニューに「アラーム設定」を追加（Problem 33）
-- [ ] src/components/menu/MenuDrawer.tsx: MenuItemId に 'alarmSetting' を追加し、settings セクションの先頭に項目追加（icon: 'alarm-outline', labelKey: 'settings.alarmSetting'）
-- [ ] src/locales/ja.json / en.json: settings.alarmSetting（"アラーム設定" / "Alarm Settings"）を追加
-- [ ] src/screens/HomeScreen.tsx: handleMenuItemPress に 'alarmSetting' → setIsAlarmSettingVisible(true) を追加
+- [x] src/components/menu/MenuDrawer.tsx: MenuItemId に 'alarmSetting' を追加し、settings セクションの先頭に項目追加（icon: 'alarm-outline', labelKey: 'settings.alarmSettings' ※既存キーを再利用）（2026-07-06）
+- [x] labelKeyは既存の settings.alarmSettings（"アラーム設定" / "Alarm Settings"）を再利用（未使用の重複キーだったため新規追加は不要と判断）（2026-07-06）
+- [x] src/screens/HomeScreen.tsx: handleMenuItemPress に 'alarmSetting' → setIsAlarmSettingVisible(true) を追加（2026-07-06）
 - ※ 既存デザイン・既存画面（AlarmSettingScreen）をそのまま使用し、新規デザインは作らない
 
 ### 25.2 WeeklySummaryModal の i18n 対応（Problem 34）
-- [ ] ja.json / en.json に weekly.title（"先週のふりかえり" / "Weekly Summary"）を追加
-- [ ] WeeklySummaryModal.tsx のハードコード "Weekly Summary" を t('weekly.title') に置換
+- [x] ja.json / en.json に weekly.title（"先週のふりかえり" / "Weekly Summary"）を追加（2026-07-06）
+- [x] WeeklySummaryModal.tsx のハードコード "Weekly Summary" を t('weekly.title') に置換（2026-07-06）
 
 ### 25.3 FCMバックグラウンドハンドラの方針決定（Problem 32）
-- [ ] index.ts のコメントアウトされた setBackgroundMessageHandler を削除 or 再有効化（ユーザーに確認。現状APNs表示で成立しているため削除推奨）
-- [ ] 削除する場合は fcmService.ts の setBackgroundMessageHandler 関数も削除
+- [x] index.ts のコメントアウトされた setBackgroundMessageHandler 呼び出しを削除（ユーザー承認: 削除・2026-07-06）
+- [x] fcmService.ts の setBackgroundMessageHandler 関数（ログ出力のみで実質何もしていなかった）も削除（2026-07-06）
+- [x] 型チェック（npx tsc --noEmit）成功（2026-07-06）
 
 ### 25.4 サイレントモード注意喚起（Problem 14 選択肢Bの未実装分）
-- [ ] Critical Alert 再申請の結果確認（手動: Work 4.4）
-- [ ] 却下または未承認のままリリースする場合: ホーム画面表示時にサイレントスイッチ注意のアラート（初回のみ / AsyncStorage でフラグ管理）を表示するタスクを実施するか、ユーザーに確認
+- [x] Critical Alert 再申請の結果確認（手動: Work 4.4）→ 2026-07-06 却下確認済み（1回目と一字一句同じ定型文）
+- [ ] **保留（ユーザー方針: 3回目の再申請を試みる）**: 却下理由が「alarm/wake-up」表現に起因する可能性が高いため、申請文面を医療的必然性寄りに再構成した改訂版をmanual-work.txt Work 4.6として追加。ユーザーがApple再申請フォームに提出後、結果を確認してから警告UI実装の要否を判断する
+- [ ] 3回目も却下された場合: ホーム画面表示時にサイレントスイッチ注意のアラート（初回のみ / AsyncStorage でフラグ管理）を実装（選択肢B）
 
 ---
 

@@ -10,14 +10,15 @@ import {
   doc,
   getDoc,
   setDoc,
-  deleteDoc,
   collection,
   query,
   where,
   getDocs,
 } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from './firebase';
 import { AppUser } from '@/types/auth';
+import { createUserDocument, migrateUserDocumentFields } from './userService';
 
 // Check if user is admin
 export const checkIsAdmin = async (uid: string): Promise<boolean> => {
@@ -51,34 +52,11 @@ export const createOrUpdateUserProfile = async (user: AppUser): Promise<void> =>
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
-      // Create new user profile
-      await setDoc(userRef, {
-        profile: {
-          createdAt: new Date(),
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        },
-        settings: {
-          alarmTime: null,
-          alarmDays: [],
-          customAlarmSound: null,
-          calibrationData: null,
-          language: 'ja',
-        },
-        snsConnections: {
-          x: {
-            connected: false,
-            accessToken: null,
-            connectedAt: null,
-          },
-        },
-        stats: {
-          totalFailures: 0,
-          monthlyFailures: 0,
-          currentMonth: new Date().toISOString().slice(0, 7),
-          totalSquats: 0,
-        },
+      // Create new user profile using the canonical document shape (Problem 28)
+      await createUserDocument(user.uid, {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
       });
     } else {
       // Update existing profile
@@ -93,6 +71,8 @@ export const createOrUpdateUserProfile = async (user: AppUser): Promise<void> =>
         },
         { merge: true }
       );
+      // Backfill any fields missing from older document shapes (Problem 28)
+      await migrateUserDocumentFields(user.uid, userDoc.data() as Record<string, unknown>);
     }
   } catch (error) {
     console.error('Error creating/updating user profile:', error);
@@ -156,11 +136,14 @@ export const subscribeToAuthState = (
 // Delete user account and all associated data
 export const deleteAccount = async (uid: string): Promise<void> => {
   try {
-    // Delete user document from Firestore
-    const userRef = doc(db, 'users', uid);
-    await deleteDoc(userRef);
+    // Delete all Firestore data (user document + subcollections + related
+    // records in alarmHistory/penaltyPosts) via the deleteUserData Cloud
+    // Function, which uses admin.firestore().recursiveDelete (Problem 29)
+    const deleteUserData = httpsCallable(functions, 'deleteUserData');
+    await deleteUserData();
 
-    // Delete the Firebase Auth user
+    // Delete the Firebase Auth user. This can throw 'auth/requires-recent-login'
+    // if the session is stale; the Firestore data above is already gone by then.
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.uid === uid) {
       await currentUser.delete();

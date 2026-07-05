@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 export type MenuItemId =
+  | 'alarmSetting'
   | 'squatCalibration'
   | 'snsConnection'
   | 'language'
@@ -36,6 +37,12 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
+  {
+    id: 'alarmSetting',
+    labelKey: 'settings.alarmSettings',
+    icon: 'alarm-outline',
+    section: 'settings',
+  },
   {
     id: 'squatCalibration',
     labelKey: 'settings.squatCalibration',

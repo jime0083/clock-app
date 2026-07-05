@@ -809,6 +809,36 @@ Our app enforces health usage by:
 - [Apple Developer Forums: Critical Alerts entitlement](https://developer.apple.com/forums/thread/690030)
 - [X (Twitter) API Pricing 2026](https://postproxy.dev/blog/x-api-pricing-2026/)
 
+### 追記（2026-07-06）: 2回目の再申請も却下
+
+**申請内容**: Work 4.4（2026-04-22申請、HealthKit連携完了を根拠に「健康アプリ」としてフレーミング。App Type: Healthcare を選択し、squatを"functional strength training"としてHealthKitに記録している旨を説明）
+
+**却下結果（2026-07-06確認）**: 1回目（2026-04-22、単純なアラーム申請）と**一字一句同一の定型文**で却下。
+```
+Thank you for your interest in the Critical Alerts API. Unfortunately, this API is
+not designed for the use you've identified.
+
+Because Critical Alerts are disruptive, they are meant to be used for a very
+restricted number of purposes. This include medical- and health-related
+notifications, home- and security-related notifications, and public safety
+notifications.
+
+Apps that can't enforce that usage are not likely candidates for this API.
+```
+
+**根本原因の再分析**:
+- 申請フォームの「App Type」で"Healthcare"を選んでも、実際の却下文面は変化しなかった → Appleのレビューは選択したカテゴリより、自由記述欄の内容（またはbundle ID・アプリの実態）を見ている可能性が高い
+- 提出した自由記述（App-Store-Content.txt L196, L199, L206-214）を確認したところ、"alarm notifications"「wake-up time」「ensure the user wakes up」等、**目覚まし用途であることを明示する表現を多用**していた
+  - 例: 「What type of notifications will you send as Critical Alerts?」への回答が "Alarm notifications that require immediate user action... ensure the user wakes up, even when the device is in Do Not Disturb mode or Silent mode" → Appleの却下文が名指しする「除外される汎用アラーム用途」に自ら該当する説明になっていた
+- HealthKit連携（運動記録）は説明文の中で副次的な言及に留まり、"why this is a medical necessity"の主張が弱かった
+
+**影響 [重大度: 高]**: このままの文面・アプローチで3回目を申請しても、同じ却下パターンを繰り返す可能性が高い
+
+### 修正計画（3回目の再申請に向けて）
+- Phase 25.4: manual-work.txt に Work 4.6 として、"alarm/wake-up"表現を排除し健康上の必然性を前面に出した改訂版の申請文案を追加する
+- ユーザーが実際にApple Developer申請フォームから提出（手動作業のためAIでは実行不可）
+- 却下 or 承認の結果を確認後、Phase 25.4 の残タスク（警告UI実装 or Work 4.5進行）を再開する
+
 ---
 
 ## Problem 15: HealthKit権限ダイアログが表示されず、ワークアウトが記録されない (2026-04-22) [解決済み 2026-04-22]
@@ -1253,7 +1283,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 28: ユーザードキュメント作成スキーマが型定義・別実装と不一致 (2026-07-04)
+## Problem 28: ユーザードキュメント作成スキーマが型定義・別実装と不一致 (2026-07-04) [解決済み 2026-07-05: createOrUpdateUserProfileの新規作成分岐をuserService.createUserDocument()に一本化。既存ユーザーは毎回のサインイン時にmigrateUserDocumentFields()で欠損フィールドを補完し、旧calibrationDataフィールドはdeleteField()で削除]
 
 ### 症状（コード解析で発見)
 - 実際に使われるのは `authService.createOrUpdateUserProfile()` だが、作成されるドキュメントは
@@ -1272,7 +1302,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 29: アカウント削除が不完全（サブコレクション残存・再認証未対応）(2026-07-04)
+## Problem 29: アカウント削除が不完全（サブコレクション残存・再認証未対応）(2026-07-04) [解決済み 2026-07-05: onCall関数deleteUserDataを追加しデプロイ済み（db.recursiveDeleteでusers/{uid}とhistoryサブコレクションを削除、alarmHistory/penaltyPostsもuserIdで検索して削除）。deleteAccount()をこの関数呼び出し→auth削除の順に変更。requires-recent-loginエラー時はHomeScreenでAlert表示→Google/Apple再サインイン→削除再実行のフローを追加]
 
 ### 症状（コード解析で発見）
 - `authService.deleteAccount()` は users/{uid} を deleteDoc するだけ

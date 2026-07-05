@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteField,
   Timestamp,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -65,6 +66,62 @@ export const createUserDocument = async (
     await setDoc(userRef, userDocument);
   } catch (error) {
     console.error('Error creating user document:', error);
+    throw error;
+  }
+};
+
+/**
+ * Backfill fields missing from older document shapes (Problem 28).
+ * Only fills in fields that are absent so existing values are never overwritten.
+ */
+export const migrateUserDocumentFields = async (
+  uid: string,
+  data: Record<string, unknown>
+): Promise<void> => {
+  try {
+    const updates: Record<string, unknown> = {};
+
+    const settings = (data.settings as Record<string, unknown>) || {};
+    if (settings.setupCompleted === undefined) {
+      updates['settings.setupCompleted'] = defaultUserSettings.setupCompleted;
+    }
+    if (settings.timezone === undefined) {
+      updates['settings.timezone'] = defaultUserSettings.timezone;
+    }
+    if (settings.calibration === undefined) {
+      updates['settings.calibration'] = defaultUserSettings.calibration;
+    }
+    // Legacy field name from the pre-userService document shape
+    if ('calibrationData' in settings) {
+      updates['settings.calibrationData'] = deleteField();
+    }
+
+    const stats = (data.stats as Record<string, unknown>) || {};
+    if (stats.monthlySquats === undefined) {
+      updates['stats.monthlySquats'] = defaultUserStats.monthlySquats;
+    }
+
+    if (data.subscription === undefined) {
+      updates.subscription = defaultSubscriptionStatus;
+    }
+
+    const xConnection =
+      ((data.snsConnections as Record<string, unknown>)?.x as Record<string, unknown>) || {};
+    if (xConnection.refreshToken === undefined) {
+      updates['snsConnections.x.refreshToken'] = null;
+    }
+    if (xConnection.username === undefined) {
+      updates['snsConnections.x.username'] = null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, updates);
+  } catch (error) {
+    console.error('Error migrating user document fields:', error);
     throw error;
   }
 };
