@@ -48,7 +48,9 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<SettingStep>('time');
   const [showTimePicker, setShowTimePicker] = useState(true);
-  const [selectedDays, setSelectedDays] = useState<number[]>(initialDays.length > 0 ? initialDays : [1, 2, 3, 4, 5]);
+  const [selectedDays, setSelectedDays] = useState<number[]>(
+    initialDays.length > 0 ? initialDays : [1, 2, 3, 4, 5]
+  );
 
   const [alarmTime, setAlarmTime] = useState<Date>(() => {
     if (initialTime) {
@@ -83,10 +85,8 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
   };
 
   const toggleDay = (dayKey: number) => {
-    setSelectedDays((prev) =>
-      prev.includes(dayKey)
-        ? prev.filter((d) => d !== dayKey)
-        : [...prev, dayKey]
+    setSelectedDays(prev =>
+      prev.includes(dayKey) ? prev.filter(d => d !== dayKey) : [...prev, dayKey]
     );
   };
 
@@ -155,13 +155,10 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
       <Text style={styles.title}>{t('alarm.selectDays')}</Text>
 
       <View style={styles.daysContainer}>
-        {DAYS_OF_WEEK.map((day) => (
+        {DAYS_OF_WEEK.map(day => (
           <TouchableOpacity
             key={day.key}
-            style={[
-              styles.dayButton,
-              selectedDays.includes(day.key) && styles.dayButtonSelected,
-            ]}
+            style={[styles.dayButton, selectedDays.includes(day.key) && styles.dayButtonSelected]}
             onPress={() => toggleDay(day.key)}
             activeOpacity={0.7}
           >
@@ -204,10 +201,7 @@ const AlarmSettingScreen: React.FC<AlarmSettingScreenProps> = ({
         <Ionicons name="close" size={28} color={Colors.textPrimary} />
       </TouchableOpacity>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {renderCurrentStep()}
       </ScrollView>
     </SafeAreaView>

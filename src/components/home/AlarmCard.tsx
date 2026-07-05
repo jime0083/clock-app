@@ -1,6 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/colors';
 
@@ -28,17 +33,10 @@ export const AlarmCard: React.FC<AlarmCardProps> = ({ alarmTime, onChangeAlarm }
   const displayTime = alarmTime || '--:--';
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(100).duration(600).springify()}
-      style={styles.card}
-    >
+    <Animated.View entering={FadeInDown.delay(100).duration(600).springify()} style={styles.card}>
       <Text style={styles.label}>{t('alarm.currentTime')}</Text>
       <Text style={styles.time}>{displayTime}</Text>
-      <Pressable
-        onPress={onChangeAlarm}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-      >
+      <Pressable onPress={onChangeAlarm} onPressIn={handlePressIn} onPressOut={handlePressOut}>
         <Animated.View style={[styles.button, animatedButtonStyle]}>
           <Text style={styles.buttonText}>{t('alarm.changeAlarm')}</Text>
         </Animated.View>

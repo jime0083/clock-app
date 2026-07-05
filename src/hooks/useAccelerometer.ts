@@ -46,7 +46,7 @@ export const useAccelerometer = (): UseAccelerometerResult => {
 
   const startListening = useCallback(async () => {
     try {
-      await accelerometerService.startListening((data) => {
+      await accelerometerService.startListening(data => {
         setCurrentData(data);
       });
       setIsListening(true);
@@ -118,9 +118,10 @@ export const useCalibration = (): UseCalibrationResult => {
     complete: 0,
   };
 
-  const phaseProgress = calibrationPhase === 'idle' || calibrationPhase === 'complete'
-    ? 0
-    : (currentCount / targetCounts[calibrationPhase]) * 100;
+  const phaseProgress =
+    calibrationPhase === 'idle' || calibrationPhase === 'complete'
+      ? 0
+      : (currentCount / targetCounts[calibrationPhase]) * 100;
 
   const startCalibration = useCallback(async () => {
     // Start accelerometer

@@ -514,10 +514,7 @@ export const displayImmediateNotification = async (
 /**
  * Schedule a success notification (squats completed)
  */
-export const scheduleSuccessNotification = async (
-  title: string,
-  body: string
-): Promise<void> => {
+export const scheduleSuccessNotification = async (title: string, body: string): Promise<void> => {
   await notifee.displayNotification({
     title,
     body,
@@ -536,10 +533,7 @@ export const scheduleSuccessNotification = async (
 /**
  * Schedule a failure notification (squats not completed)
  */
-export const scheduleFailureNotification = async (
-  title: string,
-  body: string
-): Promise<void> => {
+export const scheduleFailureNotification = async (title: string, body: string): Promise<void> => {
   await notifee.displayNotification({
     title,
     body,

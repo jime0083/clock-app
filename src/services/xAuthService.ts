@@ -52,11 +52,9 @@ const generateCodeVerifier = async (): Promise<string> => {
  * Generate code challenge from code verifier using SHA256
  */
 const generateCodeChallenge = async (verifier: string): Promise<string> => {
-  const digest = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    verifier,
-    { encoding: Crypto.CryptoEncoding.BASE64 }
-  );
+  const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, verifier, {
+    encoding: Crypto.CryptoEncoding.BASE64,
+  });
   // Convert to URL-safe base64
   return digest.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
@@ -108,10 +106,7 @@ export const startXAuth = async (): Promise<XAuthResult> => {
     authUrl.searchParams.set('code_challenge_method', 'S256');
 
     // Open browser for authentication
-    const result = await WebBrowser.openAuthSessionAsync(
-      authUrl.toString(),
-      REDIRECT_URI
-    );
+    const result = await WebBrowser.openAuthSessionAsync(authUrl.toString(), REDIRECT_URI);
 
     if (result.type !== 'success') {
       return {

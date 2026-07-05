@@ -5,6 +5,7 @@ import {
   WorkoutActivityType,
 } from '@kingstinct/react-native-healthkit';
 import { Platform } from 'react-native';
+import { logger } from '@/utils/logger';
 
 class HealthKitService {
   private isInitialized = false;
@@ -35,22 +36,22 @@ class HealthKitService {
    */
   async initialize(): Promise<boolean> {
     if (Platform.OS !== 'ios') {
-      console.log('[HealthKit] Not available on this platform');
+      logger.log('[HealthKit] Not available on this platform');
       return false;
     }
 
     if (this.isInitialized) {
-      console.log('[HealthKit] Already initialized');
+      logger.log('[HealthKit] Already initialized');
       return true;
     }
 
     try {
-      console.log('[HealthKit] Starting initialization...');
+      logger.log('[HealthKit] Starting initialization...');
 
       // Check if HealthKit is available
       const available = await isHealthDataAvailable();
       if (!available) {
-        console.log('[HealthKit] HealthKit is not available on this device');
+        logger.log('[HealthKit] HealthKit is not available on this device');
         return false;
       }
 
@@ -60,7 +61,7 @@ class HealthKitService {
         toRead: ['HKWorkoutTypeIdentifier'],
       });
 
-      console.log('[HealthKit] Successfully initialized and authorized');
+      logger.log('[HealthKit] Successfully initialized and authorized');
       this.isInitialized = true;
       this.isAvailable = true;
       return true;
@@ -85,16 +86,12 @@ class HealthKitService {
    * @param squatCount - Number of squats completed
    * @returns Promise<boolean> - true if save succeeded
    */
-  async saveSquatWorkout(
-    startDate: Date,
-    endDate: Date,
-    squatCount: number
-  ): Promise<boolean> {
+  async saveSquatWorkout(startDate: Date, endDate: Date, squatCount: number): Promise<boolean> {
     if (!this.isReady()) {
-      console.log('[HealthKit] Not ready, attempting to initialize...');
+      logger.log('[HealthKit] Not ready, attempting to initialize...');
       const initialized = await this.initialize();
       if (!initialized) {
-        console.log('[HealthKit] Failed to initialize, skipping workout save');
+        logger.log('[HealthKit] Failed to initialize, skipping workout save');
         return false;
       }
     }
@@ -117,7 +114,7 @@ class HealthKitService {
         }
       );
 
-      console.log('[HealthKit] Successfully saved squat workout:', {
+      logger.log('[HealthKit] Successfully saved squat workout:', {
         squatCount,
         durationMinutes,
         workoutId: result?.uuid,

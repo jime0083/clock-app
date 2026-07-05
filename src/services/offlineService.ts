@@ -126,7 +126,9 @@ export const clearCachedUserData = async (): Promise<void> => {
 /**
  * Add pending operation
  */
-const addPendingOperation = async (operation: Omit<PendingOperation, 'id' | 'createdAt'>): Promise<void> => {
+const addPendingOperation = async (
+  operation: Omit<PendingOperation, 'id' | 'createdAt'>
+): Promise<void> => {
   try {
     const pending = await getPendingOperations();
     const newOp: PendingOperation = {

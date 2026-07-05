@@ -221,10 +221,7 @@ export const getUserStats = async (uid: string): Promise<UserStats | null> => {
   }
 };
 
-export const updateUserStats = async (
-  uid: string,
-  stats: Partial<UserStats>
-): Promise<void> => {
+export const updateUserStats = async (uid: string, stats: Partial<UserStats>): Promise<void> => {
   try {
     const userRef = doc(db, 'users', uid);
     const updates: Record<string, unknown> = {};
@@ -284,8 +281,7 @@ export const incrementFailureCount = async (uid: string): Promise<void> => {
     const stats = userDoc.stats;
 
     // Reset monthly stats if month changed
-    const newMonthlyFailures =
-      stats.currentMonth === currentMonth ? stats.monthlyFailures + 1 : 1;
+    const newMonthlyFailures = stats.currentMonth === currentMonth ? stats.monthlyFailures + 1 : 1;
 
     await updateUserStats(uid, {
       totalFailures: stats.totalFailures + 1,
@@ -364,9 +360,7 @@ export const disconnectX = async (uid: string): Promise<void> => {
 
 // ===== Subscription =====
 
-export const getSubscriptionStatus = async (
-  uid: string
-): Promise<SubscriptionStatus | null> => {
+export const getSubscriptionStatus = async (uid: string): Promise<SubscriptionStatus | null> => {
   try {
     const userDoc = await getUserDocument(uid);
     return userDoc?.subscription || null;

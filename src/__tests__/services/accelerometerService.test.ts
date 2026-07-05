@@ -6,10 +6,7 @@
  * fail to detect a valid squat.
  */
 
-import {
-  AccelerometerData,
-  SquatDetectionConfig,
-} from '../../services/accelerometerService';
+import { AccelerometerData, SquatDetectionConfig } from '../../services/accelerometerService';
 
 // Create a testable class that exposes private methods for testing
 class TestableAccelerometerService {
@@ -68,10 +65,7 @@ class TestableAccelerometerService {
       const duration = now - this.squatStartTime;
 
       if (deviation < this.config.peakThreshold * 0.5) {
-        if (
-          duration >= this.config.minSquatDuration &&
-          duration <= this.config.maxSquatDuration
-        ) {
+        if (duration >= this.config.minSquatDuration && duration <= this.config.maxSquatDuration) {
           this.lastSquatTime = now;
           this.detectedSquats++;
           if (this.squatCallback) {

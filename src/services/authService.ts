@@ -6,15 +6,7 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from './firebase';
 import { AppUser } from '@/types/auth';
@@ -98,10 +90,7 @@ export const signInWithGoogle = async (idToken: string): Promise<AppUser> => {
 };
 
 // Sign in with Apple credential using Firebase JS SDK
-export const signInWithApple = async (
-  identityToken: string,
-  nonce: string
-): Promise<AppUser> => {
+export const signInWithApple = async (identityToken: string, nonce: string): Promise<AppUser> => {
   // Create an Apple credential with the token
   const provider = new OAuthProvider('apple.com');
   const appleCredential = provider.credential({
@@ -127,9 +116,7 @@ export const signOut = async (): Promise<void> => {
 };
 
 // Subscribe to auth state changes
-export const subscribeToAuthState = (
-  callback: (user: User | null) => void
-): (() => void) => {
+export const subscribeToAuthState = (callback: (user: User | null) => void): (() => void) => {
   return onAuthStateChanged(auth, callback);
 };
 

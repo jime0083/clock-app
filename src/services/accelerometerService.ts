@@ -202,8 +202,7 @@ class AccelerometerService {
       // Motion has settled (deviation returned to low)
       if (deviation < this.config.peakThreshold * 0.5) {
         // Validate squat duration
-        if (duration >= this.config.minSquatDuration &&
-            duration <= this.config.maxSquatDuration) {
+        if (duration >= this.config.minSquatDuration && duration <= this.config.maxSquatDuration) {
           // SQUAT DETECTED!
           this.lastSquatTime = now;
           if (this.squatCallback) {

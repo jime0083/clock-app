@@ -8,12 +8,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -46,22 +41,14 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
   if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(200)}
           style={styles.backdrop}
         >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={isDeleting ? undefined : onClose}
-          />
+          <Pressable style={StyleSheet.absoluteFill} onPress={isDeleting ? undefined : onClose} />
         </Animated.View>
         <Animated.View
           entering={SlideInDown.springify().damping(20)}
@@ -70,10 +57,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         >
           <View style={styles.handle} />
 
-          <Animated.View
-            entering={FadeIn.delay(100).duration(300)}
-            style={styles.iconContainer}
-          >
+          <Animated.View entering={FadeIn.delay(100).duration(300)} style={styles.iconContainer}>
             <Ionicons name="warning" size={48} color={Colors.error} />
           </Animated.View>
 

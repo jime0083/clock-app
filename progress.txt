@@ -659,16 +659,23 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] HomeScreen.tsx から AudioSettingModal 関連（import / state / handleSaveAudio / レンダリング）を削除
 - [x] 型チェック（npx tsc --noEmit）
 
-### 26.2 ログ・Lint環境の整理（Problem 36, 37・未実施）
-- [ ] ESLint設定を Flat Config（eslint.config.js）へ移行し、npx eslint が実行できる状態にする（Problem 37）
-- [ ] src/utils/logger.ts を新規作成（__DEV__ のときのみ console 出力する log/warn/error ラッパー）
-- [ ] src 配下の console.* を logger に一括置換（error は本番でも残す方針可）
-- [ ] トークン値・ユーザーIDなど機微情報を出力している箇所（secureTokenService の token.substring 等）はログ自体を削除
-- [ ] ESLint に no-console ルールを追加
+### 26.2 ログ・Lint環境の整理（Problem 36, 37）[実施済み 2026-07-06]
+- [x] ESLint設定を Flat Config（eslint.config.js）へ移行し、npx eslint が実行できる状態にした（Problem 37）。旧 .eslintrc.js は削除、package.json に `lint` スクリプトを追加
+  - 移行に伴い devDependencies に `@eslint/js` `globals` を追加
+  - `@typescript-eslint/no-require-imports` は React Native の静的アセット require（画像/音声）と CommonJS設定ファイル（eslint.config.js, jest.config.js等）で多用されるため無効化（コード品質問題ではなくRN/Jestの慣用パターンのため）
+  - jest.setup.js / jest.config.js / __tests__ / __mocks__ には `globals.jest` を追加し `'jest' is not defined` エラーを解消
+  - 旧 .eslintrc.js のルール（no-console: warn以外allow, prettier/prettier: error 等）はそのまま踏襲。ルール強度は変更していない（元々設定されていたが ESLint 9 で読み込めず未実行だっただけ）
+- [x] src/utils/logger.ts を新規作成（__DEV__ のときのみ console.log を出力する log、常時出力の warn/error）
+- [x] App.tsx・src 配下の console.log（53箇所 + App.tsxの数箇所）を logger.log に置換。console.warn / console.error はそのまま維持（元のno-consoleルールで元々許可されていたため方針を踏襲）
+- [x] secureTokenService.ts は Phase 21 で既に削除済み（機微情報ログの心配なし・確認のみ実施）
+- [x] ESLint に no-console ルール（warn/errorのみ許可）を維持
+- [x] 型チェック（npx tsc --noEmit）・ESLint実行、ともに成功
+- 参考: ESLint実行結果は残り75件（20エラー・55警告）。エラーは全て `@typescript-eslint/no-explicit-any`（主にテストファイル）と `prefer-const`（languageSwitch.test.ts）で、console/lint移行とは無関係の既存の型緩さ・テストコードの問題。今回のスコープ外のため未修正（Phase27でのテスト修正時に併せて対応するのが妥当）
 
-### 26.3 大型ファイルの分割（任意・優先度低）
-- [ ] SetupScreen.tsx（911行）: ステップごとのコンポーネント分割（デザイン変更なし）
-- [ ] CalibrationScreen.tsx（651行）: フェーズ表示部の分割（デザイン変更なし）
+### 26.3 大型ファイルの分割（任意・優先度低）[実施済み 2026-07-06]
+- [x] SetupScreen.tsx（911行→393行）: 5ステップ（TimeStep/DaysStep/XConnectStep/CalibrationStep/SubscriptionStep）を `src/screens/setup/` 配下に分割。共有StyleSheetは `setup/styles.ts` に集約（内容は完全に同一、参照のみ変更）。ロジック・状態管理・ハンドラは全てSetupScreen.tsx側にそのまま残し、各ステップコンポーネントは props 経由の表示専用（デザイン変更なし）
+- [x] CalibrationScreen.tsx（651行→200行）: 3フェーズ（IntroPhase/CalibratingPhase/CompletePhase）を `src/screens/calibration/` 配下に分割。共有StyleSheetは `calibration/styles.ts` に集約。アニメーション用SharedValue・useAnimatedStyle・useCalibrationフックの呼び出しはCalibrationScreen.tsxに残し、算出済みのAnimatedStyleをpropsとして渡す方式（デザイン変更なし）
+- [x] 型チェック（npx tsc --noEmit）・ESLint実行、ともに成功（新規のエラーなし。既存の react-hooks/exhaustive-deps 警告は分割前から存在していたものと同一内容）
 
 ---
 

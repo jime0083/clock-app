@@ -99,22 +99,19 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     }
   }, []);
 
-  const purchase = useCallback(
-    async (pkg: PurchasesPackage): Promise<boolean> => {
-      try {
-        const result = await purchasePackage(pkg);
-        if (result.success) {
-          setIsSubscribed(true);
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error('Error purchasing:', error);
-        return false;
+  const purchase = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
+    try {
+      const result = await purchasePackage(pkg);
+      if (result.success) {
+        setIsSubscribed(true);
+        return true;
       }
-    },
-    []
-  );
+      return false;
+    } catch (error) {
+      console.error('Error purchasing:', error);
+      return false;
+    }
+  }, []);
 
   const restore = useCallback(async (): Promise<boolean> => {
     try {

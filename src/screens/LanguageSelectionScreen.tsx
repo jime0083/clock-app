@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { Colors } from '@/constants/colors';
 import { changeLanguage } from '@/locales';
@@ -20,9 +13,7 @@ interface LanguageSelectionScreenProps {
 
 type LanguageOption = 'ja' | 'en';
 
-const LanguageSelectionScreen: React.FC<LanguageSelectionScreenProps> = ({
-  onComplete,
-}) => {
+const LanguageSelectionScreen: React.FC<LanguageSelectionScreenProps> = ({ onComplete }) => {
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption | null>(null);
 
   const handleLanguageSelect = (language: LanguageOption) => {
@@ -102,10 +93,7 @@ const LanguageSelectionScreen: React.FC<LanguageSelectionScreenProps> = ({
 
         {/* Confirm Button */}
         <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            !selectedLanguage && styles.confirmButtonDisabled,
-          ]}
+          style={[styles.confirmButton, !selectedLanguage && styles.confirmButtonDisabled]}
           onPress={handleConfirm}
           disabled={!selectedLanguage}
           activeOpacity={0.8}

@@ -96,7 +96,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateUserSettings, getUserDocument } from '../../services/userService';
 import { UserDocument } from '../../types/firestore';
 
-const mockAsyncStorageSetItem = AsyncStorage.setItem as jest.MockedFunction<typeof AsyncStorage.setItem>;
+const mockAsyncStorageSetItem = AsyncStorage.setItem as jest.MockedFunction<
+  typeof AsyncStorage.setItem
+>;
 const mockUpdateUserSettings = updateUserSettings as jest.MockedFunction<typeof updateUserSettings>;
 const mockGetUserDocument = getUserDocument as jest.MockedFunction<typeof getUserDocument>;
 
@@ -146,7 +148,7 @@ describe('E2E: Language Switch Flow', () => {
     jest.clearAllMocks();
     mockCurrentLanguage = 'ja';
     mockDeviceLanguage = 'ja';
-    Object.keys(mockAsyncStorage).forEach((key) => delete mockAsyncStorage[key]);
+    Object.keys(mockAsyncStorage).forEach(key => delete mockAsyncStorage[key]);
     mockGetUserDocument.mockResolvedValue(mockUserData);
     mockUpdateUserSettings.mockResolvedValue(undefined);
   });

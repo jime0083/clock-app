@@ -1,19 +1,6 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
-  ScrollView,
-  Platform,
-} from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  SlideInRight,
-  SlideOutRight,
-} from 'react-native-reanimated';
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Platform } from 'react-native';
+import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -104,32 +91,20 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   const accountItems = MENU_ITEMS.filter(item => item.section === 'account');
 
   const renderMenuItem = (item: MenuItem, index: number) => (
-    <Animated.View
-      key={item.id}
-      entering={FadeIn.delay(100 + index * 50).duration(300)}
-    >
+    <Animated.View key={item.id} entering={FadeIn.delay(100 + index * 50).duration(300)}>
       <Pressable
         onPress={() => onMenuItemPress(item.id)}
-        style={({ pressed }) => [
-          styles.menuItem,
-          pressed && styles.menuItemPressed,
-        ]}
+        style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
       >
         <Ionicons
           name={item.icon}
           size={22}
           color={item.danger ? Colors.error : Colors.textPrimary}
         />
-        <Text
-          style={[styles.menuItemText, item.danger && styles.menuItemTextDanger]}
-        >
+        <Text style={[styles.menuItemText, item.danger && styles.menuItemTextDanger]}>
           {t(item.labelKey)}
         </Text>
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color={Colors.textTertiary}
-        />
+        <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
       </Pressable>
     </Animated.View>
   );
@@ -137,12 +112,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.container}>
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -173,10 +143,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
 
           {/* User Info */}
           {(userName || userEmail) && (
-            <Animated.View
-              entering={FadeIn.delay(50).duration(300)}
-              style={styles.userInfo}
-            >
+            <Animated.View entering={FadeIn.delay(50).duration(300)} style={styles.userInfo}>
               <View style={styles.avatar}>
                 <Ionicons name="person" size={28} color={Colors.textInverse} />
               </View>

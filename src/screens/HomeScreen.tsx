@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  RefreshControl,
-  Alert,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +31,7 @@ import {
 import { alarmService } from '@/services/alarmService';
 import { healthKitService } from '@/services/healthKitService';
 import { UserDocument } from '@/types/firestore';
+import { logger } from '@/utils/logger';
 
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -56,11 +50,11 @@ const HomeScreen: React.FC = () => {
   // Re-authentication (used only when account deletion hits 'auth/requires-recent-login')
   const { signIn: reauthWithGoogle } = useGoogleAuth(
     () => {},
-    (error) => console.error('Re-auth (Google) error:', error)
+    error => console.error('Re-auth (Google) error:', error)
   );
   const { signIn: reauthWithApple } = useAppleAuth(
     () => {},
-    (error) => console.error('Re-auth (Apple) error:', error)
+    error => console.error('Re-auth (Apple) error:', error)
   );
 
   const [weeklySummaryData, setWeeklySummaryData] = useState<{
@@ -88,9 +82,9 @@ const HomeScreen: React.FC = () => {
       try {
         const initialized = await healthKitService.initialize();
         if (initialized) {
-          console.log('[HomeScreen] HealthKit initialized successfully');
+          logger.log('[HomeScreen] HealthKit initialized successfully');
         } else {
-          console.log('[HomeScreen] HealthKit not available or user declined');
+          logger.log('[HomeScreen] HealthKit not available or user declined');
         }
       } catch (error) {
         console.error('[HomeScreen] Error initializing HealthKit:', error);
@@ -328,10 +322,7 @@ const HomeScreen: React.FC = () => {
           />
         }
       >
-        <AlarmCard
-          alarmTime={settings?.alarmTime ?? null}
-          onChangeAlarm={handleChangeAlarm}
-        />
+        <AlarmCard alarmTime={settings?.alarmTime ?? null} onChangeAlarm={handleChangeAlarm} />
 
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>

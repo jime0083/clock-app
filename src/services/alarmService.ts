@@ -15,6 +15,7 @@ import { getUserDocument, updateUserDocument } from './userService';
 import { db } from './firebase';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import i18n from '@/locales';
+import { logger } from '@/utils/logger';
 
 // Time window for squat screen display (5 minutes in milliseconds)
 const SQUAT_WINDOW_MS = 5 * 60 * 1000;
@@ -138,16 +139,16 @@ class AlarmService {
    * Handle alarm triggered event
    */
   private async handleAlarmTriggered(): Promise<void> {
-    console.log('[Alarm] handleAlarmTriggered called, current state:', this.alarmState);
+    logger.log('[Alarm] handleAlarmTriggered called, current state:', this.alarmState);
 
     const wasAlreadyRinging = this.alarmState === 'ringing';
 
     // Always trigger callback for UI sync, even if already ringing
     if (wasAlreadyRinging) {
-      console.log('[Alarm] Already ringing, but still triggering callback for UI sync');
+      logger.log('[Alarm] Already ringing, but still triggering callback for UI sync');
       // Just trigger callback to ensure UI is updated
       if (this.onAlarmTriggeredCallback) {
-        console.log('[Alarm] Triggering UI callback (sync)');
+        logger.log('[Alarm] Triggering UI callback (sync)');
         this.onAlarmTriggeredCallback();
       }
       return;
@@ -155,7 +156,7 @@ class AlarmService {
 
     this.alarmState = 'ringing';
     this.pendingAlarmFromNotification = true;
-    console.log('[Alarm] State set to ringing');
+    logger.log('[Alarm] State set to ringing');
 
     // Cancel repeat notifications since alarm was acknowledged
     await cancelAlarmRepeatNotifications();
@@ -163,11 +164,11 @@ class AlarmService {
     // Get user settings for custom alarm sound
     let customSound: string | null = null;
     if (this.currentUserId) {
-      console.log('[Alarm] Getting user settings for userId:', this.currentUserId);
+      logger.log('[Alarm] Getting user settings for userId:', this.currentUserId);
       try {
         const userData = await getUserDocument(this.currentUserId);
         customSound = userData?.settings?.customAlarmSound || null;
-        console.log('[Alarm] Custom sound:', customSound);
+        logger.log('[Alarm] Custom sound:', customSound);
       } catch (error) {
         console.error('[Alarm] Error getting user settings:', error);
       }
@@ -176,13 +177,13 @@ class AlarmService {
     }
 
     // Play alarm sound
-    console.log('[Alarm] Playing alarm sound...');
+    logger.log('[Alarm] Playing alarm sound...');
     await audioService.playAlarmSound(customSound, true);
-    console.log('[Alarm] Alarm sound play requested');
+    logger.log('[Alarm] Alarm sound play requested');
 
     // Trigger callback to notify UI
     if (this.onAlarmTriggeredCallback) {
-      console.log('[Alarm] Triggering UI callback');
+      logger.log('[Alarm] Triggering UI callback');
       this.onAlarmTriggeredCallback();
     }
   }
@@ -206,12 +207,7 @@ class AlarmService {
       const title = i18n.t('notification.alarmTitle');
       const body = i18n.t('notification.alarmBody');
 
-      await scheduleAlarmNotification(
-        config.alarmTime,
-        config.alarmDays,
-        title,
-        body
-      );
+      await scheduleAlarmNotification(config.alarmTime, config.alarmDays, title, body);
 
       return true;
     } catch (error) {
@@ -313,7 +309,7 @@ class AlarmService {
    */
   async checkAlarmWindow(): Promise<boolean> {
     if (!this.currentUserId) {
-      console.log('[Alarm] checkAlarmWindow: No userId');
+      logger.log('[Alarm] checkAlarmWindow: No userId');
       return false;
     }
 
@@ -322,7 +318,7 @@ class AlarmService {
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        console.log('[Alarm] checkAlarmWindow: User document not found');
+        logger.log('[Alarm] checkAlarmWindow: User document not found');
         return false;
       }
 
@@ -331,40 +327,42 @@ class AlarmService {
       const squatCompletedAt = userData?.squatCompletedAt;
 
       if (!lastAlarmSentAt) {
-        console.log('[Alarm] checkAlarmWindow: No lastAlarmSentAt');
+        logger.log('[Alarm] checkAlarmWindow: No lastAlarmSentAt');
         return false;
       }
 
       // Convert Firestore Timestamp to milliseconds
-      const alarmTime = lastAlarmSentAt instanceof Timestamp
-        ? lastAlarmSentAt.toMillis()
-        : new Date(lastAlarmSentAt).getTime();
+      const alarmTime =
+        lastAlarmSentAt instanceof Timestamp
+          ? lastAlarmSentAt.toMillis()
+          : new Date(lastAlarmSentAt).getTime();
 
       const now = Date.now();
       const timeSinceAlarm = now - alarmTime;
 
-      console.log('[Alarm] checkAlarmWindow: timeSinceAlarm =', timeSinceAlarm, 'ms');
+      logger.log('[Alarm] checkAlarmWindow: timeSinceAlarm =', timeSinceAlarm, 'ms');
 
       // Check if within 5-minute window
       if (timeSinceAlarm > SQUAT_WINDOW_MS) {
-        console.log('[Alarm] checkAlarmWindow: Outside 5-minute window');
+        logger.log('[Alarm] checkAlarmWindow: Outside 5-minute window');
         return false;
       }
 
       // Check if squats already completed for this alarm
       if (squatCompletedAt) {
-        const completedTime = squatCompletedAt instanceof Timestamp
-          ? squatCompletedAt.toMillis()
-          : new Date(squatCompletedAt).getTime();
+        const completedTime =
+          squatCompletedAt instanceof Timestamp
+            ? squatCompletedAt.toMillis()
+            : new Date(squatCompletedAt).getTime();
 
         // If squats were completed after this alarm was sent, don't show again
         if (completedTime > alarmTime) {
-          console.log('[Alarm] checkAlarmWindow: Squats already completed');
+          logger.log('[Alarm] checkAlarmWindow: Squats already completed');
           return false;
         }
       }
 
-      console.log('[Alarm] checkAlarmWindow: Within window, should show squat screen');
+      logger.log('[Alarm] checkAlarmWindow: Within window, should show squat screen');
       return true;
     } catch (error) {
       console.error('[Alarm] checkAlarmWindow error:', error);
@@ -403,7 +401,7 @@ class AlarmService {
       await updateUserDocument(this.currentUserId, {
         squatCompletedAt: Timestamp.now(),
       });
-      console.log('[Alarm] Squat completion recorded');
+      logger.log('[Alarm] Squat completion recorded');
 
       // Stop the alarm
       await this.stopAlarm();
@@ -426,7 +424,7 @@ class AlarmService {
       await updateUserDocument(this.currentUserId, {
         alarmFailedAt: Timestamp.now(),
       });
-      console.log('[Alarm] Alarm failure recorded');
+      logger.log('[Alarm] Alarm failure recorded');
 
       // Stop the alarm
       await this.stopAlarm();

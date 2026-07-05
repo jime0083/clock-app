@@ -30,6 +30,7 @@ import { audioService } from '@/services/audioService';
 import { recordWakeUpHistoryOfflineAware } from '@/services/offlineService';
 import { healthKitService } from '@/services/healthKitService';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/utils/logger';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -45,19 +46,11 @@ interface SquatMeasureScreenProps {
 
 type ScreenState = 'measuring' | 'success' | 'failure';
 
-const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
-  onComplete,
-  onClose,
-}) => {
+const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({ onComplete, onClose }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const {
-    squatCount,
-    startListening,
-    stopListening,
-    resetSquatCount,
-    isListening,
-  } = useAccelerometer();
+  const { squatCount, startListening, stopListening, resetSquatCount, isListening } =
+    useAccelerometer();
 
   const [screenState, setScreenState] = useState<ScreenState>('measuring');
   const [remainingSeconds, setRemainingSeconds] = useState(TIME_LIMIT_SECONDS);
@@ -90,7 +83,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
 
       // Start countdown timer
       timerRef.current = setInterval(() => {
-        setRemainingSeconds((prev) => {
+        setRemainingSeconds(prev => {
           if (prev <= 1) {
             handleTimeoutRef.current();
             return 0;
@@ -117,10 +110,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
       setIsWarning(true);
       // Start warning pulse animation
       warningPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.1, { duration: 300 }),
-          withTiming(1, { duration: 300 })
-        ),
+        withSequence(withTiming(1.1, { duration: 300 }), withTiming(1, { duration: 300 })),
         -1,
         true
       );
@@ -226,7 +216,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
         TARGET_SQUATS
       );
       if (saved) {
-        console.log('[SquatMeasure] Workout saved to HealthKit');
+        logger.log('[SquatMeasure] Workout saved to HealthKit');
       }
     } catch (error) {
       // HealthKit save failure should not affect user experience
@@ -279,15 +269,9 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
     return (
       <LinearGradient colors={getGradientColors()} style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <Animated.View
-            entering={FadeIn.duration(500)}
-            style={styles.resultContent}
-          >
+          <Animated.View entering={FadeIn.duration(500)} style={styles.resultContent}>
             <Animated.View style={[styles.resultIconContainer, successAnimatedStyle]}>
-              <LinearGradient
-                colors={['#4CAF50', '#66BB6A']}
-                style={styles.resultIconGradient}
-              >
+              <LinearGradient colors={['#4CAF50', '#66BB6A']} style={styles.resultIconGradient}>
                 <Ionicons name="checkmark" size={80} color="#FFFFFF" />
               </LinearGradient>
             </Animated.View>
@@ -316,15 +300,9 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
     return (
       <LinearGradient colors={getGradientColors()} style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <Animated.View
-            entering={FadeIn.duration(500)}
-            style={styles.resultContent}
-          >
+          <Animated.View entering={FadeIn.duration(500)} style={styles.resultContent}>
             <Animated.View style={styles.resultIconContainer}>
-              <LinearGradient
-                colors={['#F44336', '#EF5350']}
-                style={styles.resultIconGradient}
-              >
+              <LinearGradient colors={['#F44336', '#EF5350']} style={styles.resultIconGradient}>
                 <Ionicons name="close" size={80} color="#FFFFFF" />
               </LinearGradient>
             </Animated.View>
@@ -353,9 +331,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
     <LinearGradient colors={getGradientColors()} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {/* Timer */}
-        <Animated.View
-          style={[styles.timerContainer, isWarning && warningAnimatedStyle]}
-        >
+        <Animated.View style={[styles.timerContainer, isWarning && warningAnimatedStyle]}>
           <Text style={[styles.timerLabel, isWarning && styles.timerLabelWarning]}>
             {t('wakeup.timeRemaining')}
           </Text>
@@ -385,20 +361,14 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
             {Array.from({ length: TARGET_SQUATS }).map((_, index) => (
               <View
                 key={index}
-                style={[
-                  styles.progressDot,
-                  index < squatCount && styles.progressDotActive,
-                ]}
+                style={[styles.progressDot, index < squatCount && styles.progressDotActive]}
               />
             ))}
           </View>
         </View>
 
         {/* Phone position guide */}
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(300)}
-          style={styles.guideContainer}
-        >
+        <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.guideContainer}>
           <View style={styles.guideIconContainer}>
             <Ionicons name="phone-portrait-outline" size={32} color="#FFFFFF80" />
           </View>
@@ -407,12 +377,7 @@ const SquatMeasureScreen: React.FC<SquatMeasureScreenProps> = ({
 
         {/* Status indicator */}
         <View style={styles.statusContainer}>
-          <View
-            style={[
-              styles.statusDot,
-              isListening && styles.statusDotActive,
-            ]}
-          />
+          <View style={[styles.statusDot, isListening && styles.statusDotActive]} />
           <Text style={styles.statusText}>
             {isListening ? t('calibration.detecting') : t('common.loading')}
           </Text>

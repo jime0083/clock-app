@@ -1391,7 +1391,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 36: console.log が本番コードに293箇所残存 (2026-07-04)
+## Problem 36: console.log が本番コードに293箇所残存 (2026-07-04) [解決済み 2026-07-06: src/utils/logger.tsを新規作成し、App.tsx・src配下のconsole.log呼び出しをlogger.log（__DEV__ゲート付き）に一括置換。これにより本番ビルドではconsole.logが一切出力されなくなり、トークン断片等のログ露出も本番では発生しない。console.warn/console.errorは元の方針通り維持]
 
 ### 症状
 - src/ + App.tsx + index.ts に console.* が293箇所（トークン先頭10文字を出力する箇所もあり）
@@ -1403,7 +1403,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 37: ESLintが実行不能（v9系に対し設定が旧.eslintrc.jsのまま）(2026-07-04)
+## Problem 37: ESLintが実行不能（v9系に対し設定が旧.eslintrc.jsのまま）(2026-07-04) [解決済み 2026-07-06: eslint.config.js（Flat Config）に移行し.eslintrc.jsを削除。package.jsonに`lint`スクリプトを追加。npx eslint . が正常実行できることを確認済み]
 
 ### 症状
 - `npx eslint <file>` が「ESLint couldn't find an eslint.config.(js|mjs|cjs) file」で失敗

@@ -13,7 +13,9 @@ interface StatCardProps {
 export const StatCard: React.FC<StatCardProps> = ({ value, label, unit, index }) => {
   return (
     <Animated.View
-      entering={FadeInUp.delay(200 + index * 100).duration(500).springify()}
+      entering={FadeInUp.delay(200 + index * 100)
+        .duration(500)
+        .springify()}
       style={styles.card}
     >
       <View style={styles.valueContainer}>

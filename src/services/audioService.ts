@@ -1,8 +1,5 @@
-import {
-  createAudioPlayer,
-  setAudioModeAsync,
-  AudioPlayer,
-} from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
+import { logger } from '@/utils/logger';
 
 // Default alarm sound (bundled with app)
 const DEFAULT_ALARM_SOUND = require('@assets/sounds/アラーム音.m4a');
@@ -33,28 +30,28 @@ class AudioService {
    * @param customSoundUrl - Optional URL to custom alarm sound from Firebase Storage
    * @param loop - Whether to loop the sound
    */
-  async playAlarmSound(
-    customSoundUrl?: string | null,
-    loop = true
-  ): Promise<void> {
-    console.log('[Audio] playAlarmSound called, customSoundUrl:', customSoundUrl, 'loop:', loop);
+  async playAlarmSound(customSoundUrl?: string | null, loop = true): Promise<void> {
+    logger.log('[Audio] playAlarmSound called, customSoundUrl:', customSoundUrl, 'loop:', loop);
 
     try {
       // Stop any existing sound
       await this.stopAlarmSound();
 
       // Initialize audio mode
-      console.log('[Audio] Initializing audio mode...');
+      logger.log('[Audio] Initializing audio mode...');
       await this.initializeAudioMode();
-      console.log('[Audio] Audio mode initialized');
+      logger.log('[Audio] Audio mode initialized');
 
       // Determine sound source
       let soundSource: string | number | null = null;
 
-      if (customSoundUrl && !customSoundUrl.startsWith('file:///var/mobile/Containers/Data/Application')) {
+      if (
+        customSoundUrl &&
+        !customSoundUrl.startsWith('file:///var/mobile/Containers/Data/Application')
+      ) {
         // Use custom sound from URL (skip local cache files that may not exist)
         soundSource = customSoundUrl;
-        console.log('[Audio] Using custom sound URL');
+        logger.log('[Audio] Using custom sound URL');
       } else if (customSoundUrl) {
         // Local cache file - these are temporary and may be deleted
         console.warn('[Audio] Custom sound is a local cache file, using default sound instead');
@@ -62,7 +59,7 @@ class AudioService {
       } else if (DEFAULT_ALARM_SOUND) {
         // Use default bundled sound
         soundSource = DEFAULT_ALARM_SOUND;
-        console.log('[Audio] Using default bundled sound');
+        logger.log('[Audio] Using default bundled sound');
       } else {
         // No sound available
         console.warn('[Audio] No alarm sound available');
@@ -70,18 +67,18 @@ class AudioService {
       }
 
       // Create audio player
-      console.log('[Audio] Creating audio player...');
+      logger.log('[Audio] Creating audio player...');
       this.player = createAudioPlayer(soundSource);
-      console.log('[Audio] Audio player created');
+      logger.log('[Audio] Audio player created');
 
       // Configure player
       this.player.loop = loop;
       this.player.volume = 1.0;
 
       // Start playback
-      console.log('[Audio] Starting playback...');
+      logger.log('[Audio] Starting playback...');
       this.player.play();
-      console.log('[Audio] Playback started successfully');
+      logger.log('[Audio] Playback started successfully');
 
       this.isPlaying = true;
       this.isLooping = loop;

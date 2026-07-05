@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Platform } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -63,12 +56,7 @@ export const LanguageSettingModal: React.FC<LanguageSettingModalProps> = ({
   if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -135,10 +123,7 @@ const LanguageOptionButton: React.FC<LanguageOptionButtonProps> = ({
   };
 
   return (
-    <Animated.View
-      entering={FadeIn.delay(100 + index * 80).duration(300)}
-      style={animatedStyle}
-    >
+    <Animated.View entering={FadeIn.delay(100 + index * 80).duration(300)} style={animatedStyle}>
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -146,23 +131,14 @@ const LanguageOptionButton: React.FC<LanguageOptionButtonProps> = ({
         style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
       >
         <View style={styles.optionContent}>
-          <Text
-            style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}
-          >
+          <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
             {option.label}
           </Text>
-          <Text
-            style={[
-              styles.optionNativeLabel,
-              isSelected && styles.optionNativeLabelSelected,
-            ]}
-          >
+          <Text style={[styles.optionNativeLabel, isSelected && styles.optionNativeLabelSelected]}>
             {option.nativeLabel}
           </Text>
         </View>
-        <View
-          style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}
-        >
+        <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>
           {isSelected && <View style={styles.radioInner} />}
         </View>
       </Pressable>

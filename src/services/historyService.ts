@@ -36,10 +36,7 @@ export const getWakeUpHistory = async (
   }
 };
 
-export const createWakeUpHistory = async (
-  uid: string,
-  history: WakeUpHistory
-): Promise<void> => {
+export const createWakeUpHistory = async (uid: string, history: WakeUpHistory): Promise<void> => {
   try {
     const historyRef = doc(db, 'users', uid, 'history', history.date);
     await setDoc(historyRef, history);

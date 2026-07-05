@@ -2,6 +2,7 @@ import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messag
 import { Platform } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { logger } from '@/utils/logger';
 
 /**
  * Request permission for push notifications
@@ -14,9 +15,9 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     if (enabled) {
-      console.log('Notification permission granted:', authStatus);
+      logger.log('Notification permission granted:', authStatus);
     } else {
-      console.log('Notification permission denied');
+      logger.log('Notification permission denied');
     }
 
     return enabled;
@@ -37,7 +38,7 @@ export const getFCMToken = async (): Promise<string | null> => {
     }
 
     const token = await messaging().getToken();
-    console.log('FCM Token:', token);
+    logger.log('FCM Token:', token);
     return token;
   } catch (error) {
     console.error('Error getting FCM token:', error);
@@ -48,17 +49,14 @@ export const getFCMToken = async (): Promise<string | null> => {
 /**
  * Save FCM token to Firestore user document
  */
-export const saveFCMTokenToFirestore = async (
-  uid: string,
-  token: string
-): Promise<void> => {
+export const saveFCMTokenToFirestore = async (uid: string, token: string): Promise<void> => {
   try {
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, {
       fcmToken: token,
       fcmTokenUpdatedAt: new Date().toISOString(),
     });
-    console.log('FCM token saved to Firestore');
+    logger.log('FCM token saved to Firestore');
   } catch (error) {
     console.error('Error saving FCM token to Firestore:', error);
     throw error;
@@ -69,13 +67,13 @@ export const saveFCMTokenToFirestore = async (
  * Initialize FCM and save token
  */
 export const initializeFCM = async (uid: string): Promise<void> => {
-  console.log('[FCM] Starting FCM initialization for user:', uid);
+  logger.log('[FCM] Starting FCM initialization for user:', uid);
 
   try {
     // Request permission
-    console.log('[FCM] Requesting notification permission...');
+    logger.log('[FCM] Requesting notification permission...');
     const hasPermission = await requestNotificationPermission();
-    console.log('[FCM] Permission result:', hasPermission);
+    logger.log('[FCM] Permission result:', hasPermission);
 
     if (!hasPermission) {
       console.warn('[FCM] Notification permission not granted');
@@ -83,9 +81,9 @@ export const initializeFCM = async (uid: string): Promise<void> => {
     }
 
     // Get token
-    console.log('[FCM] Getting FCM token...');
+    logger.log('[FCM] Getting FCM token...');
     const token = await getFCMToken();
-    console.log('[FCM] Token result:', token ? `${token.substring(0, 20)}...` : 'null');
+    logger.log('[FCM] Token result:', token ? `${token.substring(0, 20)}...` : 'null');
 
     if (!token) {
       console.warn('[FCM] Failed to get FCM token');
@@ -93,13 +91,13 @@ export const initializeFCM = async (uid: string): Promise<void> => {
     }
 
     // Save to Firestore
-    console.log('[FCM] Saving token to Firestore...');
+    logger.log('[FCM] Saving token to Firestore...');
     await saveFCMTokenToFirestore(uid, token);
-    console.log('[FCM] Token saved successfully');
+    logger.log('[FCM] Token saved successfully');
 
     // Listen for token refresh
-    messaging().onTokenRefresh(async (newToken) => {
-      console.log('FCM Token refreshed:', newToken);
+    messaging().onTokenRefresh(async newToken => {
+      logger.log('FCM Token refreshed:', newToken);
       await saveFCMTokenToFirestore(uid, newToken);
     });
   } catch (error) {
@@ -113,8 +111,8 @@ export const initializeFCM = async (uid: string): Promise<void> => {
 export const setForegroundMessageHandler = (
   onMessage: (message: FirebaseMessagingTypes.RemoteMessage) => void
 ): (() => void) => {
-  return messaging().onMessage(async (remoteMessage) => {
-    console.log('Foreground message received:', remoteMessage);
+  return messaging().onMessage(async remoteMessage => {
+    logger.log('Foreground message received:', remoteMessage);
     onMessage(remoteMessage);
   });
 };
@@ -127,7 +125,7 @@ export const getInitialNotification =
     try {
       const remoteMessage = await messaging().getInitialNotification();
       if (remoteMessage) {
-        console.log('App opened from notification:', remoteMessage);
+        logger.log('App opened from notification:', remoteMessage);
       }
       return remoteMessage;
     } catch (error) {
@@ -142,8 +140,8 @@ export const getInitialNotification =
 export const setNotificationOpenedHandler = (
   onNotificationOpened: (message: FirebaseMessagingTypes.RemoteMessage) => void
 ): (() => void) => {
-  return messaging().onNotificationOpenedApp((remoteMessage) => {
-    console.log('Notification opened:', remoteMessage);
+  return messaging().onNotificationOpenedApp(remoteMessage => {
+    logger.log('Notification opened:', remoteMessage);
     onNotificationOpened(remoteMessage);
   });
 };

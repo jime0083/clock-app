@@ -54,11 +54,7 @@ const calculateWeeklyStats = (
 };
 
 // Helper function to create mock WakeUpHistory
-const createMockHistory = (
-  date: string,
-  success: boolean,
-  squatCount: number
-): WakeUpHistory => ({
+const createMockHistory = (date: string, success: boolean, squatCount: number): WakeUpHistory => ({
   date,
   alarmTime: '07:00',
   success,

@@ -38,13 +38,7 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
   onConnectionChange,
 }) => {
   const { t } = useTranslation();
-  const {
-    isConnecting,
-    isDisconnecting,
-    error,
-    connectX,
-    disconnectX,
-  } = useXAuth();
+  const { isConnecting, isDisconnecting, error, connectX, disconnectX } = useXAuth();
 
   const isConnected = currentConnection?.connected ?? false;
   const username = currentConnection?.username;
@@ -58,28 +52,24 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
   };
 
   const handleDisconnect = () => {
-    Alert.alert(
-      t('sns.disconnectConfirm'),
-      t('sns.disconnectConfirmMessage'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
+    Alert.alert(t('sns.disconnectConfirm'), t('sns.disconnectConfirmMessage'), [
+      {
+        text: t('common.cancel'),
+        style: 'cancel',
+      },
+      {
+        text: t('sns.disconnect'),
+        style: 'destructive',
+        onPress: async () => {
+          const connection = currentConnection ?? defaultSNSConnection;
+          const success = await disconnectX(connection);
+          if (success) {
+            onConnectionChange();
+            Alert.alert(t('sns.disconnect'), t('sns.disconnectSuccess'));
+          }
         },
-        {
-          text: t('sns.disconnect'),
-          style: 'destructive',
-          onPress: async () => {
-            const connection = currentConnection ?? defaultSNSConnection;
-            const success = await disconnectX(connection);
-            if (success) {
-              onConnectionChange();
-              Alert.alert(t('sns.disconnect'), t('sns.disconnectSuccess'));
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const isLoading = isConnecting || isDisconnecting;
@@ -87,12 +77,7 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
   if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -119,13 +104,9 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
               <View style={styles.statusInfo}>
                 <Text style={styles.statusLabel}>{t('sns.connectionStatus')}</Text>
                 {isConnected ? (
-                  <Text style={styles.connectedText}>
-                    {t('sns.connectedAs', { username })}
-                  </Text>
+                  <Text style={styles.connectedText}>{t('sns.connectedAs', { username })}</Text>
                 ) : (
-                  <Text style={styles.disconnectedText}>
-                    {t('sns.disconnect')}
-                  </Text>
+                  <Text style={styles.disconnectedText}>{t('sns.disconnect')}</Text>
                 )}
               </View>
               <View
@@ -157,9 +138,7 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
               ) : (
                 <>
                   <Ionicons name="unlink" size={20} color={Colors.error} />
-                  <Text style={styles.disconnectButtonText}>
-                    {t('sns.disconnect')}
-                  </Text>
+                  <Text style={styles.disconnectButtonText}>{t('sns.disconnect')}</Text>
                 </>
               )}
             </Pressable>
@@ -174,9 +153,7 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
               ) : (
                 <>
                   <Text style={styles.xLogoButton}>𝕏</Text>
-                  <Text style={styles.connectButtonText}>
-                    {t('sns.connectX')}
-                  </Text>
+                  <Text style={styles.connectButtonText}>{t('sns.connectX')}</Text>
                 </>
               )}
             </Pressable>

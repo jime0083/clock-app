@@ -7,7 +7,7 @@ const path = require('path');
  * This enables the app to use a custom sound for push notifications
  */
 function withAlarmSound(config) {
-  return withXcodeProject(config, async (config) => {
+  return withXcodeProject(config, async config => {
     const xcodeProject = config.modResults;
     const projectRoot = config.modRequest.projectRoot;
     const platformProjectRoot = config.modRequest.platformProjectRoot;
@@ -50,7 +50,10 @@ function withAlarmSound(config) {
         console.log(`[withAlarmSound] ${soundFileName} already in Xcode project`);
       }
     } catch (error) {
-      console.warn(`[withAlarmSound] Could not add ${soundFileName} to Xcode project:`, error.message);
+      console.warn(
+        `[withAlarmSound] Could not add ${soundFileName} to Xcode project:`,
+        error.message
+      );
       // Continue anyway - file is copied and may work
     }
 

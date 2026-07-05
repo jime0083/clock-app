@@ -9,17 +9,11 @@ interface SNSConnectionCardProps {
   username?: string | null;
 }
 
-export const SNSConnectionCard: React.FC<SNSConnectionCardProps> = ({
-  isConnected,
-  username,
-}) => {
+export const SNSConnectionCard: React.FC<SNSConnectionCardProps> = ({ isConnected, username }) => {
   const { t } = useTranslation();
 
   return (
-    <Animated.View
-      entering={FadeInUp.delay(600).duration(500).springify()}
-      style={styles.card}
-    >
+    <Animated.View entering={FadeInUp.delay(600).duration(500).springify()} style={styles.card}>
       <View style={styles.content}>
         <View>
           <Text style={styles.title}>{t('sns.connectionStatus')}</Text>
