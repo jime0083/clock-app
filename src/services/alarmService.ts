@@ -13,12 +13,10 @@ import {
 import { audioService } from './audioService';
 import { getUserDocument, updateUserDocument } from './userService';
 import { db } from './firebase';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, Timestamp } from 'firebase/firestore';
+import { evaluateAlarmWindow, extractAlarmWindowState } from './alarmWindow';
 import i18n from '@/locales';
 import { logger } from '@/utils/logger';
-
-// Time window for squat screen display (5 minutes in milliseconds)
-const SQUAT_WINDOW_MS = 5 * 60 * 1000;
 
 // Types
 export interface AlarmConfig {
@@ -304,8 +302,10 @@ class AlarmService {
   }
 
   /**
-   * Check if we're within the alarm window (5 minutes from lastAlarmSentAt)
-   * Returns true if squat screen should be shown
+   * Check if we're within the alarm window (5 minutes from the alarm occurrence).
+   * Judged by evaluateAlarmWindow: the alarm schedule itself (primary) plus the
+   * server-recorded lastAlarmSentAt (secondary). Returns true if the squat
+   * screen should be shown.
    */
   async checkAlarmWindow(): Promise<boolean> {
     if (!this.currentUserId) {
@@ -315,55 +315,45 @@ class AlarmService {
 
     try {
       const userDocRef = doc(db, 'users', this.currentUserId);
-      const userDoc = await getDoc(userDocRef);
+      // Read from the server first: the server writes lastAlarmSentAt while the app is
+      // terminated/backgrounded, so the local cache can be stale on icon launch / background
+      // resume, causing this check to miss a live alarm window. Fall back to cache only if
+      // the network read fails (offline), so we still surface the screen when possible.
+      let userDoc;
+      try {
+        userDoc = await getDocFromServer(userDocRef);
+      } catch (serverError) {
+        logger.log(
+          '[Alarm] checkAlarmWindow: server read failed, falling back to cache:',
+          serverError
+        );
+        userDoc = await getDoc(userDocRef);
+      }
 
       if (!userDoc.exists()) {
         logger.log('[Alarm] checkAlarmWindow: User document not found');
         return false;
       }
 
-      const userData = userDoc.data();
-      const lastAlarmSentAt = userData?.lastAlarmSentAt;
-      const squatCompletedAt = userData?.squatCompletedAt;
+      const state = extractAlarmWindowState(userDoc.data());
+      const withinWindow = evaluateAlarmWindow(state, Date.now());
 
-      if (!lastAlarmSentAt) {
-        logger.log('[Alarm] checkAlarmWindow: No lastAlarmSentAt');
-        return false;
-      }
+      logger.log(
+        '[Alarm] checkAlarmWindow: source=',
+        userDoc.metadata?.fromCache ? 'cache' : 'server',
+        'userId=',
+        this.currentUserId,
+        'alarmTime=',
+        state.alarmTime,
+        'hasLastAlarmSentAt=',
+        state.lastAlarmSentAt !== null,
+        'hasSquatCompletedAt=',
+        state.squatCompletedAt !== null,
+        'withinWindow=',
+        withinWindow
+      );
 
-      // Convert Firestore Timestamp to milliseconds
-      const alarmTime =
-        lastAlarmSentAt instanceof Timestamp
-          ? lastAlarmSentAt.toMillis()
-          : new Date(lastAlarmSentAt).getTime();
-
-      const now = Date.now();
-      const timeSinceAlarm = now - alarmTime;
-
-      logger.log('[Alarm] checkAlarmWindow: timeSinceAlarm =', timeSinceAlarm, 'ms');
-
-      // Check if within 5-minute window
-      if (timeSinceAlarm > SQUAT_WINDOW_MS) {
-        logger.log('[Alarm] checkAlarmWindow: Outside 5-minute window');
-        return false;
-      }
-
-      // Check if squats already completed for this alarm
-      if (squatCompletedAt) {
-        const completedTime =
-          squatCompletedAt instanceof Timestamp
-            ? squatCompletedAt.toMillis()
-            : new Date(squatCompletedAt).getTime();
-
-        // If squats were completed after this alarm was sent, don't show again
-        if (completedTime > alarmTime) {
-          logger.log('[Alarm] checkAlarmWindow: Squats already completed');
-          return false;
-        }
-      }
-
-      logger.log('[Alarm] checkAlarmWindow: Within window, should show squat screen');
-      return true;
+      return withinWindow;
     } catch (error) {
       console.error('[Alarm] checkAlarmWindow error:', error);
       return false;

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AlarmCard } from '@/components/home/AlarmCard';
 import { StatCard } from '@/components/home/StatCard';
 import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
@@ -36,6 +37,7 @@ import { logger } from '@/utils/logger';
 const HomeScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const { planType } = useSubscription();
   const [userData, setUserData] = useState<UserDocument | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -173,9 +175,6 @@ const HomeScreen: React.FC = () => {
           break;
         case 'language':
           setIsLanguageModalVisible(true);
-          break;
-        case 'account':
-          // Show user info (already visible in menu)
           break;
         case 'logout':
           handleLogout();
@@ -368,6 +367,7 @@ const HomeScreen: React.FC = () => {
         onMenuItemPress={handleMenuItemPress}
         userEmail={user?.email}
         userName={user?.displayName}
+        planType={planType}
       />
 
       {/* Alarm Setting Screen */}

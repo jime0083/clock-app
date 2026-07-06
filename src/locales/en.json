@@ -123,6 +123,13 @@
     "title": "Weekly Summary",
     "summary": "Last week you woke up successfully {{successCount}} times and did {{squatCount}} squats"
   },
+  "plan": {
+    "label": "Current Plan",
+    "monthly": "Monthly Plan",
+    "yearly": "Yearly Plan",
+    "admin": "Admin (Free)",
+    "none": "Not Subscribed"
+  },
   "settings": {
     "title": "Settings",
     "alarmSettings": "Alarm Settings",

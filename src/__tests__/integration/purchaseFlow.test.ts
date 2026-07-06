@@ -116,8 +116,8 @@ describe('Purchase Flow Integration', () => {
       mockGetCustomerInfo.mockResolvedValue({
         entitlements: {
           active: {
-            pro: {
-              identifier: 'pro',
+            'Okiroya Pro': {
+              identifier: 'Okiroya Pro',
               isActive: true,
             },
           },
@@ -234,7 +234,7 @@ describe('Purchase Flow Integration', () => {
         customerInfo: {
           entitlements: {
             active: {
-              pro: { identifier: 'pro' },
+              'Okiroya Pro': { identifier: 'Okiroya Pro' },
             },
           },
         },
@@ -288,7 +288,7 @@ describe('Purchase Flow Integration', () => {
       mockRestorePurchases.mockResolvedValue({
         entitlements: {
           active: {
-            pro: { identifier: 'pro' },
+            'Okiroya Pro': { identifier: 'Okiroya Pro' },
           },
         },
       });
@@ -329,8 +329,8 @@ describe('Purchase Flow Integration', () => {
       mockGetCustomerInfo.mockResolvedValue({
         entitlements: {
           active: {
-            pro: {
-              identifier: 'pro',
+            'Okiroya Pro': {
+              identifier: 'Okiroya Pro',
               expirationDate,
             },
           },
@@ -358,8 +358,8 @@ describe('Purchase Flow Integration', () => {
       mockGetCustomerInfo.mockResolvedValue({
         entitlements: {
           active: {
-            pro: {
-              identifier: 'pro',
+            'Okiroya Pro': {
+              identifier: 'Okiroya Pro',
               expirationDate: null,
             },
           },

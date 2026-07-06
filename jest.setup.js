@@ -63,18 +63,16 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
-// Mock expo-av
-jest.mock('expo-av', () => ({
-  Audio: {
-    Sound: {
-      createAsync: jest.fn(() =>
-        Promise.resolve({
-          sound: { playAsync: jest.fn(), stopAsync: jest.fn(), unloadAsync: jest.fn() },
-        })
-      ),
-    },
-    setAudioModeAsync: jest.fn(),
-  },
+// Mock expo-audio
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => ({
+    loop: false,
+    volume: 1.0,
+    play: jest.fn(),
+    pause: jest.fn(),
+    remove: jest.fn(),
+  })),
+  setAudioModeAsync: jest.fn(() => Promise.resolve()),
 }));
 
 // Mock expo-sensors

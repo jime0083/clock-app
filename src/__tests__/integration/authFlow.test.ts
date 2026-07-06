@@ -18,7 +18,6 @@ jest.mock('firebase/auth', () => ({
   signInWithCredential: (...args: unknown[]) => mockSignInWithCredential(...args),
   signOut: (...args: unknown[]) => mockSignOut(...args),
   onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...args),
-  deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
   GoogleAuthProvider: {
     credential: jest.fn(() => ({ providerId: 'google.com' })),
   },
@@ -30,18 +29,28 @@ jest.mock('firebase/auth', () => ({
 // Mock Firebase Firestore
 const mockGetDoc = jest.fn();
 const mockSetDoc = jest.fn();
-const mockDeleteDoc = jest.fn();
+const mockUpdateDoc = jest.fn();
 const mockGetDocs = jest.fn();
 
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(() => ({ id: 'mock-doc' })),
   getDoc: (...args: unknown[]) => mockGetDoc(...args),
   setDoc: (...args: unknown[]) => mockSetDoc(...args),
-  deleteDoc: (...args: unknown[]) => mockDeleteDoc(...args),
+  updateDoc: (...args: unknown[]) => mockUpdateDoc(...args),
+  deleteField: jest.fn(() => '__deleteField__'),
   collection: jest.fn(() => ({ id: 'mock-collection' })),
   query: jest.fn(),
   where: jest.fn(),
   getDocs: (...args: unknown[]) => mockGetDocs(...args),
+  Timestamp: {
+    now: jest.fn(() => ({ seconds: 0, nanoseconds: 0 })),
+  },
+}));
+
+// Mock Cloud Functions (account deletion delegates Firestore cleanup server-side, Problem 29)
+const mockDeleteUserDataCallable = jest.fn();
+jest.mock('firebase/functions', () => ({
+  httpsCallable: jest.fn(() => mockDeleteUserDataCallable),
 }));
 
 // Mock Firebase instances
@@ -50,6 +59,7 @@ jest.mock('../../services/firebase', () => ({
     currentUser: null,
   },
   db: {},
+  functions: {},
 }));
 
 import {
@@ -175,6 +185,7 @@ describe('Authentication Flow Integration', () => {
         }),
       });
       mockSetDoc.mockResolvedValue(undefined);
+      mockUpdateDoc.mockResolvedValue(undefined);
 
       const appUser = {
         uid: 'existing-user-123',
@@ -258,28 +269,28 @@ describe('Authentication Flow Integration', () => {
   });
 
   describe('Account Deletion Flow', () => {
-    it('should delete user account and Firestore document', async () => {
+    it('should call the deleteUserData function and delete the Auth user', async () => {
       const mockAuth = require('../../services/firebase').auth;
-      mockAuth.currentUser = { uid: 'delete-me-123' };
+      mockAuth.currentUser = { uid: 'delete-me-123', delete: mockDeleteUser };
 
-      mockDeleteDoc.mockResolvedValue(undefined);
+      mockDeleteUserDataCallable.mockResolvedValue({ data: { success: true } });
       mockDeleteUser.mockResolvedValue(undefined);
 
       await deleteAccount('delete-me-123');
 
-      expect(mockDeleteDoc).toHaveBeenCalled();
+      expect(mockDeleteUserDataCallable).toHaveBeenCalled();
       expect(mockDeleteUser).toHaveBeenCalled();
     });
 
-    it('should only delete Firestore document if current user is different', async () => {
+    it('should not delete the Auth user if current user is different', async () => {
       const mockAuth = require('../../services/firebase').auth;
-      mockAuth.currentUser = { uid: 'different-user' };
+      mockAuth.currentUser = { uid: 'different-user', delete: mockDeleteUser };
 
-      mockDeleteDoc.mockResolvedValue(undefined);
+      mockDeleteUserDataCallable.mockResolvedValue({ data: { success: true } });
 
       await deleteAccount('delete-me-123');
 
-      expect(mockDeleteDoc).toHaveBeenCalled();
+      expect(mockDeleteUserDataCallable).toHaveBeenCalled();
       expect(mockDeleteUser).not.toHaveBeenCalled();
     });
   });

@@ -19,16 +19,21 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '\\.(m4a|caf|mp3|wav)$': '<rootDir>/__mocks__/fileMock.js',
   },
   testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/*.test.ts?(x)'],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/functions/'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/types/**/*',
     '!src/locales/**/*',
   ],
+  // 80% coverage is required for the service layer (business logic) only.
+  // Screens/hooks/components are UI and are verified via manual/E2E testing
+  // (manual-work.txt Work 6.3) rather than unit test coverage.
   coverageThreshold: {
-    global: {
+    './src/services/': {
       branches: 80,
       functions: 80,
       lines: 80,

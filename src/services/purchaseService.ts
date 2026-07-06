@@ -19,6 +19,9 @@ export const PRODUCT_IDS = {
   YEARLY: 'com.okiroya.app.yearly',
 } as const;
 
+// Current active plan type
+export type PlanType = 'monthly' | 'yearly' | 'admin' | 'none';
+
 // Initialize RevenueCat
 export const initializePurchases = async (userId?: string): Promise<void> => {
   try {
@@ -70,6 +73,35 @@ export const checkSubscriptionStatus = async (uid: string): Promise<boolean> => 
   } catch (error) {
     console.error('Error checking subscription status:', error);
     return false;
+  }
+};
+
+// Get the user's current active plan type (for display)
+export const getActivePlanType = async (uid: string): Promise<PlanType> => {
+  try {
+    // Admins have free access without a RevenueCat entitlement
+    const isAdmin = await checkIsAdmin(uid);
+    if (isAdmin) {
+      return 'admin';
+    }
+
+    const customerInfo = await Purchases.getCustomerInfo();
+    const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+    if (!entitlement) {
+      return 'none';
+    }
+
+    const productId = entitlement.productIdentifier;
+    if (productId.includes('yearly')) {
+      return 'yearly';
+    }
+    if (productId.includes('monthly')) {
+      return 'monthly';
+    }
+    return 'none';
+  } catch (error) {
+    console.error('Error getting active plan type:', error);
+    return 'none';
   }
 };
 

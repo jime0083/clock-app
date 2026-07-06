@@ -1233,7 +1233,7 @@ No users found with alarm at this time
 
 ---
 
-## Problem 25: テストスイートが全滅（11/11 スイート実行不能）(2026-07-04)
+## Problem 25: テストスイートが全滅（11/11 スイート実行不能）(2026-07-04) [解決済み 2026-07-06: jest.setup.jsのexpo-avモックをexpo-audioモックに置換。全11スイート（+新規追加分）が実行・成功するよう修復し、disabledだったwakeUpFlow/setupFlowも現行アーキテクチャに合わせて書き直し再有効化。サービス層のカバレッジも80%まで引き上げ（jest.config.jsのcoverageThresholdをsrc/services限定に変更した上で達成）。最終: appテスト20スイート358件・functionsテスト3スイート16件、全て成功]
 
 ### 症状
 - `npx jest` で全11テストスイートが `Cannot find module 'expo-av' from 'jest.setup.js'` で実行不能
@@ -1413,3 +1413,154 @@ No users found with alarm at this time
 
 ### 解決策
 - eslint.config.js（Flat Config）へ移行するか、ESLint 8系にダウングレードする
+
+---
+
+## Problem 38: メニュードロワーのUI不備（現在プラン非表示・不要要素）(2026-07-06)
+
+### 症状
+実機テスト（Phase 27.4 / Work 6.3）中に、右上メニュー（MenuDrawer）で以下の不備を確認。
+
+1. **現在のサブスクプランが確認できない**
+   - 課金には成功しているが、ユーザーが自分の契約プラン（月額 / 年額）をアプリ内のどこからも確認できない
+   - メニューのユーザー名・メールアドレス下部にプラン表示がない
+
+2. **「アカウント情報」項目が不要**
+   - `MenuDrawer.tsx` の MENU_ITEMS に `account`（labelKey: `settings.account` = "アカウント情報"）項目が存在するが、`HomeScreen.handleMenuItemPress` の `case 'account'` は空（コメントのみで何もしない到達不能相当のUI）
+   - 押しても何も起きず、ユーザーに混乱を与えるため不要
+
+3. **アバター画像領域が不要**
+   - ユーザー名・メールアドレスの左側にある人型アイコンのアバター（`styles.avatar`）は、実画像を持たないプレースホルダーで意味を持たないため不要
+
+### 原因
+- プラン表示: `SubscriptionContext` が `isSubscribed`（真偽）しか公開しておらず、プラン種別（月額/年額/管理者）を保持・公開していないため、UIで出し分けできない。プラン種別は RevenueCat の `customerInfo.entitlements.active['Okiroya Pro'].productIdentifier`（`com.okiroya.app.monthly` / `com.okiroya.app.yearly`）から判定可能。管理者は課金バイパスのため entitlement を持たない（`checkIsAdmin` で判定）。
+- 不要項目・アバター: 初期実装時のプレースホルダーがそのまま残っている。
+
+### 影響範囲 [重大度: 低〜中]
+- `src/services/purchaseService.ts`（プラン種別取得の追加）
+- `src/contexts/SubscriptionContext.tsx`（planType の公開）
+- `src/screens/HomeScreen.tsx`（planType を MenuDrawer へ受け渡し・`account` ケース削除）
+- `src/components/menu/MenuDrawer.tsx`（プラン表示追加・`account` 項目削除・アバター削除）
+- `src/locales/ja.json` / `en.json`（プラン表示ラベル追加）
+※ 機能ロジック（課金・アラーム）への影響なし。表示のみの変更。
+
+### 修正計画
+- Phase 26.4 として progress.txt に追加（実装タスクのため、テストPhase 27・ビルドPhase 28 より前に配置）
+
+---
+
+## Problem 39: アイコン起動・バックグラウンド復帰でスクワット画面が表示されない (2026-07-06) [解決済み 2026-07-06]
+
+### 解決（2026-07-06）
+根本原因は候補1「Firestoreローカルキャッシュのstale」で確定。サーバーがアプリ終了/バックグラウンド中に書き込んだ `lastAlarmSentAt` がクライアントのキャッシュに反映されておらず、`getDoc` が古い値を返して `checkAlarmWindow` が false を返していた。`checkAlarmWindow` を `getDocFromServer`（サーバー優先読み取り・オフライン時のみキャッシュへフォールバック）に変更して**アイコン起動は解消**。ただしバックグラウンド復帰・連続アラームは未解決 → Problem 40 で継続対応。
+
+---
+
+## Problem 40: バックグラウンド復帰・連続アラームでスクワット画面が出ない（起動フローの堅牢性不足）(2026-07-06)
+
+### 症状
+Problem 39 の getDocFromServer 修正後の実機再テストで判明：
+- **アイコン起動**: 解消（スクワット画面が表示される）✓
+- **バックグラウンド復帰（通知タップせずアプリに戻る）**: **依然として表示されない** ✗
+- **短時間に複数回アラーム / 連続してバックグラウンド→アイコン起動**: スクワット画面が表示されない。アプリのプロセスが終了（Xcode「Finished running」）しているケースも確認 ✗
+
+### 根本原因（設計上の脆弱性）
+現在の「スクワット画面を出す」機構は、**特定タイミングでの単発 `alarmService.checkAlarmWindow()`（Firestoreを1回だけ読む）**に依存している。呼び出し箇所は3つ（App.tsx: AppStateハンドラ / init effect / launch effect）だが、いずれも「そのタイミングで1回読んで判定」するだけで、以下の状況を取りこぼす：
+
+1. **バックグラウンド復帰 [重大]**
+   - AppStateハンドラ（App.tsx:95）の発火・ガード（appStateRef の状態機械 / isSetupCompleted 等）・Firestore再同期のタイミングに依存
+   - 復帰直後に1回 getDocFromServer しても、サーバー最新反映との競合や AppState イベントの取りこぼしで false になり得る
+2. **連続アラーム [重大]**
+   - サーバーの重複送信dedupe `ALARM_DEDUPE_WINDOW_MS = 10分`（index.ts:53,238）が、5分のペナルティ窓（PENALTY_WINDOW_MS）より長い
+   - 前のアラーム後10分以内は新アラームが送信されず、`lastAlarmSentAt` が更新されない／`squatCompletedAt`・`alarmFailedAt` もリセットされない
+   - 結果、クライアントの checkAlarmWindow が「窓外」または「既に完了/失敗」と判定し画面を出さない
+3. **プロセス終了後**
+   - 単発チェックは「マウント時」等の一過性。iOSがバックグラウンドでアプリを終了→再起動した場合、チェックの実行タイミング次第で漏れる
+
+4. **状態書き込みがFCM送信成功にゲートされている [中]**
+   - `lastAlarmSentAt` 等の書き込みが `sendAlarmNotification().then(success => { if (success) {...} })` の中にあり、FCM送信が失敗（トークン失効等）すると**アラーム発生の記録自体が残らない**
+   - 結果、checkSquatCompletion のペナルティ判定もクライアントの窓判定も機能しなくなる
+
+### 確定した設計（2層防御・2026-07-06 ユーザー承認済み）
+
+**核心**: クライアントはアラーム設定（settings.alarmTime / alarmDays）自体を持っているため、「今がアラーム時刻から5分以内か」は**サーバーの lastAlarmSentAt に依存せず端末ローカルで判定できる**。このスケジュールベース判定を主とし、lastAlarmSentAt ベース判定（testAlarm等のカバー）を従とする純粋関数に一本化する。
+
+**レイヤー1（クライアント）**:
+- 新規モジュール `src/services/alarmWindow.ts`（純粋・依存ゼロ・単体テスト容易）
+  - `evaluateAlarmWindow(state, nowMs): boolean` — スケジュール発生（今日/昨日のalarmTime、alarmDays空=毎日、深夜跨ぎ対応）と lastAlarmSentAt 発生の両候補から最新の発生を取り、squatCompletedAt / alarmFailedAt がその発生以降なら false、それ以外は true
+  - `extractAlarmWindowState(data)` — FirestoreドキュメントからAlarmWindowStateへ変換（Timestamp/ISO両対応）
+- App.tsx: 単発チェック3箇所を廃し、以下の常時監視に置き換え
+  - `onSnapshot(users/{uid})` 購読: データ更新（サーバーのアラーム送信・自分のスクワット完了・設定変更）のたび評価
+  - AppState active 復帰時: キャッシュ済み最新stateで即時評価（スケジュール判定はネットワーク不要）
+  - 20秒間隔の心拍タイマー: 時間経過だけで窓が開くケース（FCM不達でフォアグラウンド滞在中など）を拾う
+  - FCMフォアグラウンド/通知タップの即時パスは維持
+  - トリガーは false→true の一方向のみ（OFFはスクワット完了/失敗/明示クローズ時のみ・従来通り）
+
+**レイヤー2（サーバー functions/src/index.ts）**:
+- `ALARM_DEDUPE_WINDOW_MS`（10分）を廃止し、**発生キー dedupe** に変更: `lastAlarmOccurrence = "YYYY-MM-DD HH:mm"`（ユーザーTZのローカル日付+alarmTime）が一致する場合のみスキップ。cronの2分検知窓による同一発生の二重送信は防ぎつつ、数分間隔の連続アラームは毎回発火・状態リセットされる
+- `lastAlarmSentAt` / `squatCompletedAt: null` / `alarmFailedAt: null` の書き込みを**FCM送信の前に無条件で実行**（送信失敗でもX投稿判定・クライアント判定が機能する）。alarmHistory 記録のみ送信成功時に残す
+
+### 解消されるシナリオ
+| シナリオ | 解消レイヤー |
+|----------|--------------|
+| バックグラウンド復帰で画面が出ない | L1: AppState即時評価（ローカル判定・ネットワーク不要）+ onSnapshot再同期 |
+| 連続アラームで画面が出ない | L2: 発生キーdedupeで毎回状態リセット + L1: スケジュール判定はサーバー状態に非依存 |
+| プロセス終了→再起動 | L1: onSnapshot初回配信（キャッシュ→サーバーの2段階）で評価 |
+| FCM完全不達 | L1: 心拍タイマー/スナップショットで画面表示。未起動でも L2 の無条件書き込みにより5分後にサーバーがX投稿 |
+
+### 影響範囲
+- 新規 `src/services/alarmWindow.ts` / `src/App.tsx` / `src/services/alarmService.ts`（checkAlarmWindowを純粋関数利用にリファクタ）
+- `functions/src/index.ts`（発生キーdedupe・無条件書き込み・getLocalTimeAndDayにdateKey追加）→ 要デプロイ
+- テスト: `src/__tests__/services/alarmWindow.test.ts`（新規）、`functions/src/__tests__/checkAlarms.test.ts`（dedupe仕様変更に追随）
+
+### 既知の許容挙動
+- 5分未満の間隔で重なった連続アラームは、後のアラームが前のペナルティ判定を上書きする（最後の発生から5分でX投稿1件）。実運用でアラームを5分未満間隔で設定するケースは想定外のため許容
+
+### 修正計画
+- progress.txt の **Phase 26.6** として実施（実装＝テストPhase 27・ビルドPhase 28 より前）
+- CLAUDE.mdルール1（スクワット見逃し厳禁）に直結するため最優先
+
+### 症状
+実機E2Eテスト（Phase 27.4 / Work 6.3）でアラーム4経路を検証した結果：
+- **フォアグラウンド（FCM受信）**: スクワット画面が正常表示・検知OK ✓
+- **通知タップ**: スクワット画面が正常表示・検知OK ✓
+- **アイコン起動（アプリ終了状態からアイコンで起動）**: スクワット画面が表示されず**ホーム画面**になる。スクワット検知不可 ✗
+- **バックグラウンド復帰（通知をタップせずアプリに戻る）**: 同上、ホーム画面のまま ✗
+
+**重大度: 最高**（CLAUDE.mdルール1「スクワットをしたのに認知できない状況は絶対NG」に直接違反する状態）
+
+### 根本原因の切り分け（データフロー追跡）
+App.tsx の描画は `if (isAlarmRinging) return <SquatMeasureScreen>` であり、`isAlarmRinging` が true になれば必ずスクワット画面が出る（描画ロジックは正常）。したがって失敗2経路では `isAlarmRinging` が true にならない。
+
+各経路のトリガー機構の違い：
+| 経路 | isAlarmRinging を立てる機構 | Firestore依存 |
+|------|------------------------------|---------------|
+| フォアグラウンドFCM | `setForegroundMessageHandler`（FCMペイロード `data.type==='alarm'`） | なし ✓ |
+| 通知タップ | `setNotificationOpenedHandler` / `getInitialNotification`（FCMペイロード） | なし ✓ |
+| **アイコン起動** | `alarmService.checkAlarmWindow()`（App.tsx:202 init / 292 launch effect） | **あり ✗** |
+| **バックグラウンド復帰** | `alarmService.checkAlarmWindow()`（App.tsx:107 AppStateハンドラ） | **あり ✗** |
+
+→ **失敗する2経路だけが `checkAlarmWindow()` の Firestore `getDoc` 読み取りに依存**している。正常な2経路はFCMプッシュのペイロードから直接トリガーするためFirestore非依存。
+
+`checkAlarmWindow()`（alarmService.ts:310）が false を返す要因の候補：
+1. **ローカルキャッシュのstale [可能性: 高（特にバックグラウンド復帰）]**
+   - サーバー（checkAlarms, functions/src/index.ts:264）は**アプリが終了/バックグラウンド中に** `lastAlarmSentAt` をトップレベルに書き込む
+   - クライアントは Firebase JS SDK v12 のデフォルトキャッシュ（メモリキャッシュ）で、`getDoc` は取得可能ならキャッシュを返す
+   - 復帰時、サーバーが書いた新しい `lastAlarmSentAt` がまだ同期されておらず、`getDoc` が古いキャッシュ（`lastAlarmSentAt` 無し/古い値）を返す → 5分ウィンドウ判定に失敗し false
+2. **サーバー側の重複送信dedupe [可能性: 中]**
+   - Phase 23.3 で「lastAlarmSentAt が10分以内なら二重送信スキップ」を導入（index.ts:234付近）
+   - 連続テスト時、前の成功テストで `squatCompletedAt` が立ったまま、新規アラームがdedupeで再送されず `lastAlarmSentAt`/`squatCompletedAt` が更新されない → `checkAlarmWindow` が「既に完了」（alarmService.ts:352-362）で false（ただしこれはテスト手順の副作用の可能性）
+3. **currentUserId 未設定 [可能性: 低]**
+   - `checkAlarmWindow` は `this.currentUserId` が null なら即 false（alarmService.ts:311）。ただし `initialize()` は line 53 で同期的に currentUserId を設定するため、init/launch effect 経由では設定済みのはず。診断ログで要確認
+
+### 影響範囲
+- `src/services/alarmService.ts`（checkAlarmWindow のキャッシュ回避・診断ログ強化）
+- （必要に応じ）`App.tsx`（各 checkAlarmWindow 呼び出し箇所の診断ログ）
+- （検証後の可能性）`functions/src/index.ts`（dedupeロジックがテスト/実運用の妨げになる場合の調整）
+
+### 修正計画（2フェーズ）
+- **Phase 1（本対応）**: 確定的に安全な対策を先行実施
+  - `checkAlarmWindow` を `getDocFromServer`（サーバー優先読み取り）に変更し、失敗時のみ `getDoc`（キャッシュ）へフォールバック → staleキャッシュ問題を解消
+  - `currentUserId` / `lastAlarmSentAt` の有無 / `timeSinceAlarm` / `squatCompletedAt` を診断ログ出力
+- **Phase 2（実機再テスト後）**: Phase 1で解消しない場合、実機ログ（Xcodeコンソール `[Alarm] checkAlarmWindow`）で原因1〜3のどれかを確定し、dedupe調整やcurrentUserId設定順の是正などを実施
+- progress.txt に **Phase 26.5** として追加（実装タスク＝テストPhase 27・ビルドPhase 28 より前に配置）

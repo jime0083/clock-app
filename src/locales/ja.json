@@ -123,6 +123,13 @@
     "title": "先週のふりかえり",
     "summary": "先週は{{successCount}}回起床に成功し{{squatCount}}回スクワットしました"
   },
+  "plan": {
+    "label": "現在のプラン",
+    "monthly": "月額プラン",
+    "yearly": "年額プラン",
+    "admin": "管理者（無料）",
+    "none": "未加入"
+  },
   "settings": {
     "title": "設定",
     "alarmSettings": "アラーム設定",

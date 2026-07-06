@@ -75,7 +75,7 @@ const WEEKDAY_TO_NUMBER: Record<string, number> = {
  * IANA timezone at the given instant. Falls back to Asia/Tokyo for
  * invalid/unknown timezones.
  */
-function getLocalTimeAndDay(
+export function getLocalTimeAndDay(
   timezone: string,
   date: Date
 ): { time: string; day: number } {

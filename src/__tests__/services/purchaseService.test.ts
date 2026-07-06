@@ -61,8 +61,8 @@ describe('purchaseService', () => {
       mockedGetCustomerInfo.mockResolvedValue({
         entitlements: {
           active: {
-            pro: {
-              identifier: 'pro',
+            'Okiroya Pro': {
+              identifier: 'Okiroya Pro',
               isActive: true,
               willRenew: true,
               periodType: 'NORMAL',

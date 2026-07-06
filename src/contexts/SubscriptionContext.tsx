@@ -13,13 +13,16 @@ import {
   setRevenueCatUserId,
   logoutRevenueCat,
   checkSubscriptionStatus,
+  getActivePlanType,
   getOfferings,
   purchasePackage,
   restorePurchases,
+  PlanType,
 } from '@/services/purchaseService';
 
 interface SubscriptionContextType {
   isSubscribed: boolean;
+  planType: PlanType;
   isLoading: boolean;
   offerings: PurchasesOffering | null;
   purchase: (pkg: PurchasesPackage) => Promise<boolean>;
@@ -36,6 +39,7 @@ interface SubscriptionProviderProps {
 export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [planType, setPlanType] = useState<PlanType>('none');
   const [isLoading, setIsLoading] = useState(true);
   const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -71,6 +75,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       } else {
         await logoutRevenueCat();
         setIsSubscribed(false);
+        setPlanType('none');
         setOfferings(null);
       }
       setIsLoading(false);
@@ -85,6 +90,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     try {
       const subscribed = await checkSubscriptionStatus(user.uid);
       setIsSubscribed(subscribed);
+      const plan = await getActivePlanType(user.uid);
+      setPlanType(plan);
     } catch (error) {
       console.error('Error refreshing subscription status:', error);
     }
@@ -99,25 +106,34 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     }
   }, []);
 
-  const purchase = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
-    try {
-      const result = await purchasePackage(pkg);
-      if (result.success) {
-        setIsSubscribed(true);
-        return true;
+  const purchase = useCallback(
+    async (pkg: PurchasesPackage): Promise<boolean> => {
+      try {
+        const result = await purchasePackage(pkg);
+        if (result.success) {
+          setIsSubscribed(true);
+          if (user?.uid) {
+            setPlanType(await getActivePlanType(user.uid));
+          }
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Error purchasing:', error);
+        return false;
       }
-      return false;
-    } catch (error) {
-      console.error('Error purchasing:', error);
-      return false;
-    }
-  }, []);
+    },
+    [user?.uid]
+  );
 
   const restore = useCallback(async (): Promise<boolean> => {
     try {
       const result = await restorePurchases();
       if (result.success) {
         setIsSubscribed(true);
+        if (user?.uid) {
+          setPlanType(await getActivePlanType(user.uid));
+        }
         return true;
       }
       return false;
@@ -125,12 +141,13 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       console.error('Error restoring:', error);
       return false;
     }
-  }, []);
+  }, [user?.uid]);
 
   return (
     <SubscriptionContext.Provider
       value={{
         isSubscribed,
+        planType,
         isLoading,
         offerings,
         purchase,

@@ -5,13 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { PlanType } from '@/services/purchaseService';
 
 export type MenuItemId =
   | 'alarmSetting'
   | 'squatCalibration'
   | 'snsConnection'
   | 'language'
-  | 'account'
   | 'deleteAccount'
   | 'logout';
 
@@ -49,12 +49,6 @@ const MENU_ITEMS: MenuItem[] = [
     section: 'settings',
   },
   {
-    id: 'account',
-    labelKey: 'settings.account',
-    icon: 'person-outline',
-    section: 'account',
-  },
-  {
     id: 'logout',
     labelKey: 'auth.logout',
     icon: 'log-out-outline',
@@ -75,7 +69,15 @@ interface MenuDrawerProps {
   onMenuItemPress: (itemId: MenuItemId) => void;
   userEmail?: string | null;
   userName?: string | null;
+  planType?: PlanType;
 }
+
+const PLAN_ICONS: Record<PlanType, keyof typeof Ionicons.glyphMap> = {
+  monthly: 'ribbon',
+  yearly: 'ribbon',
+  admin: 'shield-checkmark',
+  none: 'alert-circle-outline',
+};
 
 export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   visible,
@@ -83,6 +85,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   onMenuItemPress,
   userEmail,
   userName,
+  planType = 'none',
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -144,12 +147,35 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
           {/* User Info */}
           {(userName || userEmail) && (
             <Animated.View entering={FadeIn.delay(50).duration(300)} style={styles.userInfo}>
-              <View style={styles.avatar}>
-                <Ionicons name="person" size={28} color={Colors.textInverse} />
-              </View>
-              <View style={styles.userDetails}>
-                {userName && <Text style={styles.userName}>{userName}</Text>}
-                {userEmail && <Text style={styles.userEmail}>{userEmail}</Text>}
+              {userName && <Text style={styles.userName}>{userName}</Text>}
+              {userEmail && <Text style={styles.userEmail}>{userEmail}</Text>}
+              <View
+                style={[
+                  styles.planBadge,
+                  planType === 'admin' && styles.planBadgeAdmin,
+                  planType === 'none' && styles.planBadgeMuted,
+                ]}
+              >
+                <Ionicons
+                  name={PLAN_ICONS[planType]}
+                  size={14}
+                  color={
+                    planType === 'admin'
+                      ? Colors.accent
+                      : planType === 'none'
+                        ? Colors.textTertiary
+                        : Colors.primary
+                  }
+                />
+                <Text
+                  style={[
+                    styles.planText,
+                    planType === 'admin' && styles.planTextAdmin,
+                    planType === 'none' && styles.planTextMuted,
+                  ]}
+                >
+                  {t(`plan.${planType}`)}
+                </Text>
               </View>
             </Animated.View>
           )}
@@ -223,25 +249,11 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 20,
     backgroundColor: Colors.backgroundSecondary,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 16,
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userDetails: {
-    marginLeft: 14,
-    flex: 1,
   },
   userName: {
     fontSize: 16,
@@ -252,6 +264,34 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 13,
     color: Colors.textSecondary,
+  },
+  planBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 14,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    backgroundColor: 'rgba(52, 120, 246, 0.12)',
+  },
+  planBadgeAdmin: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+  },
+  planBadgeMuted: {
+    backgroundColor: Colors.backgroundTertiary,
+  },
+  planText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginLeft: 5,
+  },
+  planTextAdmin: {
+    color: Colors.accent,
+  },
+  planTextMuted: {
+    color: Colors.textTertiary,
   },
   scrollView: {
     flex: 1,

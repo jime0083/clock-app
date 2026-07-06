@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteUserData = exports.testPenalty = exports.checkSquatCompletion = exports.testAlarm = exports.checkAlarms = void 0;
+exports.getLocalTimeAndDay = getLocalTimeAndDay;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
