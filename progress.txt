@@ -709,40 +709,94 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ※ 設計の核心: スクワット画面表示の判定を「サーバーが書く lastAlarmSentAt の読み取り」依存から脱却し、クライアントが持つアラーム設定（alarmTime/alarmDays）による**スケジュールベースのローカル判定（純粋関数）**を主とする。監視は onSnapshot＋AppState＋心拍タイマーの3経路で常時評価。詳細設計は problem.txt Problem 40 参照。
 ※ 2026-07-06 ユーザー承認済み。CLAUDE.mdルール1直結の最優先。
 
-### 26.6.1 窓判定の純粋関数モジュール（新規 src/services/alarmWindow.ts）
-- [ ] `SQUAT_WINDOW_MS = 5 * 60 * 1000` を定義・export（alarmService.ts のローカル定数はここからのimportに置換）
-- [ ] `interface AlarmWindowState { alarmTime: string | null; alarmDays: number[]; lastAlarmSentAt: number | null; squatCompletedAt: number | null; alarmFailedAt: number | null }`（時刻は全て epoch ms）
-- [ ] `extractAlarmWindowState(data): AlarmWindowState` — Firestoreドキュメントデータから変換。settings.alarmTime / settings.alarmDays を読み、タイムスタンプは Firestore Timestamp（toMillis duck-typing）と ISO文字列の両対応
-- [ ] `evaluateAlarmWindow(state, nowMs): boolean` — 以下のロジック:
+### 26.6.1 窓判定の純粋関数モジュール（新規 src/services/alarmWindow.ts）[完了 2026-07-06]
+- [x] `SQUAT_WINDOW_MS = 5 * 60 * 1000` を定義・export（alarmService.ts のローカル定数はここからのimportに置換）
+- [x] `interface AlarmWindowState { alarmTime: string | null; alarmDays: number[]; lastAlarmSentAt: number | null; squatCompletedAt: number | null; alarmFailedAt: number | null }`（時刻は全て epoch ms）
+- [x] `extractAlarmWindowState(data): AlarmWindowState` — Firestoreドキュメントデータから変換。settings.alarmTime / settings.alarmDays を読み、タイムスタンプは Firestore Timestamp（toMillis duck-typing）と ISO文字列の両対応
+- [x] `evaluateAlarmWindow(state, nowMs): boolean` — 以下のロジック:
   1. スケジュール候補: alarmTime が "H:mm"/"HH:mm" 形式なら、今日と昨日（深夜跨ぎ用）の端末ローカル発生時刻を計算。`発生時刻 <= now かつ now - 発生時刻 <= SQUAT_WINDOW_MS` かつ 曜日が alarmDays に含まれる（空配列=毎日）ものを候補に追加
   2. サーバー候補: lastAlarmSentAt が5分以内（サーバー時計が先行する場合の許容 +2分）なら候補に追加（nowでクランプ）
   3. 候補が無ければ false。`occurrenceStart = max(候補)` とし、squatCompletedAt >= occurrenceStart なら false（対応済み）、alarmFailedAt >= occurrenceStart なら false（失敗記録済み）、それ以外 true
-- [ ] 単体テスト `src/__tests__/services/alarmWindow.test.ts`（純粋関数なのでモック不要）: スケジュール窓内/窓外(5:01)/境界(4:59)/曜日除外/空曜日=毎日/深夜跨ぎ(23:58発生をtranslate後00:01に判定)/完了後false/完了が発生前ならtrue/alarmFailedAt後false/lastAlarmSentAtのみの後方互換/新発生が旧完了を上書き(連続アラーム回帰テスト)/不正なalarmTime文字列
+- [x] 単体テスト `src/__tests__/services/alarmWindow.test.ts`（純粋関数なのでモック不要）: スケジュール窓内/窓外(5:01)/境界(4:59・5:00丁度)/曜日除外/空曜日=毎日/深夜跨ぎ(23:58発生を00:01に判定・発生日の曜日で判定)/完了後false/完了が発生前ならtrue/alarmFailedAt後false/lastAlarmSentAtのみの後方互換/サーバー時計先行の許容/新発生が旧完了を上書き(連続アラーム回帰)/不正なalarmTime文字列 — 19件全て成功
 
-### 26.6.2 alarmService.checkAlarmWindow のリファクタ
-- [ ] checkAlarmWindow 内の判定ロジック（lastAlarmSentAt/squatCompletedAt の手書き比較）を `extractAlarmWindowState` + `evaluateAlarmWindow` 呼び出しに置換（getDocFromServer→getDocフォールバックの読み取り部と診断ログは維持）
-- [ ] 既存テスト（wakeUpFlow.test.ts / alarmService.test.ts の checkAlarmWindow 境界値テスト）がそのまま通ることを確認（モックに settings が無い→スケジュール判定は不発火のため互換）
+### 26.6.2 alarmService.checkAlarmWindow のリファクタ [完了 2026-07-06]
+- [x] checkAlarmWindow 内の判定ロジック（lastAlarmSentAt/squatCompletedAt の手書き比較）を `extractAlarmWindowState` + `evaluateAlarmWindow` 呼び出しに置換（getDocFromServer→getDocフォールバックの読み取り部と診断ログは維持）
+- [x] 既存テスト（wakeUpFlow.test.ts / alarmService.test.ts の checkAlarmWindow 境界値テスト）がそのまま通ることを確認（モックに settings が無い→スケジュール判定は不発火のため互換）
 
-### 26.6.3 App.tsx の常時監視化
-- [ ] `isAlarmRingingRef`（isAlarmRinging をミラーする ref）と `alarmWindowStateRef`（最新の AlarmWindowState を保持する ref）を追加
-- [ ] `maybeTriggerAlarm(source: string)` コールバック: ref の state を evaluateAlarmWindow で判定 → 窓内かつ未リンギングなら triggerAlarmFromFCM() + setIsAlarmRinging(true)。音の再生に失敗しても setIsAlarmRinging(true) は必ず実行（ルール1: 検知機会を逃さない）
-- [ ] onSnapshot 購読 effect（認証済み＋setup完了時）: `onSnapshot(doc(db,'users',uid))` でスナップショットのたび extractAlarmWindowState → ref 更新 → maybeTriggerAlarm。クリーンアップで unsubscribe
-- [ ] 同 effect 内に20秒間隔の心拍タイマー（maybeTriggerAlarm('heartbeat')）。クリーンアップで clearInterval
-- [ ] AppState ハンドラ: 本文を maybeTriggerAlarm('foreground') に簡素化（getDocFromServer 単発読みを廃止）。deps から isAlarmRinging を除去（ref化により不要）
-- [ ] initAlarmAndFCM 末尾の単発 checkAlarmWindow ブロックを削除（監視に置換）。getInitialNotification / hasPendingAlarm / FCMハンドラの即時パスは残す
-- [ ] checkAlarmOnLaunch effect（launch時の単発チェック）を削除（監視に置換）
+### 26.6.3 App.tsx の常時監視化 [完了 2026-07-06]
+- [x] `isAlarmRingingRef`（isAlarmRinging をミラーする ref）と `alarmWindowStateRef`（最新の AlarmWindowState を保持する ref）を追加
+- [x] `maybeTriggerAlarm(source: string)` コールバック: ref の state を evaluateAlarmWindow で判定 → 窓内かつ未リンギングなら triggerAlarmFromFCM() + setIsAlarmRinging(true)。音の再生に失敗しても setIsAlarmRinging(true) は必ず実行（ルール1: 検知機会を逃さない）。二重発火防止に ref を同期的に先行セット
+- [x] onSnapshot 購読 effect（認証済み＋setup完了時）: `onSnapshot(doc(db,'users',uid))` でスナップショットのたび extractAlarmWindowState → ref 更新 → maybeTriggerAlarm。クリーンアップで unsubscribe
+- [x] 同 effect 内に20秒間隔の心拍タイマー（maybeTriggerAlarm('heartbeat')）。クリーンアップで clearInterval
+- [x] AppState ハンドラ: 本文を maybeTriggerAlarm('foreground') に簡素化（getDocFromServer 単発読みを廃止・スケジュール判定はローカルデータで即答）。deps から isAlarmRinging を除去（ref化により不要）
+- [x] initAlarmAndFCM 末尾の単発 checkAlarmWindow ブロックを削除（監視に置換）。getInitialNotification / hasPendingAlarm / FCMハンドラの即時パスは残す
+- [x] checkAlarmOnLaunch effect（launch時の単発チェック）を削除（監視に置換）
 
-### 26.6.4 サーバー（functions/src/index.ts）
-- [ ] `getLocalTimeAndDay` の戻り値に `dateKey: "YYYY-MM-DD"`（該当TZのローカル日付）を追加（Intl.formatToParts に year/month/day を追加）。既存テストは additive なので互換
-- [ ] `ALARM_DEDUPE_WINDOW_MS` と時間ベース dedupe を削除し、発生キー dedupe に置換: `occurrenceKey = \`${matched.dateKey} ${alarmTimeValue}\`` が `userData.lastAlarmOccurrence` と一致したらスキップ
-- [ ] 状態書き込みを FCM 送信前に無条件実行: `update({ lastAlarmOccurrence, lastAlarmSentAt: serverTimestamp(), squatCompletedAt: null, alarmFailedAt: null })` → その後 sendAlarmNotification → 成功時のみ alarmHistory.add
-- [ ] checkAlarms.test.ts を新仕様に更新: 「同一発生キーはスキップ」「発生キーが異なれば数分前の lastAlarmSentAt があっても送信（連続アラーム回帰テスト）」「FCM送信失敗でも状態書き込みは実行される」を追加/置換。初回送信テストのexpectに lastAlarmOccurrence を追加
-- [ ] functions ビルド（npm run build）・テスト・デプロイ
+### 26.6.4 サーバー（functions/src/index.ts）[完了 2026-07-06]
+- [x] `getLocalTimeAndDay` の戻り値に `dateKey: "YYYY-MM-DD"`（該当TZのローカル日付）を追加（Intl.formatToParts に year/month/day を追加）。既存テストは additive なので互換（5件成功）
+- [x] `ALARM_DEDUPE_WINDOW_MS` と時間ベース dedupe を削除し、発生キー dedupe に置換: `occurrenceKey = "${matched.dateKey} ${alarmTimeValue}"` が `userData.lastAlarmOccurrence` と一致したらスキップ
+- [x] 状態書き込みを FCM 送信前に無条件実行: `update({ lastAlarmOccurrence, lastAlarmSentAt: serverTimestamp(), squatCompletedAt: null, alarmFailedAt: null })` → その後 sendAlarmNotification → 成功時のみ alarmHistory.add（エラー時もPromiseチェーンでログ）
+- [x] checkAlarms.test.ts を新仕様に更新: 「同一発生キーはスキップ」「発生キーが異なれば3分前の lastAlarmSentAt があっても送信（連続アラーム回帰）」「FCM送信失敗でも状態書き込みは実行・alarmHistoryは記録しない」を追加/置換。初回送信テストのexpectに lastAlarmOccurrence を追加 — 6件全て成功
+- [x] functions ビルド（npm run build 成功）・テスト（3スイート17件成功）・デプロイ（2026-07-06 全5関数更新成功）
 
 ### 26.6.5 検証
-- [ ] 型チェック（npx tsc --noEmit）・アプリ側 jest 全スイート・functions 側 jest 成功
-- [ ] 実機再テスト（Work 6.3統合）: ①バックグラウンド復帰 ②短時間の連続アラーム ③連続バックグラウンド→アイコン起動 ④コールド起動 の全てでスクワット画面が確実に表示される
-- [ ] スクワット未検知 → 5分後（最大+1分）に確実にX投稿される（連続アラーム後も）
+- [x] 型チェック（npx tsc --noEmit）成功・アプリ側 jest 21スイート377件成功・functions 側 jest 3スイート17件成功・ESLint新規エラーなし（2026-07-06）
+- [x] 実機再テスト: 連続5回のアイコン起動・バックグラウンド復帰＋短時間連続アラームで全てスクワット画面表示・検知成功（2026-07-06）
+- [ ] スクワット未検知 → 5分後（最大+1分）に確実にX投稿される（連続アラーム後も）→ **X投稿失敗が発覚 → Problem 41 / Phase 26.7 で対応**
+
+---
+
+## Phase 26.7: X投稿失敗の修正（Problem 41: リフレッシュトークン無効）
+※ ログで確定: 保存済みリフレッシュトークンが無効（Xのリフレッシュトークンは使い捨てローテーション式で、毎回リフレッシュする現行設計が連鎖切断に脆弱）
+
+### サーバー（functions/src/index.ts）[実装完了 2026-07-06]
+- [x] postTweet の戻り値に `status?: number`（HTTPステータス）を追加し、401判定を可能にする（2026-07-06）
+- [x] postPenaltyTweetForUser を改修: ①まず手持ちアクセストークンで投稿 → ②401のときだけ refreshXToken → 新トークンを**使用前に**Firestoreへ書き戻し → 再投稿 → ③リフレッシュ失敗時は `snsConnections.x.needsReauth: true` を記録してfalse（2026-07-06）
+- [x] リフレッシュ成功時は needsReauth フラグを削除（FieldValue.delete()）（2026-07-06）
+- [x] functions ビルド・既存テスト（3スイート17件）成功・デプロイ完了（2026-07-06）
+
+### 手動作業（Work 6.6）[完了 2026-07-06]
+- [x] アプリでX連携を解除→再連携（2026-07-06 完了）
+- [x] スクワット未検知→5分後にX投稿されることを実機確認（日本語・英語ともに成功 2026-07-06）→ **Problem 41 解決**
+
+---
+
+## Phase 26.8: アラーム音が鳴らない問題の修正（Problem 42）
+※ (a) alarm.caf がバンドル未参照でバックグラウンド通知が無音 (b) フォアグラウンドは音声セッション有効化失敗でループ音が鳴らない
+
+### (a) alarm.caf のバンドル復旧 [実装完了 2026-07-06]
+- [x] ios/app.xcodeproj/project.pbxproj に alarm.caf のリソース参照を直接追加（PBXBuildFile / PBXFileReference / appグループchildren / Resourcesビルドフェーズの4箇所。plutil -lint で構文OK確認済み。prebuild --clean はHealthKit手動設定が消えるため使用しない）（2026-07-06）
+- [x] plugins/withAlarmSound.js: addResourceFile 失敗時に警告でなくエラーを明示するようログ強化（将来のprebuild対策）（2026-07-06）
+
+### (b) フォアグラウンドの音リトライ [実装完了 2026-07-06]
+- [x] alarmService.ts: handleAlarmTriggered の音再生部（カスタム音取得＋playAlarmSound）を `startAlarmSound()` として切り出し（2026-07-06）
+- [x] alarmService.ts: `ensureAlarmSoundPlaying()` を追加（alarmState === 'ringing' かつ audioService.getIsPlaying() === false のときだけ startAlarmSound() を再実行）（2026-07-06）
+- [x] App.tsx: AppState active 復帰時と20秒心拍タイマーで ensureAlarmSoundPlaying() を呼ぶ（セッション有効化失敗の自動リカバリ）（2026-07-06）
+
+### 検証
+- [x] 型チェック（npx tsc --noEmit）成功・アプリ側 jest 21スイート377件成功・functions 側 3スイート17件成功・ESLintエラーなし（2026-07-06）
+- [x] 実機再ビルド後: バックグラウンド・未起動でアラーム通知音（alarm.caf）が鳴ることを確認（2026-07-06）→ **Problem 42 解決**。ただし1回で止まる → Problem 43 / Phase 26.9 で対応
+
+---
+
+## Phase 26.9: アプリを開くまでアラームを鳴らし続ける（Problem 43）
+※ iOS仕様: 通知1件のサウンドは最大30秒・1回のみ（ループ不可）。「鳴らし続ける」はサーバー（毎分cron）からの再送で実現する
+
+### サーバー（functions/src/index.ts）[実装完了 2026-07-06]
+- [x] checkAlarms の初回送信時の状態書き込みに `alarmAcknowledgedAt: null` を追加（新しいアラーム発生でリセット）（2026-07-06）
+- [x] checkAlarms に再アラートパスを追加: 時刻マッチしない（または同一発生でdedupeされた）ユーザーでも、`lastAlarmSentAt` が5分以内 かつ squatCompletedAt/alarmFailedAt/alarmAcknowledgedAt が全て null かつ fcmToken あり → `sendAlarmNotification` を再送（状態更新なし・通知のみ）（2026-07-06）
+- [x] checkAlarms.test.ts: 「未ackユーザーへの再アラート送信（状態更新なし）」「ack済みは再送しない」「squatCompletedAt後は再送しない」「5分超は再送しない」を追加。計9件成功（2026-07-06）
+- [x] functions ビルド・テスト（3スイート20件）・デプロイ完了（2026-07-06）
+
+### クライアント [実装完了 2026-07-06]
+- [x] alarmService.handleAlarmTriggered: スクワット画面表示時に `alarmAcknowledgedAt: Timestamp.now()` を fire-and-forget で書き込み（サーバーの再アラート停止シグナル）（2026-07-06）
+- [x] notificationService.scheduleAlarmNotification（ローカルバックアップ・オフライン用）の ios.sound を 'default' → 'alarm.caf' に変更（2026-07-06）
+- [x] 型チェック・アプリ側 jest 21スイート377件成功・ESLintエラーなし（2026-07-06）
+
+### 検証（実機・要再ビルド）
+- [ ] アラーム発火後アプリを開かず放置 → 通知音が約1分周期で鳴り続ける（5分間）
+- [ ] アプリを開いた（スクワット画面表示）時点で再送が止まる
+- [ ] スクワット完了後は再送されない
 
 ---
 
@@ -779,8 +833,9 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] アラーム4経路（フォアグラウンド/通知タップ/アイコン起動/バックグラウンド復帰）でスクワット画面が1枚だけ表示される（2026-07-06）
   - フォアグラウンド・通知タップ: 合格 ／ アイコン起動・バックグラウンド復帰: 当初不具合（Problem 39）→ Phase 26.5（getDocFromServer）で解消し全4経路合格
 - [x] スクワット10回成功 → X投稿されない・統計が正しく加算される（2026-07-06）
-- [ ] スクワット未完了 → 5分後にX投稿が1件だけ行われる
+- [x] スクワット未完了 → 5分後にX投稿が1件だけ行われる（日本語・英語ともに確認 2026-07-06）
 - [ ] X連携解除→再連携、トークン期限切れ後（2時間放置）の自動投稿成功
+  - 解除→再連携は完了（2026-07-06・Work 6.6）。残り: 2時間放置後の自動投稿（新実装の401→リフレッシュ経路の実機確認）
 - [x] 管理者アカウントで課金なしにセットアップ完了できる（2026-07-06）
 - [x] 言語切替（en）でアラーム通知・投稿文言が英語になる（2026-07-06）
 

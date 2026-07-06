@@ -156,9 +156,33 @@ class AlarmService {
     this.pendingAlarmFromNotification = true;
     logger.log('[Alarm] State set to ringing');
 
+    // Tell the server the squat screen is showing so it stops re-alerting
+    // (Problem 43). Fire-and-forget so the alarm sound is not delayed.
+    if (this.currentUserId) {
+      updateUserDocument(this.currentUserId, {
+        alarmAcknowledgedAt: Timestamp.now(),
+      }).catch(error => {
+        console.error('[Alarm] Error recording alarmAcknowledgedAt:', error);
+      });
+    }
+
     // Cancel repeat notifications since alarm was acknowledged
     await cancelAlarmRepeatNotifications();
 
+    // Play alarm sound
+    await this.startAlarmSound();
+
+    // Trigger callback to notify UI
+    if (this.onAlarmTriggeredCallback) {
+      logger.log('[Alarm] Triggering UI callback');
+      this.onAlarmTriggeredCallback();
+    }
+  }
+
+  /**
+   * Resolve the configured alarm sound and start looping playback
+   */
+  private async startAlarmSound(): Promise<void> {
     // Get user settings for custom alarm sound
     let customSound: string | null = null;
     if (this.currentUserId) {
@@ -174,16 +198,23 @@ class AlarmService {
       console.warn('[Alarm] No currentUserId set');
     }
 
-    // Play alarm sound
     logger.log('[Alarm] Playing alarm sound...');
     await audioService.playAlarmSound(customSound, true);
     logger.log('[Alarm] Alarm sound play requested');
+  }
 
-    // Trigger callback to notify UI
-    if (this.onAlarmTriggeredCallback) {
-      logger.log('[Alarm] Triggering UI callback');
-      this.onAlarmTriggeredCallback();
+  /**
+   * Restart the loop alarm sound if the alarm is ringing but no sound is
+   * playing. The audio session can fail to activate while the app is still
+   * transitioning to the foreground (Problem 42) — calling this once the app
+   * is active recovers the sound.
+   */
+  async ensureAlarmSoundPlaying(): Promise<void> {
+    if (this.alarmState !== 'ringing' || audioService.getIsPlaying()) {
+      return;
     }
+    logger.log('[Alarm] Alarm is ringing but sound is not playing — restarting sound');
+    await this.startAlarmSound();
   }
 
   /**

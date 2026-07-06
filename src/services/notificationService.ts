@@ -197,7 +197,9 @@ export const scheduleAlarmNotification = async (
           ongoing: true, // Keep notification visible
         },
         ios: {
-          sound: 'default',
+          // Use the bundled alarm sound so the offline backup actually rings
+          // like an alarm instead of the short default chime (Problem 43)
+          sound: 'alarm.caf',
           interruptionLevel: 'timeSensitive',
           categoryId: 'alarm',
         },

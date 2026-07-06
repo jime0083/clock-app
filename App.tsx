@@ -19,6 +19,13 @@ import { initializeOfflineService } from '@/services/offlineService';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { alarmService } from '@/services/alarmService';
 import {
+  evaluateAlarmWindow,
+  extractAlarmWindowState,
+  AlarmWindowState,
+} from '@/services/alarmWindow';
+import { db } from '@/services/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import {
   scheduleSuccessNotification,
   scheduleFailureNotification,
 } from '@/services/notificationService';
@@ -64,6 +71,35 @@ const AppNavigator: React.FC = () => {
   const [isAlarmRinging, setIsAlarmRinging] = useState(false);
   const alarmInitializedRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  // Mirror isAlarmRinging into a ref so long-lived callbacks (snapshot
+  // listener, heartbeat timer, AppState handler) never see a stale value
+  const isAlarmRingingRef = useRef(false);
+  // Latest alarm-window inputs from the user document (kept fresh by onSnapshot)
+  const alarmWindowStateRef = useRef<AlarmWindowState | null>(null);
+
+  useEffect(() => {
+    isAlarmRingingRef.current = isAlarmRinging;
+  }, [isAlarmRinging]);
+
+  // Single trigger point for the squat screen (Problem 40): evaluates the
+  // alarm window from the latest known user data and turns the screen ON.
+  // It only ever transitions OFF via squat completion/failure/close handlers.
+  const maybeTriggerAlarm = useCallback(async (source: string) => {
+    const state = alarmWindowStateRef.current;
+    if (!state || isAlarmRingingRef.current) return;
+    if (!evaluateAlarmWindow(state, Date.now())) return;
+
+    logger.log('[App] Alarm window open, showing squat screen (source:', source, ')');
+    isAlarmRingingRef.current = true;
+    try {
+      await alarmService.triggerAlarmFromFCM();
+    } catch (error) {
+      console.error('[App] Error starting alarm sound:', error);
+    }
+    // Show the squat screen even if the sound failed — squat detection must
+    // never be missed (CLAUDE.md rule 1)
+    setIsAlarmRinging(true);
+  }, []);
 
   // Initialize app (check language selection)
   useEffect(() => {
@@ -92,8 +128,10 @@ const AppNavigator: React.FC = () => {
   // Listen for app state changes (background -> foreground)
   // This is the single source of truth for AppState handling - alarmService no longer has its own listener
   useEffect(() => {
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      // Only check when coming back to foreground from background/inactive
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      // Re-evaluate the alarm window whenever we come back to the foreground.
+      // The schedule-based evaluation works off the cached user data, so this
+      // shows the squat screen instantly without waiting for the network.
       if (
         appStateRef.current.match(/inactive|background/) &&
         nextAppState === 'active' &&
@@ -101,27 +139,11 @@ const AppNavigator: React.FC = () => {
         user?.uid &&
         isSetupCompleted
       ) {
-        logger.log('[App] App returned to foreground, checking alarm window');
-        try {
-          // Check if within 5-minute alarm window (does not trigger alarm sound)
-          const isWithinWindow = await alarmService.checkAlarmWindow();
-          logger.log(
-            '[App] checkAlarmWindow result:',
-            isWithinWindow,
-            'current isAlarmRinging:',
-            isAlarmRinging
-          );
-
-          if (isWithinWindow) {
-            // Trigger alarm sound and set UI state directly
-            logger.log('[App] Within alarm window, triggering alarm and showing squat screen');
-            await alarmService.triggerAlarmFromFCM();
-            // Always set state directly for reliable UI update
-            setIsAlarmRinging(true);
-          }
-        } catch (error) {
-          console.error('[App] Error checking alarm window:', error);
-        }
+        logger.log('[App] App returned to foreground, evaluating alarm window');
+        maybeTriggerAlarm('foreground');
+        // The audio session can fail to activate while the app was still
+        // transitioning (Problem 42) — restart the loop sound if needed
+        alarmService.ensureAlarmSoundPlaying();
       }
       appStateRef.current = nextAppState;
     };
@@ -131,7 +153,44 @@ const AppNavigator: React.FC = () => {
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticated, user?.uid, isSetupCompleted, isAlarmRinging]);
+  }, [isAuthenticated, user?.uid, isSetupCompleted, maybeTriggerAlarm]);
+
+  // Watch the user document in realtime (Problem 40): any change — the server
+  // sending a new alarm (lastAlarmSentAt), a squat completion, or an alarm
+  // settings change — re-evaluates the window. Combined with the heartbeat
+  // below, the squat screen is guaranteed on every path: cold start (initial
+  // snapshot), background resume (re-sync + AppState), and foreground (FCM
+  // handler or, if FCM fails, the heartbeat as time passes the alarm time).
+  useEffect(() => {
+    if (!(isAuthenticated && user?.uid && isSetupCompleted)) {
+      alarmWindowStateRef.current = null;
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.uid),
+      snapshot => {
+        alarmWindowStateRef.current = extractAlarmWindowState(snapshot.data());
+        maybeTriggerAlarm(snapshot.metadata.fromCache ? 'snapshot-cache' : 'snapshot-server');
+      },
+      error => {
+        console.error('[App] User document listener error:', error);
+      }
+    );
+
+    // Heartbeat: the window can open purely by time passing (e.g. the FCM
+    // notification was not delivered while the app stayed in the foreground).
+    // Also restarts the loop sound if a previous start failed (Problem 42).
+    const heartbeat = setInterval(() => {
+      maybeTriggerAlarm('heartbeat');
+      alarmService.ensureAlarmSoundPlaying();
+    }, 20 * 1000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(heartbeat);
+    };
+  }, [isAuthenticated, user?.uid, isSetupCompleted, maybeTriggerAlarm]);
 
   // Initialize alarm service and FCM when user is authenticated
   useEffect(() => {
@@ -197,14 +256,8 @@ const AppNavigator: React.FC = () => {
         setIsAlarmRinging(true);
       }
 
-      // Check if within 5-minute alarm window (even without notification)
-      // This handles: app icon tap, background restore within 5 min
-      const isWithinWindow = await alarmService.checkAlarmWindow();
-      if (isWithinWindow) {
-        logger.log('[App] Within alarm window on init, triggering alarm');
-        await alarmService.triggerAlarmFromFCM();
-        setIsAlarmRinging(true);
-      }
+      // NOTE: the alarm-window check on launch/resume is handled by the
+      // realtime user-document watcher + heartbeat effect above (Problem 40)
     };
 
     if (isAuthenticated && user?.uid && isSetupCompleted) {
@@ -276,35 +329,6 @@ const AppNavigator: React.FC = () => {
       setIsSetupCompleted(null);
     }
   }, [isAuthenticated, user?.uid, checkSetupStatus]);
-
-  // Check alarm window when setup is completed (handles app launch from terminated state)
-  useEffect(() => {
-    const checkAlarmOnLaunch = async () => {
-      if (
-        isAuthenticated &&
-        user?.uid &&
-        isSetupCompleted &&
-        !isAlarmRinging &&
-        alarmInitializedRef.current
-      ) {
-        logger.log('[App] Checking alarm window on launch/setup complete');
-        try {
-          const isWithinWindow = await alarmService.checkAlarmWindow();
-          if (isWithinWindow) {
-            logger.log(
-              '[App] Within alarm window on launch, triggering alarm and showing squat screen'
-            );
-            await alarmService.triggerAlarmFromFCM();
-            setIsAlarmRinging(true);
-          }
-        } catch (error) {
-          console.error('[App] Error checking alarm window on launch:', error);
-        }
-      }
-    };
-
-    checkAlarmOnLaunch();
-  }, [isAuthenticated, user?.uid, isSetupCompleted, isAlarmRinging]);
 
   const handleSetupComplete = useCallback(() => {
     setIsSetupCompleted(true);

@@ -1,9 +1,12 @@
 /**
- * checkAlarms duplicate-prevention tests (Problem 26)
+ * checkAlarms duplicate-prevention tests (Problem 26 / Problem 40)
  *
- * Verifies the lastAlarmSentAt dedupe window: an alarm that was already sent
- * recently must not be sent again, even though the 2-minute time-match
- * window (current + previous minute) would otherwise match every run.
+ * Verifies the per-occurrence dedupe (lastAlarmOccurrence = "YYYY-MM-DD HH:mm"):
+ * the same occurrence must not be sent twice even though the 2-minute
+ * time-match window (current + previous minute) matches on consecutive runs,
+ * while a NEW occurrence (alarm re-set minutes later) must always fire.
+ * Also verifies that the alarm state (lastAlarmSentAt etc.) is written even
+ * when the FCM send fails.
  */
 
 const mockUsersGet = jest.fn();
@@ -80,7 +83,7 @@ describe('checkAlarms - duplicate prevention (Problem 26)', () => {
     fcmToken: 'test-fcm-token',
   };
 
-  it('should send the alarm on first match (no lastAlarmSentAt yet)', async () => {
+  it('should send the alarm on first match (no lastAlarmOccurrence yet)', async () => {
     mockUsersGet.mockResolvedValue({
       docs: [userDoc('user-1', { ...baseUser })],
     });
@@ -91,16 +94,63 @@ describe('checkAlarms - duplicate prevention (Problem 26)', () => {
     expect(mockAlarmHistoryAdd).toHaveBeenCalledTimes(1);
     expect(mockUserDocUpdate).toHaveBeenCalledWith(
       'user-1',
-      expect.objectContaining({ lastAlarmSentAt: 'MOCK_SERVER_TIMESTAMP' })
+      expect.objectContaining({
+        lastAlarmOccurrence: '2026-07-06 09:00',
+        lastAlarmSentAt: 'MOCK_SERVER_TIMESTAMP',
+        squatCompletedAt: null,
+        alarmFailedAt: null,
+        alarmAcknowledgedAt: null,
+      })
     );
   });
 
-  it('should NOT resend when lastAlarmSentAt is within the dedupe window (2 minutes ago)', async () => {
+  it('should re-alert (notification only, no state update) for an unacknowledged occurrence (Problem 43)', async () => {
+    // The same occurrence must not re-write state, but while the user has
+    // not opened the squat screen the alarm is resent every cron run so the
+    // phone keeps ringing (iOS plays a notification sound only once)
     mockUsersGet.mockResolvedValue({
       docs: [
         userDoc('user-1', {
           ...baseUser,
-          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 2 * 60 * 1000 },
+          lastAlarmOccurrence: '2026-07-06 09:00',
+          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 60 * 1000 },
+        }),
+      ],
+    });
+
+    await wrapped();
+
+    expect(mockMessagingSend).toHaveBeenCalledTimes(1);
+    expect(mockUserDocUpdate).not.toHaveBeenCalled();
+    expect(mockAlarmHistoryAdd).not.toHaveBeenCalled();
+  });
+
+  it('should NOT re-alert once the squat screen was opened (alarmAcknowledgedAt set)', async () => {
+    mockUsersGet.mockResolvedValue({
+      docs: [
+        userDoc('user-1', {
+          ...baseUser,
+          lastAlarmOccurrence: '2026-07-06 09:00',
+          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 60 * 1000 },
+          alarmAcknowledgedAt: { toMillis: () => FIXED_NOW.getTime() - 30 * 1000 },
+        }),
+      ],
+    });
+
+    await wrapped();
+
+    expect(mockMessagingSend).not.toHaveBeenCalled();
+    expect(mockUserDocUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should NOT re-alert once squats were completed', async () => {
+    mockUsersGet.mockResolvedValue({
+      docs: [
+        userDoc('user-1', {
+          ...baseUser,
+          lastAlarmOccurrence: '2026-07-06 09:00',
+          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 60 * 1000 },
+          squatCompletedAt: { toMillis: () => FIXED_NOW.getTime() - 30 * 1000 },
         }),
       ],
     });
@@ -110,12 +160,32 @@ describe('checkAlarms - duplicate prevention (Problem 26)', () => {
     expect(mockMessagingSend).not.toHaveBeenCalled();
   });
 
-  it('should resend once the dedupe window (10 minutes) has fully elapsed', async () => {
+  it('should NOT re-alert after the 5-minute window has closed', async () => {
     mockUsersGet.mockResolvedValue({
       docs: [
         userDoc('user-1', {
           ...baseUser,
-          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 15 * 60 * 1000 },
+          settings: { ...baseUser.settings, alarmTime: '08:50' }, // no time match now
+          lastAlarmOccurrence: '2026-07-06 08:50',
+          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 6 * 60 * 1000 },
+        }),
+      ],
+    });
+
+    await wrapped();
+
+    expect(mockMessagingSend).not.toHaveBeenCalled();
+  });
+
+  it('should send a NEW occurrence even when the previous alarm was only minutes ago (Problem 40)', async () => {
+    // Regression: consecutive alarms (e.g. re-set from 08:57 to 09:00) were
+    // silently skipped by the old 10-minute time-based dedupe
+    mockUsersGet.mockResolvedValue({
+      docs: [
+        userDoc('user-1', {
+          ...baseUser,
+          lastAlarmOccurrence: '2026-07-06 08:57',
+          lastAlarmSentAt: { toMillis: () => FIXED_NOW.getTime() - 3 * 60 * 1000 },
         }),
       ],
     });
@@ -123,6 +193,34 @@ describe('checkAlarms - duplicate prevention (Problem 26)', () => {
     await wrapped();
 
     expect(mockMessagingSend).toHaveBeenCalledTimes(1);
+    expect(mockUserDocUpdate).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        lastAlarmOccurrence: '2026-07-06 09:00',
+        squatCompletedAt: null,
+        alarmFailedAt: null,
+      })
+    );
+  });
+
+  it('should still record the alarm state when the FCM send fails (Problem 40)', async () => {
+    mockMessagingSend.mockRejectedValue(new Error('invalid registration token'));
+    mockUsersGet.mockResolvedValue({
+      docs: [userDoc('user-1', { ...baseUser })],
+    });
+
+    await wrapped();
+
+    // State written before the send: window check and penalty check still work
+    expect(mockUserDocUpdate).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        lastAlarmOccurrence: '2026-07-06 09:00',
+        lastAlarmSentAt: 'MOCK_SERVER_TIMESTAMP',
+      })
+    );
+    // Delivery log is only recorded on successful sends
+    expect(mockAlarmHistoryAdd).not.toHaveBeenCalled();
   });
 
   it('should skip users whose alarm day does not include today', async () => {

@@ -1520,6 +1520,110 @@ Problem 39 の getDocFromServer 修正後の実機再テストで判明：
 - progress.txt の **Phase 26.6** として実施（実装＝テストPhase 27・ビルドPhase 28 より前）
 - CLAUDE.mdルール1（スクワット見逃し厳禁）に直結するため最優先
 
+### 解決（2026-07-06）
+2層防御を実装しデプロイ完了。実機5回連続テストでアイコン起動・バックグラウンド復帰・連続アラームの全てでスクワット画面表示を確認（Phase 26.6完了）。
+
+---
+
+## Problem 41: スクワット未検知時のX投稿が失敗する（リフレッシュトークン無効）(2026-07-06) [解決済み 2026-07-06]
+※ サーバー修正（投稿優先・401時のみリフレッシュ）デプロイ＋X再連携（Work 6.6）後、実機でスクワット未検知→5分後のXペナルティ投稿成功を日本語・英語ともに確認
+
+### 症状
+- スクワット未完了から5分経過後、アプリ内の寝坊日数は加算されるがXへのペナルティ投稿が行われない
+- Firebase Functionsログ（2026-07-06 18:19 JST）:
+  ```
+  Squats not completed, posting penalty tweet
+  X connection status - connected: true, hasAccessToken: true, hasRefreshToken: true
+  Attempting to refresh X token...
+  X token refresh failed: Value passed for the token was invalid.
+  Failed to post penalty tweet: Unauthorized
+  ```
+
+### 根本原因
+**Firestoreに保存されたXリフレッシュトークンが無効化されており、かつ現行設計がそれを自力で悪化させる構造になっている。**
+
+1. **XのOAuth2リフレッシュトークンは使い捨て（ローテーション式）**: リフレッシュ成功のたびに旧リフレッシュトークンは無効になり、新しいものが発行される
+2. **現行の `postPenaltyTweetForUser`（functions/src/index.ts:445）は投稿のたびに必ずリフレッシュを実行**（"Try to refresh token first"）— アクセストークンが有効でも毎回ローテーションを回す
+3. どこかの時点でローテーション連鎖が切断（新トークンのFirestore書き戻し失敗、cron毎分実行との競合、クライアント再連携との上書き競合など）→ 保存済みリフレッシュトークンが「使用済み＝invalid」になった
+4. 以後、毎回 `Value passed for the token was invalid` → 期限切れ（2時間）の旧アクセストークンで投稿 → `Unauthorized` → **永久に失敗し続ける**（サーバー側から自然回復は不可能）
+
+### 解決策
+**復旧（手動・必須）**: アプリでX連携を解除→再連携し、新しいトークンをFirestoreに保存する（manual-work.txt Work 6.5）
+
+**再発防止（サーバー実装）**:
+1. 投稿はまず**手持ちのアクセストークンで試行**し、401（認証エラー）のときだけリフレッシュ→再投稿する（リフレッシュ頻度を「毎回」→「約2時間に1回」に激減させ、ローテーション切断リスクを最小化）
+2. リフレッシュ成功時は**新トークンを使用する前にFirestoreへ書き戻す**（書き戻し失敗時に新リフレッシュトークンを闇に消さない）
+3. リフレッシュ失敗（invalid token）時は `snsConnections.x.needsReauth: true` を記録し明確にログする（将来、クライアントで再連携を促すUIに使える。UIの実装は今回のスコープ外・報告のみ）
+
+### 影響範囲
+- `functions/src/index.ts`（postPenaltyTweetForUser / postTweet の改修）→ 要デプロイ
+- 手動作業: X再連携（Work 6.5）
+
+---
+
+## Problem 42: アラーム音が鳴らない（通知音バンドル欠落＋フォアグラウンド音声セッション失敗）(2026-07-06) [解決済み 2026-07-06]
+※ pbxproj修正＋再ビルド後、実機で通知音（アラーム音）が鳴ることを確認。ただし「1回で止まる」新要件 → Problem 43 で対応
+
+### 症状
+1. **バックグラウンド・未起動時**: アラーム時刻になっても通知音（アラーム音）が鳴らない
+2. **フォアグラウンド（アプリ起動時）**: スクワット画面は表示されるが、Xcodeコンソールに以下のエラーが出てアプリ内ループアラーム音が鳴らない
+   ```
+   UnexpectedException: Session activation failed (at ExpoModulesCore/SyncFunctionDefinition.swift:139)
+   '[Audio] Error playing alarm sound:' ... code: 'ERR_UNEXPECTED'
+   ```
+
+### 根本原因（2系統）
+
+**(a) alarm.caf がアプリバンドルに含まれていない [バックグラウンド無音の原因]**
+- Firebase Functionsログでは FCM送信は毎回成功（"Successfully sent alarm"）→ サーバーは正常
+- FCMペイロードは `sound: "alarm.caf"` を指定しているが、`ios/app/alarm.caf` はディスク上に存在するのに **`ios/app.xcodeproj/project.pbxproj` への参照が0件**＝ビルド済みアプリに含まれていない
+- iOSはバンドルに無いサウンドファイルを無視して**無音で通知を表示**する（Problem 2 と同型の再発）
+- 原因: いずれかの `expo prebuild` 実行時に config plugin（plugins/withAlarmSound.js）の `addResourceFile` が失敗（同pluginはエラー時に警告のみ出して続行する実装）
+- 注意: ios/ には手動変更（HealthKitケイパビリティ等）があるため **prebuild --clean での再生成は不可**。pbxproj への直接追記で修正する
+
+**(b) アプリ起動遷移中の音声セッション有効化失敗 [フォアグラウンド無音の原因]**
+- Phase 26.6 の常時監視（onSnapshot/AppState）はアプリが完全に active になる前（inactive遷移中）にも発火し、その時点で `audioService.playAlarmSound()`（expo-audio の createAudioPlayer/play は同期ネイティブ呼び出し）が実行される
+- iOSはアプリが active でない間の AVAudioSession 有効化を拒否 → "Session activation failed"
+- 現行実装は失敗後のリトライが無く、画面は出るが音は鳴らないまま
+- 修正: AppState が active になった時と心拍タイマーで「リンギング中なのに音が再生されていなければ再開」する `ensureAlarmSoundPlaying()` を追加
+
+### 影響範囲
+- `ios/app.xcodeproj/project.pbxproj`（alarm.caf のリソース参照追加・要再ビルド）
+- `plugins/withAlarmSound.js`（将来のprebuild時に確実に追加されるようログ強化）
+- `src/services/alarmService.ts`（ensureAlarmSoundPlaying 追加）
+- `App.tsx`（active復帰時・心拍タイマーでの音リトライ）
+
+---
+
+## Problem 43: アラーム通知音が1回で止まる（アプリを開くまで鳴り続けない）(2026-07-06)
+
+### 症状
+- Problem 42 修正後、アラーム時刻に通知音（alarm.caf）が鳴ることは確認できたが、**数秒〜最大30秒の1回きりで止まる**
+- 要件: 「ユーザーがアプリを開く（スクワット検知画面が表示される）までアラームを鳴らし続ける」
+
+### 根本原因
+1. **iOSの仕様上、1つの通知につきサウンドは最大30秒・1回しか再生されない**（ループ不可）。「鳴らし続ける」は通知を繰り返し発火させる以外に実現手段がない（Critical Alertも同じ制約。Apple純正時計アプリのみ特権的にループ可能）
+2. 既存のリピート通知（notificationService.scheduleAlarmRepeatNotifications: 30秒間隔×10回）は**スヌーズ時のみ**呼ばれる設計。アラーム発火時（バックグラウンド）はJSが実行されないため、クライアント側でその時点からリピートを組むことは原理的に不可能
+3. サーバー（checkAlarms）は1回送信したら同一発生をdedupeし、以後は再送しない
+
+### 解決策（サーバー駆動の再アラート）
+毎分実行される checkAlarms を利用し、**「窓が開いていてまだアプリが開かれていないユーザー」に同じアラームFCMを毎分再送**する：
+
+1. **新フィールド `alarmAcknowledgedAt`**: クライアントがスクワット画面を表示した時点で書き込む（alarmService.handleAlarmTriggered）。サーバーは初回送信時に null にリセット
+2. **checkAlarms に再アラートパスを追加**: `lastAlarmSentAt` が5分以内 かつ squatCompletedAt/alarmFailedAt がその発生以降に無い かつ alarmAcknowledgedAt が null のユーザーに `sendAlarmNotification` を再実行（状態は更新しない・通知のみ）
+3. **ローカルバックアップ通知（+60秒・オフライン用）の iOS サウンドを 'default'（短いピロン）→ 'alarm.caf' に変更**
+
+結果: 初回30秒 → 約30秒静寂 → 再送30秒 → …を、アプリを開く／スクワット完了／5分経過（ペナルティ確定）まで毎分繰り返す。iOSの制約内で実現可能な最大限の「鳴らし続け」
+
+### 既知の制約（許容）
+- 完全な連続音は不可（iOS仕様）。約1分周期の再鳴動となる
+- cron粒度が1分のため、再送間隔を30秒以下にはできない
+
+### 影響範囲
+- `functions/src/index.ts`（checkAlarms 再アラートパス・初回送信時の alarmAcknowledgedAt リセット）→ 要デプロイ
+- `src/services/alarmService.ts`（handleAlarmTriggered で alarmAcknowledgedAt 書き込み）
+- `src/services/notificationService.ts`（ローカルバックアップの iOS サウンド変更）→ 要再ビルド
+
 ### 症状
 実機E2Eテスト（Phase 27.4 / Work 6.3）でアラーム4経路を検証した結果：
 - **フォアグラウンド（FCM受信）**: スクワット画面が正常表示・検知OK ✓

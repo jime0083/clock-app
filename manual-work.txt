@@ -572,3 +572,10 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [ ] Appleからの返信メールを確認（2026-04-22 申請済み）
 - [ ] 承認された場合: entitlement実装タスクを progress.txt に追加して実装
 - [ ] 却下の場合: サイレントモード注意喚起UI（Phase 25.4）の実装可否を決定
+
+### Work 6.6: X連携の再接続（Problem 41 / Phase 26.7・2026-07-06 追加）
+※ Firestoreに保存されたXリフレッシュトークンが無効化されており（使い捨てトークンのローテーション連鎖切断）、サーバーからは復旧不可能。再連携が唯一の復旧手段
+- [ ] アプリの「SNS連携設定」でXの連携を解除する
+- [ ] 同画面でXを再連携する → Firestoreに新しいaccessToken/refreshTokenが保存される
+- [ ] スクワット未検知テスト: アラーム発火→スクワットせず5分待つ→Xにペナルティ投稿が1件されることを確認
+  ※ 事前にX APIクレジット残量も確認（https://developer.twitter.com/en/portal/dashboard）。残量ゼロの場合は402エラーで投稿されない（Problem 13参照）

@@ -48,9 +48,9 @@ const ALARM_MESSAGES = {
 // Fallback timezone for users who have not saved settings.timezone yet
 const DEFAULT_TIMEZONE = "Asia/Tokyo";
 
-// Skip users whose alarm was already sent within this window (prevents
-// double sends now that the time match covers a 2-minute window)
-const ALARM_DEDUPE_WINDOW_MS = 10 * 60 * 1000;
+// Alarm dedupe is keyed per occurrence (local date + alarm time) via
+// lastAlarmOccurrence — see checkAlarms. A time-based window is NOT used:
+// it blocked legitimate consecutive alarms set minutes apart (Problem 40).
 
 // Uses Application Default Credentials — the function's runtime service
 // account (okiroya-9af3f@appspot.gserviceaccount.com) already has the
@@ -71,19 +71,23 @@ const WEEKDAY_TO_NUMBER: Record<string, number> = {
 };
 
 /**
- * Get the local time ("HH:mm") and day of week (0 = Sunday) for a given
- * IANA timezone at the given instant. Falls back to Asia/Tokyo for
- * invalid/unknown timezones.
+ * Get the local time ("HH:mm"), day of week (0 = Sunday) and local date
+ * ("YYYY-MM-DD") for a given IANA timezone at the given instant. Falls back
+ * to Asia/Tokyo for invalid/unknown timezones. The dateKey is used to build
+ * the per-occurrence alarm dedupe key (Problem 40).
  */
 export function getLocalTimeAndDay(
   timezone: string,
   date: Date
-): { time: string; day: number } {
+): { time: string; day: number; dateKey: string } {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       hour12: false,
       weekday: "short",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     }).formatToParts(date);
@@ -100,6 +104,7 @@ export function getLocalTimeAndDay(
     return {
       time: `${hour}:${get("minute")}`,
       day: WEEKDAY_TO_NUMBER[get("weekday")] ?? 0,
+      dateKey: `${get("year")}-${get("month")}-${get("day")}`,
     };
   } catch (error) {
     console.warn(`Invalid timezone "${timezone}", falling back to ${DEFAULT_TIMEZONE}`);
@@ -197,79 +202,118 @@ export const checkAlarms = onSchedule(
         const userId = doc.id;
         const userData = doc.data();
         const alarmTimeValue = userData.settings?.alarmTime;
-
-        if (!alarmTimeValue) {
-          continue;
-        }
-
-        // Evaluate the alarm in the user's own timezone (Problem 26)
-        const timezone = userData.settings?.timezone || DEFAULT_TIMEZONE;
-        const candidates = [
-          getLocalTimeAndDay(timezone, now),
-          getLocalTimeAndDay(timezone, oneMinuteAgo),
-        ];
-        const matched = candidates.find((c) => c.time === alarmTimeValue);
-
-        if (!matched) {
-          continue;
-        }
-
-        // Empty alarmDays means "every day" (same behavior as the client)
-        const alarmDays: number[] = userData.settings?.alarmDays || [];
-        const daysToCheck =
-          alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6];
-
-        if (!daysToCheck.includes(matched.day)) {
-          console.log(`User ${userId}: Alarm not set for today (day ${matched.day})`);
-          continue;
-        }
-
         const fcmToken = userData.fcmToken;
-        if (!fcmToken) {
-          console.log(`User ${userId}: No FCM token found`);
-          continue;
-        }
-
-        // Dedupe: skip if an alarm was already sent within the window
-        const lastAlarmSentAt = userData.lastAlarmSentAt;
-        if (lastAlarmSentAt) {
-          const lastSent =
-            lastAlarmSentAt.toMillis?.() || new Date(lastAlarmSentAt).getTime();
-          if (now.getTime() - lastSent < ALARM_DEDUPE_WINDOW_MS) {
-            console.log(`User ${userId}: Alarm already sent recently, skipping`);
-            continue;
-          }
-        }
-
-        console.log(
-          `User ${userId}: Sending alarm (${alarmTimeValue} in ${timezone})`
-        );
-
         const language = userData.settings?.language || "ja";
-        const currentTime = alarmTimeValue;
-        const currentDay = matched.day;
 
-        const sendPromise = sendAlarmNotification(fcmToken, userId, language).then(
-          async (success) => {
-            if (success) {
-              // Record alarm history
-              await db.collection("alarmHistory").add({
-                userId: userId,
-                sentAt: admin.firestore.FieldValue.serverTimestamp(),
-                alarmTime: currentTime,
-                dayOfWeek: currentDay,
-              });
-              // Record lastAlarmSentAt in user document for squat screen check
-              await db.collection("users").doc(userId).update({
-                lastAlarmSentAt: admin.firestore.FieldValue.serverTimestamp(),
-                squatCompletedAt: null, // Reset squat completion status
-                alarmFailedAt: null, // Reset failure status for the new alarm
-              });
+        // ----- Pass 1: initial send for a newly matching occurrence -----
+        let matched: { time: string; day: number; dateKey: string } | undefined;
+        if (alarmTimeValue) {
+          // Evaluate the alarm in the user's own timezone (Problem 26)
+          const timezone = userData.settings?.timezone || DEFAULT_TIMEZONE;
+          const candidates = [
+            getLocalTimeAndDay(timezone, now),
+            getLocalTimeAndDay(timezone, oneMinuteAgo),
+          ];
+          matched = candidates.find((c) => c.time === alarmTimeValue);
+
+          if (matched) {
+            // Empty alarmDays means "every day" (same behavior as the client)
+            const alarmDays: number[] = userData.settings?.alarmDays || [];
+            const daysToCheck =
+              alarmDays.length > 0 ? alarmDays : [0, 1, 2, 3, 4, 5, 6];
+            if (!daysToCheck.includes(matched.day)) {
+              console.log(
+                `User ${userId}: Alarm not set for today (day ${matched.day})`
+              );
+              matched = undefined;
             }
           }
-        );
 
-        sendPromises.push(sendPromise);
+          // Dedupe per alarm occurrence (local date + alarm time). The time
+          // match spans a 2-minute window (current + previous minute), so the
+          // same occurrence can match on two consecutive runs — but a *new*
+          // occurrence (e.g. the user re-set the alarm a few minutes later)
+          // must always fire (Problem 40). An already-sent occurrence falls
+          // through to the re-alert pass below.
+          if (matched) {
+            const occurrenceKey = `${matched.dateKey} ${alarmTimeValue}`;
+            if (userData.lastAlarmOccurrence === occurrenceKey) {
+              console.log(
+                `User ${userId}: Alarm already sent for ${occurrenceKey}`
+              );
+            } else if (!fcmToken) {
+              console.log(`User ${userId}: No FCM token found`);
+              continue;
+            } else {
+              console.log(
+                `User ${userId}: Sending alarm (${alarmTimeValue} in ${timezone})`
+              );
+
+              const currentTime = alarmTimeValue;
+              const currentDay = matched.day;
+
+              // Record the occurrence BEFORE sending FCM: even if the push
+              // fails (e.g. stale token), the alarm did occur, so the
+              // client's window check and the penalty check must still
+              // work (Problem 40).
+              const sendPromise = db
+                .collection("users")
+                .doc(userId)
+                .update({
+                  lastAlarmOccurrence: occurrenceKey,
+                  lastAlarmSentAt: admin.firestore.FieldValue.serverTimestamp(),
+                  squatCompletedAt: null, // Reset squat completion status
+                  alarmFailedAt: null, // Reset failure status for the new alarm
+                  alarmAcknowledgedAt: null, // Reset ack for re-alerts (Problem 43)
+                })
+                .then(() => sendAlarmNotification(fcmToken, userId, language))
+                .then(async (success) => {
+                  if (success) {
+                    // Record alarm history (delivery log — successful sends only)
+                    await db.collection("alarmHistory").add({
+                      userId: userId,
+                      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+                      alarmTime: currentTime,
+                      dayOfWeek: currentDay,
+                    });
+                  }
+                })
+                .catch((error) => {
+                  console.error(`User ${userId}: Error processing alarm:`, error);
+                });
+
+              sendPromises.push(sendPromise);
+              continue;
+            }
+          }
+        }
+
+        // ----- Pass 2: re-alert until the squat screen is opened (Problem 43) -----
+        // iOS plays a notification sound only once (max 30s), so "keep
+        // ringing" is implemented by resending the alarm every cron run
+        // while the 5-minute window is open and the user has not yet opened
+        // the squat screen (alarmAcknowledgedAt), completed squats, or been
+        // marked as failed. State is NOT updated here — notification only.
+        if (!fcmToken) continue;
+        const lastAlarmSentAt = userData.lastAlarmSentAt;
+        if (!lastAlarmSentAt) continue;
+        const lastSentMs =
+          lastAlarmSentAt.toMillis?.() || new Date(lastAlarmSentAt).getTime();
+        const elapsedMs = now.getTime() - lastSentMs;
+        if (elapsedMs < 0 || elapsedMs > PENALTY_WINDOW_MS) continue;
+        // These are reset to null on every initial send, so any value means
+        // this occurrence was already handled
+        if (userData.alarmAcknowledgedAt) continue;
+        if (userData.squatCompletedAt) continue;
+        if (userData.alarmFailedAt) continue;
+
+        console.log(
+          `User ${userId}: Re-alerting unacknowledged alarm ` +
+            `(${Math.round(elapsedMs / 1000)}s elapsed)`
+        );
+        sendPromises.push(
+          sendAlarmNotification(fcmToken, userId, language).then(() => undefined)
+        );
       }
 
       await Promise.all(sendPromises);
@@ -394,7 +438,7 @@ async function refreshXToken(
 async function postTweet(
   accessToken: string,
   text: string
-): Promise<{ success: boolean; tweetId?: string; error?: string }> {
+): Promise<{ success: boolean; tweetId?: string; error?: string; status?: number }> {
   try {
     const response = await fetch("https://api.twitter.com/2/tweets", {
       method: "POST",
@@ -410,6 +454,7 @@ async function postTweet(
       return {
         success: false,
         error: errorData.detail || `HTTP ${response.status}`,
+        status: response.status,
       };
     }
 
@@ -440,39 +485,46 @@ async function postPenaltyTweetForUser(
     return false;
   }
 
-  let accessToken = xConnection.accessToken;
   const refreshToken = xConnection.refreshToken;
   const language = userData.settings?.language || "ja";
-
-  // Try to refresh token first (tokens may have expired)
-  if (refreshToken) {
-    console.log(`User ${userId}: Attempting to refresh X token...`);
-    const refreshResult = await refreshXToken(refreshToken);
-
-    if (refreshResult.success && refreshResult.tokens) {
-      accessToken = refreshResult.tokens.access_token;
-
-      // Update tokens in Firestore
-      await db.collection("users").doc(userId).update({
-        "snsConnections.x.accessToken": refreshResult.tokens.access_token,
-        "snsConnections.x.refreshToken": refreshResult.tokens.refresh_token,
-      });
-
-      console.log(`User ${userId}: X tokens refreshed successfully`);
-    } else {
-      console.error(`User ${userId}: X token refresh failed: ${refreshResult.error}`);
-    }
-  } else {
-    console.log(`User ${userId}: No refresh token available, using existing access token`);
-  }
 
   // Get penalty message based on user's language
   const penaltyMessage =
     PENALTY_MESSAGES[language as keyof typeof PENALTY_MESSAGES] ||
     PENALTY_MESSAGES.ja;
 
-  // Post penalty tweet
-  const postResult = await postTweet(accessToken, penaltyMessage);
+  // Try the stored access token first. X refresh tokens are single-use
+  // (rotated on every refresh), so refreshing on every attempt risks
+  // permanently breaking the rotation chain (Problem 41) — only refresh
+  // when the access token is actually rejected (401).
+  let postResult = await postTweet(xConnection.accessToken, penaltyMessage);
+
+  if (!postResult.success && postResult.status === 401 && refreshToken) {
+    console.log(`User ${userId}: Access token rejected, refreshing X token...`);
+    const refreshResult = await refreshXToken(refreshToken);
+
+    if (refreshResult.success && refreshResult.tokens) {
+      // Persist the rotated tokens BEFORE using them: if this write failed
+      // after posting, the new (single-use) refresh token would be lost
+      // and the chain would break permanently.
+      await db.collection("users").doc(userId).update({
+        "snsConnections.x.accessToken": refreshResult.tokens.access_token,
+        "snsConnections.x.refreshToken": refreshResult.tokens.refresh_token,
+        "snsConnections.x.needsReauth": admin.firestore.FieldValue.delete(),
+      });
+      console.log(`User ${userId}: X tokens refreshed successfully`);
+
+      postResult = await postTweet(refreshResult.tokens.access_token, penaltyMessage);
+    } else {
+      console.error(`User ${userId}: X token refresh failed: ${refreshResult.error}`);
+      // The stored refresh token is dead — only an in-app X reconnect can
+      // recover. Flag it so the client can prompt the user to re-connect.
+      await db.collection("users").doc(userId).update({
+        "snsConnections.x.needsReauth": true,
+      });
+      return false;
+    }
+  }
 
   if (postResult.success) {
     console.log(`User ${userId}: Penalty tweet posted successfully (${postResult.tweetId})`);

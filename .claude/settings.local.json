@@ -76,7 +76,9 @@
       "Bash(firebase --version)",
       "Bash(firebase projects:list)",
       "Bash(xargs -n1 basename)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(npx firebase-tools *)",
+      "Bash(plutil -lint ios/app.xcodeproj/project.pbxproj)"
     ]
   }
 }

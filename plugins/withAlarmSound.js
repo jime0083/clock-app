@@ -50,11 +50,14 @@ function withAlarmSound(config) {
         console.log(`[withAlarmSound] ${soundFileName} already in Xcode project`);
       }
     } catch (error) {
-      console.warn(
-        `[withAlarmSound] Could not add ${soundFileName} to Xcode project:`,
+      // Problem 42: if this fails the notification sound is silently missing
+      // from the bundle — surface it loudly so a prebuild doesn't hide it
+      console.error(
+        `[withAlarmSound] ERROR: Failed to add ${soundFileName} to the Xcode project. ` +
+          `Background alarm notifications will be SILENT until ${soundFileName} is added ` +
+          `to the app target's Resources (see problem.txt Problem 42):`,
         error.message
       );
-      // Continue anyway - file is copied and may work
     }
 
     return config;
