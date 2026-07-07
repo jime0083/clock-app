@@ -118,19 +118,48 @@ describe('notificationService (iOS)', () => {
   });
 
   describe('scheduleAlarmNotification', () => {
-    it('should cancel existing alarms and schedule one per specified day', async () => {
+    // 1 backup (+60s) + 5 ring fillers (+30/+90/+150/+210/+270s) per day (Problem 44)
+    const NOTIFICATIONS_PER_DAY = 6;
+
+    it('should cancel existing alarms and schedule backup + ring fillers per specified day', async () => {
       const ids = await scheduleAlarmNotification('07:00', [1, 3], 'Wake up', 'Time to rise');
 
       expect(mockCancelAllNotifications).toHaveBeenCalled();
       expect(mockCancelTriggerNotifications).toHaveBeenCalled();
-      expect(ids).toHaveLength(2);
-      expect(mockCreateTriggerNotification).toHaveBeenCalledTimes(2);
+      expect(ids).toHaveLength(2 * NOTIFICATIONS_PER_DAY);
+      expect(mockCreateTriggerNotification).toHaveBeenCalledTimes(2 * NOTIFICATIONS_PER_DAY);
     });
 
     it('should schedule for every day when alarmDays is empty', async () => {
       const ids = await scheduleAlarmNotification('07:00', [], 'Wake up', 'Time to rise');
 
-      expect(ids).toHaveLength(7);
+      expect(ids).toHaveLength(7 * NOTIFICATIONS_PER_DAY);
+    });
+
+    it('should interleave ring fillers at 30s offsets around the backup with the alarm sound (Problem 44)', async () => {
+      await scheduleAlarmNotification('07:00', [1], 'Wake up', 'Time to rise');
+
+      const calls = mockCreateTriggerNotification.mock.calls as [
+        { id: string; data: Record<string, string>; ios: { sound: string } },
+        { timestamp: number },
+      ][];
+
+      const backupCall = calls.find(([notification]) => notification.id === 'alarm-1');
+      expect(backupCall).toBeDefined();
+      // The backup fires at alarm time + 60s
+      const alarmBaseTimestamp = backupCall![1].timestamp - 60 * 1000;
+
+      for (const offsetSeconds of [30, 90, 150, 210, 270]) {
+        const fillerCall = calls.find(
+          ([notification]) => notification.id === `alarm-ring-1-${offsetSeconds}`
+        );
+        expect(fillerCall).toBeDefined();
+        const [notification, trigger] = fillerCall!;
+        expect(trigger.timestamp).toBe(alarmBaseTimestamp + offsetSeconds * 1000);
+        expect(notification.ios.sound).toBe('alarm.caf');
+        expect(notification.data.type).toBe('alarm');
+        expect(notification.data.isRingFiller).toBe('true');
+      }
     });
   });
 

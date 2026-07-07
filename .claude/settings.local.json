@@ -78,7 +78,8 @@
       "Bash(xargs -n1 basename)",
       "Read(//tmp/**)",
       "Bash(npx firebase-tools *)",
-      "Bash(plutil -lint ios/app.xcodeproj/project.pbxproj)"
+      "Bash(plutil -lint ios/app.xcodeproj/project.pbxproj)",
+      "Bash(java -version)"
     ]
   }
 }

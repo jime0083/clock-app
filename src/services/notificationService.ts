@@ -113,6 +113,13 @@ const getNextOccurrence = (
 // This avoids double notifications while keeping an offline fallback.
 const LOCAL_BACKUP_DELAY_MS = 60 * 1000;
 
+// Ring-filler notifications (Problem 44): an iOS notification sound plays at
+// most 30 seconds, and the server re-alert runs on a 1-minute cron, so each
+// minute has ~30s of silence. These offsets interleave local notifications
+// between the server re-alerts (+0/+60/+120/+180/+240s) so the alarm sounds
+// nearly continuous for the whole 5-minute squat window.
+const RING_FILLER_OFFSETS_MS = [30, 90, 150, 210, 270].map(seconds => seconds * 1000);
+
 /**
  * Schedule backup alarm notifications with Full-screen Intent for Android
  * (fires 1 minute after the FCM alarm as an offline fallback)
@@ -208,6 +215,53 @@ export const scheduleAlarmNotification = async (
     );
 
     notificationIds.push(notificationId);
+
+    // Ring fillers: fill the silent half of each server re-alert minute
+    for (const offsetMs of RING_FILLER_OFFSETS_MS) {
+      const fillerTrigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: baseDate.getTime() + offsetMs,
+        repeatFrequency: RepeatFrequency.WEEKLY,
+        alarmManager: {
+          allowWhileIdle: true,
+        },
+      };
+
+      const fillerId = await notifee.createTriggerNotification(
+        {
+          id: `alarm-ring-${day}-${offsetMs / 1000}`,
+          title,
+          body,
+          data: {
+            type: 'alarm',
+            alarmTime,
+            day: day.toString(),
+            isRingFiller: 'true',
+          },
+          android: {
+            channelId: ALARM_CHANNEL_ID,
+            importance: AndroidImportance.HIGH,
+            category: AndroidCategory.ALARM,
+            visibility: AndroidVisibility.PUBLIC,
+            pressAction: {
+              id: 'default',
+              launchActivity: 'default',
+            },
+            sound: 'default',
+            vibrationPattern: [0, 500, 200, 500, 200, 500],
+            autoCancel: false,
+          },
+          ios: {
+            sound: 'alarm.caf',
+            interruptionLevel: 'timeSensitive',
+            categoryId: 'alarm',
+          },
+        },
+        fillerTrigger
+      );
+
+      notificationIds.push(fillerId);
+    }
   }
 
   return notificationIds;

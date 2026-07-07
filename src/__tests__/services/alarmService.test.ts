@@ -302,6 +302,19 @@ describe('alarmService', () => {
       expect(mockPlayAlarmSound).not.toHaveBeenCalled();
       expect(callback).toHaveBeenCalled();
     });
+
+    it('should reschedule local notifications on acknowledge so ring fillers stop (Problem 44)', async () => {
+      await alarmService.triggerAlarmFromFCM();
+      // The reschedule is fire-and-forget - flush the pending promise chain
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockScheduleAlarmNotification).toHaveBeenCalledWith(
+        '07:00',
+        [1],
+        expect.any(String),
+        expect.any(String)
+      );
+    });
   });
 
   describe('checkAlarmWindow additional branches', () => {

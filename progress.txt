@@ -501,8 +501,9 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
   - `alarmHistory`, `penaltyPosts` を含む他パス: `match /{document=**}` で全拒否（Admin SDKはルール対象外）
 - [x] `firestore.indexes.json` を新規作成（2026-07-04）
   - history の date クエリは同一フィールドの範囲＋orderBy のみのため単一フィールド自動インデックスで足りる → 空定義
-- [ ] ルールのデプロイと動作確認（手動: manual-work.txt Work 6.2）
+- [x] ルールのデプロイと動作確認（2026-07-04 デプロイ / 2026-07-07 検証完了・Work 6.2）
   - 確認項目: 本人のusersドキュメント読み書き可 / 他人のドキュメント読み取り不可 / adminUsersへの書き込み不可
+  - 検証: rules-unit-testing＋Firestoreエミュレータで firestore.rules を自動テスト16件すべて成功（旧ルールプレイグラウンドはコンソールUIから廃止のため代替）
 
 ### 19.3 X clientSecret の除去（Problem 31）
 - [x] src/services/xAuthService.ts: `getXCredentials()` から clientSecret を削除し、clientId のみ必須とする（2026-07-04）
@@ -539,7 +540,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ### 20.3 タイムアウト時のスクワット数記録修正（Problem 22）
 - [x] src/screens/SquatMeasureScreen.tsx: `handleTimeout` を `handleTimeoutRef` に格納し、setInterval からは ref 経由で最新版を呼ぶ（2026-07-04）
   ※ handleSuccess は useEffect([squatCount]) から呼ばれ毎レンダー最新のため対応不要
-- [ ] タイムアウト時に実際のスクワット回数が履歴に記録されることを確認（実機・Work 6.3で実施）
+- [x] タイムアウト時に実際のスクワット回数が履歴に記録されることを確認（2026-07-07 実機確認・累計スクワット回数184回に正しく加算）
 
 ---
 
@@ -569,7 +570,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] SetupScreen の subscription ステップに「購入を復元」ボタンを追加（useSubscription().restore 使用・paywall.restore 文言・既存デザイン踏襲のテキストボタン）（2026-07-04）
 - [x] 復元成功時も handleCompleteSetup を実行（成功アラートのOKで遷移）（2026-07-04）
 - [x] PaywallScreen の方針決定: 「削除」（2026-07-04 ユーザー決定）。PaywallScreen.tsx を削除し、HomeScreen から import / isPaywallVisible / レンダリング / useSubscription 参照を除去。失効時の機能制限はリリース後に検討
-- [ ] 動作確認（実機・Work 6.4）: adminUsers に自分のUIDを登録 → 課金なしでセットアップ通過 / Sandboxで復元ボタン動作確認
+- [x] 動作確認: 管理者アカウントで課金なしセットアップ通過（2026-07-06）／アプリ削除→再インストール→同一Googleアカウントでログインすると課金ステップが自動スキップされホーム画面到達（2026-07-07。RevenueCat logIn(uid) で購入が自動復元されるため復元ボタン操作は不要だった）
 
 ### 22.2 規約・ポリシーURLの修正（Problem 24）
 - [x] src/constants/urls.ts を新規作成し、SUPPORT_URL / TERMS_URL / PRIVACY_URL を定義（2026-07-04）
@@ -685,7 +686,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] src/screens/HomeScreen.tsx: useSubscription の planType を MenuDrawer に渡す。handleMenuItemPress の `case 'account'` を削除（2026-07-06）
 - [x] src/locales/ja.json / en.json: プラン表示ラベル（plan.monthly/yearly/admin/none/label）を追加（2026-07-06）
 - [x] 型チェック（npx tsc --noEmit）成功・ESLint新規エラーなし（既存の no-explicit-any / Platform未使用 / exhaustive-deps 警告のみ）・purchase系テスト32件成功（2026-07-06）
-- [ ] 動作確認（実機・Work 6.3に統合）: メニューで現在プランが正しく表示される / 「アカウント情報」項目とアバターが消えている
+- [x] 動作確認（2026-07-07 実機確認）: プランバッジが正しく表示され、「アカウント情報」項目とアバターが消えていることを確認
 
 ---
 
@@ -800,6 +801,26 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ---
 
+## Phase 26.10: 再鳴動の無音ギャップ解消（Problem 44）
+※ サーバー再送（+0/+60/+120/+180/+240秒・各30秒鳴動）の無音区間を、ローカル通知の30秒ずらし予約（+30/+90/+150/+210/+270秒）で埋める。詳細は problem.txt Problem 44 参照。2026-07-07 ユーザー承認済み
+
+### 実装 [実装完了 2026-07-07]
+- [x] src/services/notificationService.ts: scheduleAlarmNotification に「リングフィラー通知」の予約を追加（2026-07-07）
+  - 各アラーム曜日につき、アラーム時刻 +30/+90/+150/+210/+270 秒の5件を weekly repeat で予約（ID: `alarm-ring-${day}-${n}`、iOS: sound 'alarm.caf'・timeSensitive・categoryId 'alarm'、data.type 'alarm'）
+  - 既存のバックアップ通知（+60秒・ID `alarm-${day}`）は変更しない
+- [x] src/services/alarmService.ts: handleAlarmTriggered（スクワット画面表示＝ack時）に rescheduleLocalBackup() を fire-and-forget で追加し、当日の残りローカル通知を来週分に組み直して停止（フォアグラウンドのループ音声が引き継ぐ）（2026-07-07）
+- [x] テスト更新: notificationService.test.ts の scheduleAlarmNotification 件数期待値を 1曜日6件に更新＋フィラーのオフセット/サウンド/ID検証テスト追加 / alarmService.test.ts に ack時の組み直しテスト追加（2026-07-07）
+- [x] 型チェック（npx tsc --noEmit）成功・全jest 21スイート379件成功・ESLint新規エラーなし（2026-07-07）
+
+### 検証（実機・要再ビルド）
+- [ ] アラーム発火後アプリを開かず放置 → 通知音がほぼ途切れず鳴り続ける（30秒周期・5分間）
+  - 2026-07-07 初回テスト: ロック解除中（ホーム画面表示中）はバナー消滅とともに音が止まる（約5〜6秒/回）ことが判明 → **iOSの仕様**（Problem 45）。画面ロック中は30秒フル再生されるため、**ロック状態での再テスト＋バナースタイル「持続的」への変更**が必要（manual-work.txt Work 6.7）
+- [ ] アプリを開いた（スクワット画面表示）時点でローカル通知・サーバー再送とも止まり、ループ音声に切り替わる
+- [ ] スクワット完了後は鳴らない／翌週の同曜日に通常どおり鳴る（組み直しの確認）
+- [ ] 機内モード（オフライン）でもローカル通知が30秒おきに鳴る
+
+---
+
 ## Phase 27: テスト修復・拡充（Problem 25）※ 全実装タスクの最後に実施
 
 ### 27.1 テスト基盤の修復 [完了 2026-07-06]
@@ -834,8 +855,8 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
   - フォアグラウンド・通知タップ: 合格 ／ アイコン起動・バックグラウンド復帰: 当初不具合（Problem 39）→ Phase 26.5（getDocFromServer）で解消し全4経路合格
 - [x] スクワット10回成功 → X投稿されない・統計が正しく加算される（2026-07-06）
 - [x] スクワット未完了 → 5分後にX投稿が1件だけ行われる（日本語・英語ともに確認 2026-07-06）
-- [ ] X連携解除→再連携、トークン期限切れ後（2時間放置）の自動投稿成功
-  - 解除→再連携は完了（2026-07-06・Work 6.6）。残り: 2時間放置後の自動投稿（新実装の401→リフレッシュ経路の実機確認）
+- [x] X連携解除→再連携、トークン期限切れ後の自動投稿成功
+  - 解除→再連携は完了（2026-07-06・Work 6.6）。前回投稿から約17時間後の再投稿成功を確認（新実装の401→リフレッシュ→再投稿経路の実機確認 2026-07-07）
 - [x] 管理者アカウントで課金なしにセットアップ完了できる（2026-07-06）
 - [x] 言語切替（en）でアラーム通知・投稿文言が英語になる（2026-07-06）
 

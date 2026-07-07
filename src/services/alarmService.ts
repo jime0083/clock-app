@@ -169,6 +169,14 @@ class AlarmService {
     // Cancel repeat notifications since alarm was acknowledged
     await cancelAlarmRepeatNotifications();
 
+    // The squat screen is showing, so the foreground loop sound takes over:
+    // move today's remaining local ring-filler/backup notifications to their
+    // next weekly occurrence (Problem 44). Fire-and-forget so the alarm
+    // sound is not delayed.
+    this.rescheduleLocalBackup().catch(error => {
+      console.error('[Alarm] Error rescheduling local notifications on ack:', error);
+    });
+
     // Play alarm sound
     await this.startAlarmSound();
 
