@@ -839,6 +839,21 @@ Apps that can't enforce that usage are not likely candidates for this API.
 - ユーザーが実際にApple Developer申請フォームから提出（手動作業のためAIでは実行不可）
 - 却下 or 承認の結果を確認後、Phase 25.4 の残タスク（警告UI実装 or Work 4.5進行）を再開する
 
+### 追記（2026-07-14）: 3回目の再申請も却下
+
+**申請内容**: Work 4.6（2026-07-06提出。"alarm/wake-up"等の目覚まし表現を全排除し、"health behavior intervention"（健康行動介入）としてフレーミング。App Type: Healthcare / 頻度: Regularly scheduled）
+
+**却下結果（2026-07-14確認）**: 1回目・2回目と**一字一句同一の定型文**で3回目も却下。
+
+**根本原因の最終分析**:
+- 申請文面を全面的に書き換えても（1回目: アラーム明示 / 2回目: 健康アプリ化 / 3回目: alarm語彙ゼロ・医療介入フレーミング）却下文面が全く変化しない → **文面の問題ではなく、ユースケースの実態で判定されている**
+- Critical Alertが承認される通知は「外部の危機的事象がトリガー」（血糖値異常・侵入検知・災害速報）。オキロヤの通知は「ユーザー自身が予約した定時通知」であり、緊急性をアプリ側で enforce できない — 却下文の "Apps that can't enforce that usage" にカテゴリとして該当
+- 3回連続同一定型文＝目覚まし/定時通知系アプリはAppleの方針レベルで除外対象と結論づけるのが妥当
+
+**結論**: 文面改善による4回目の申請は効果が見込めない。現実的な選択肢は
+(a) 選択肢B（サイレントスイッチ警告UI）で完成させてリリースする（推奨）
+(b) リリース後、App Store上でHealth & Fitnessアプリとしての実績ができてから再申請する（承認可能性は依然低いが、審査側が実アプリを確認できる分だけ材料は増える）
+
 ---
 
 ## Problem 15: HealthKit権限ダイアログが表示されず、ワークアウトが記録されない (2026-04-22) [解決済み 2026-04-22]
@@ -1723,3 +1738,27 @@ App.tsx の描画は `if (isAlarmRinging) return <SquatMeasureScreen>` であり
 
 ### 影響範囲
 - コード変更なし。manual-work.txt Work 6.7（iOS設定＋再テスト手順）を追加
+
+---
+
+## Problem 46: XcodeからのApp Store Connectアップロードが3エラーで失敗 (2026-07-15)
+
+### 症状
+Archive成功後、Organizerの「Distribute App」→「App Store Connect」→「Upload」で以下の3エラー:
+1. Unable to process request - PLA Update available（最新のProgram License Agreementへの同意が必要）
+2. No profiles for 'com.okiroya.app' were found（App Store用プロビジョニングプロファイルなし）
+3. No signing certificate "iOS Distribution" found（Team GK79P6R4DF にDistribution証明書なし）
+
+### 原因
+- **根本原因はエラー1（PLA未同意）**: Apple Developer Programの利用規約が更新されており、Account Holderが同意するまでAppleのAPIが署名リソースの操作を拒否する
+- エラー2・3はエラー1の**連鎖的な結果**: 自動署名（Automatically manage signing）はアップロード時にDistribution証明書とApp Storeプロファイルを自動生成するが、PLA未同意のためAppleサーバーへのリクエストが弾かれ、生成できず「見つからない」と報告された
+- これまで開発ビルド（実機テスト）はDevelopment証明書で動いていたため顕在化しなかった。Distribution証明書は初回アップロード時に初めて必要になる
+
+### 影響範囲
+- コード変更なし（アプリ・Xcodeプロジェクトに問題はない。Archive自体は成功済み）
+- 手動作業のみで解決: manual-work.txt Work 5.5 に対処手順を追記
+
+### 解決策
+1. Account HolderのApple IDで https://developer.apple.com/account にログインし、PLA更新に同意
+2. 数分待ってから Organizer で既存アーカイブから Distribute App を再実行（再Archive不要）
+3. 自動署名が証明書・プロファイルを自動生成し、エラー2・3も同時解消する見込み

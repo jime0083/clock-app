@@ -493,7 +493,7 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 
 **手順**:
 - [x] 上記文案で https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/ から再申請（2026-07-06 送信済み・App Type: Healthcare / How frequently: Regularly scheduled で提出）
-- [ ] Appleからの回答を確認し、problem.txt / manual-work.txt に結果を追記（回答には数日〜数週間かかる見込み）
+- [x] Appleからの回答を確認し、problem.txt / manual-work.txt に結果を追記（**2026-07-14 却下確認**。1・2回目と一字一句同一の定型文。分析は problem.txt Problem 14「追記（2026-07-14）」参照 → 文面ではなくユースケース実態での判定と結論）
 
 ### Work 4.5: 承認後の対応
 - [ ] Appleからの承認メールを確認
@@ -502,6 +502,28 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [ ] Xcodeでプロファイルをダウンロード
 - [ ] Phase 17.12.6（旧タスク）の実装を再開
 - ※ 却下された場合は Phase 25.4 の警告UI実装（選択肢B）に切り替える
+  → 2026-07-14 ユーザー決定: 警告UIは実装せず完成。Work 4.7（4回目再申請）が承認された場合のみ本Workを再開
+
+### Work 4.7: Critical Alert 4回目の再申請（Phase 28 と並行・2026-07-14 追加）
+**申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
+
+⚠️ **前提の共有**: 1〜3回目すべて一字一句同一の定型文で却下されており、文面改善では結果が変わらないことが実証済み（problem.txt Problem 14 追記 2026-07-14）。4回目で唯一増やせる材料は「**App Storeで公開済みの実アプリ**」という実績のみ。そのため**提出タイミングはアプリがApp Storeで公開された直後を強く推奨**（審査側がHealth & Fitnessカテゴリの実アプリ・HealthKit連携を自分の目で確認できる）。公開前に提出しても3回目と同じ材料しかなく、同一定型文の却下を繰り返す可能性が極めて高い。
+
+**4回目フォーム入力内容（案）**: Work 4.6 の文案をベースに、以下を追加・変更する
+- 【アプリについて説明してください】の末尾に公開済みの実績を追記:
+  ```
+  The app is now live on the App Store in the Health & Fitness category:
+  <App StoreのURL（公開後に記入）>
+  All squat workouts are recorded to Apple HealthKit as functional strength
+  training, which you can verify in the released app.
+  ```
+- その他の欄（通知の種類・頻度・必要理由）は Work 4.6 の文案を流用（Once per day / App Type: Health & Fitness）
+- 虚偽の医療的効能は主張しない（Developer Program規約違反リスク回避）
+
+**手順**:
+- [ ] App Store公開完了（Phase 28 / Work 5.x）を待つ
+- [ ] 上記文案のURL部分に実際のApp Store URLを記入して提出
+- [ ] 結果を problem.txt Problem 14 / 本ファイルに追記（承認された場合のみ Work 4.5 を再開）
 
 ---
 
@@ -531,9 +553,41 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
   - 利用規約: https://jime0083.github.io/okiroya-support/terms-of-service.html
   - プライバシーポリシー: https://jime0083.github.io/okiroya-support/privacy-policy.html
 
-### Work 5.5: 審査申請
-- [ ] ビルドアップロード
-- [ ] 審査情報入力
+### Work 5.5: Xcodeでのビルド→アップロード→審査申請（2026-07-14 ユーザー決定: EASではなくXcodeでビルド）
+※ 現在のプロジェクト状態（2026-07-14 確認済み）: version 1.0.0 / build 1 / bundle com.okiroya.app / Team GK79P6R4DF / 署名Automatic / エンタイトルメントにCritical Alertなし（署名エラーの心配なし）
+⚠️ **`npx expo prebuild` は絶対に実行しないこと**: ios/ ディレクトリには手動変更（HealthKitケイパビリティ・RCTNewArchEnabled=false等）が含まれており、prebuildで上書き消失する
+
+**事前準備（App Store Connect にアプリレコードが無い場合のみ）**:
+- [ ] https://appstoreconnect.apple.com → マイApp → 「+」→ 新規App
+  - プラットフォーム: iOS / 名前: オキロヤ / プライマリ言語: 日本語 / バンドルID: com.okiroya.app / SKU: okiroya
+  ※ これが無いとXcodeからのアップロードが失敗する
+
+**ビルド→アップロード手順**:
+- [x] Xcodeで `ios/app.xcworkspace` を開く（**.xcodeproj ではなく .xcworkspace**。CocoaPods利用のため）（2026-07-15）
+- [x] 上部のスキームが「app」、実行先を「Any iOS Device (arm64)」に変更（シミュレータのままだとArchiveがグレーアウト）（2026-07-15）
+- [x] メニュー Product > Archive を実行（Release構成でJSバンドルも自動生成される。10分前後）（2026-07-15 Archive成功・version 1.0.0 (1)）
+- [ ] 完了後に開くOrganizerで該当アーカイブを選択 → 「Distribute App」→「App Store Connect」→「Upload」
+  - 署名は「Automatically manage signing」のまま進める（Distribution証明書はXcodeが自動生成）
+  - 2026-07-15 初回実行時に3エラーで失敗（Problem 46）→ 下記の対処後に再実行
+
+**Problem 46 の対処（2026-07-15 追加・アップロード再実行の前に実施）**:
+- [ ] Account Holder（アカウント所有者）のApple IDで https://developer.apple.com/account にログイン
+- [ ] ページ上部に表示される Program License Agreement 更新の同意バナーから「Review Agreement」→ 内容確認 → **Agree（同意）**
+  ※ バナーが見当たらない場合: https://developer.apple.com/account → 「Agreements」/「契約」セクションを確認
+- [ ] （推奨）https://appstoreconnect.apple.com → 「契約 / Business」も開き、未同意の契約（特にPaid Applications）が無いか確認
+- [ ] 同意後2〜3分待ち、Xcodeの Window > Organizer → 既存アーカイブを選択 → 「Distribute App」を再実行（**再Archiveは不要**）
+  ※ 自動署名がDistribution証明書とApp Storeプロファイルを自動生成するため、エラー2・3（プロファイル/証明書なし）も同時に解消される見込み
+  ※ それでも証明書エラーが残る場合: Xcode > Settings > Accounts → Apple IDを選択 → 「Manage Certificates...」→ 左下「+」→「Apple Distribution」で手動作成してから再実行
+- [ ] アップロード成功後、App Store Connect > TestFlight タブでビルドの処理完了を待つ（10〜30分）
+- [ ] 「輸出コンプライアンス」の質問に回答: HTTPSなど標準的な暗号化のみ使用 → 「アプリは免除対象の暗号化のみを使用」を選択
+  ※ 毎回の質問を省略したい場合は Info.plist に ITSAppUsesNonExemptEncryption=false を追加（任意・要ユーザー指示）
+
+**審査申請（Work 5.1〜5.3 完了後）**:
+- [ ] App Store Connect > App情報・価格 を入力（Work 5.1）
+- [ ] バージョン情報にメタデータ・スクリーンショットを設定（Work 5.2 / 5.3）
+- [ ] 「ビルド」欄でアップロード済みビルドを選択
+- [ ] **サブスクリプション（月額200円/年額2,000円）を初回審査に含める**: バージョンページの「App内課金とサブスクリプション」でRevenueCat連携済みの2商品を選択（初回はアプリ本体と同時審査が必須）
+- [ ] 審査情報入力（デモアカウント: 審査員がログインできるテストアカウントのメール/パスワードを記載。X連携・アラーム動作の説明メモ推奨）
 - [ ] 審査提出
 
 
@@ -598,9 +652,9 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [x] adminUsers に登録したUIDで課金なしにセットアップ完了できることを確認（2026-07-06）
 
 ### Work 6.5: Critical Alert 再申請の結果確認（Phase 25.4）
-- [ ] Appleからの返信メールを確認（2026-04-22 申請済み）
-- [ ] 承認された場合: entitlement実装タスクを progress.txt に追加して実装
-- [ ] 却下の場合: サイレントモード注意喚起UI（Phase 25.4）の実装可否を決定
+- [x] Appleからの返信メールを確認（2026-07-14 **3回目も却下**・定型文同一）
+- ~~承認された場合: entitlement実装タスクを progress.txt に追加して実装~~（却下のため対象外）
+- [x] 却下の場合: サイレントモード注意喚起UI（Phase 25.4 選択肢B）の実装可否を決定 → **ユーザー決定（2026-07-14）: 警告UIは実装せず完成、Phase 28（ビルド・リリース）と並行して4回目の再申請を行う（Work 4.7）**
 
 ### Work 6.7: アラーム鳴動の再テスト（Problem 45 / 2026-07-07 追加）
 ※ iOS仕様: ロック解除中は通知バナーが消えると音が止まる（バナースタイル「一時的」は約5〜6秒で自動消滅）。画面ロック中はバナーが消えないため30秒フルに鳴る。アプリ側からは制御不可
@@ -612,9 +666,9 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
   ※「持続的」はユーザーが操作するまでバナーが消えない＝音が途中で切れなくなる
 
 ### 手順2: 画面ロック状態での再テスト（実際の起床シーンの確認・最重要）
-- [ ] 本体側面の消音スイッチがオフ（オレンジが見えない）ことを確認
-- [ ] アラームを設定し、アプリをバックグラウンドにして**画面をロック**（電源ボタンを押して画面を消す）
-- [ ] アラーム発火後、操作せずに放置 → 30秒サウンドが約30秒間隔で（ほぼ連続で）5分間鳴り続けることを確認
+- [x] 本体側面の消音スイッチがオフ（オレンジが見えない）ことを確認（2026-07-14）
+- [x] アラームを設定し、アプリをバックグラウンドにして**画面をロック**（電源ボタンを押して画面を消す）（2026-07-14）
+- [x] アラーム発火後、操作せずに放置 → 30秒サウンドが約30秒間隔で（ほぼ連続で）5分間鳴り続けることを確認（**2026-07-14 合格**: ロック画面でアラームが正常に機能することをユーザー実機確認）
 
 ### 手順3: ロック解除中（ホーム画面表示中）での再テスト（任意・手順1実施後）
 - [ ] ホーム画面を表示したまま放置 → バナーが残り続け、音が5〜6秒で切れずに鳴ることを確認
