@@ -178,6 +178,7 @@
     "step3Description": "準備が整いました\n明日から早起き生活を始めましょう！",
     "next": "次へ",
     "skip": "スキップ",
+    "skipForNow": "後で設定する",
     "start": "始める",
     "connectRequired": "X連携は必須です",
     "setWakeUpTime": "起きる時間を設定してください",

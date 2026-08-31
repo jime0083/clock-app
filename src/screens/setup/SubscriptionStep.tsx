@@ -93,6 +93,9 @@ export const SubscriptionStep: React.FC<SubscriptionStepProps> = ({
         )}
       </TouchableOpacity>
 
+      {/* Auto-renewal disclosure (App Store Guideline 3.1.2) */}
+      <Text style={styles.autoRenewText}>{t('paywall.terms')}</Text>
+
       {/* Restore Purchases */}
       <TouchableOpacity
         style={styles.restoreButton}

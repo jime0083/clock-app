@@ -178,6 +178,7 @@
     "step3Description": "You're all set\nStart your early morning life from tomorrow!",
     "next": "Next",
     "skip": "Skip",
+    "skipForNow": "Set up later",
     "start": "Start",
     "connectRequired": "X connection is required",
     "setWakeUpTime": "Set your wake-up time",

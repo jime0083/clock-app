@@ -133,6 +133,18 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  skipButton: {
+    width: '100%',
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  skipButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
   connectedContainer: {
     alignItems: 'center',
     gap: 16,
@@ -281,6 +293,14 @@ export const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: Colors.textPrimary,
+  },
+  autoRenewText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 8,
   },
   restoreButton: {
     alignItems: 'center',

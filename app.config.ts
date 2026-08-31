@@ -80,6 +80,8 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
         'スクワット運動の履歴を表示するために、ヘルスケアデータへのアクセスを許可してください。',
       NSHealthUpdateUsageDescription:
         'スクワット運動をワークアウトとして記録するために、ヘルスケアデータへの書き込みを許可してください。',
+      NSMotionUsageDescription:
+        'アラーム停止のためのスクワット運動を検知するために、モーションセンサー（加速度センサー）を使用します。例: アラーム鳴動中に体の上下動を計測し、規定回数のスクワット完了を判定してアラームを止めます。',
     },
   },
   android: {
@@ -104,8 +106,18 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
   plugins: [
     'expo-localization',
     'expo-web-browser',
-    'expo-secure-store',
-    'expo-audio',
+    // 生体認証は未使用のため NSFaceIDUsageDescription を付与しない（App Store審査 Problem 47）
+    ['expo-secure-store', { faceIDPermission: false }],
+    // マイク/録音は未使用（アラーム音の再生のみ）のため NSMicrophoneUsageDescription を付与しない（Problem 47）
+    ['expo-audio', { microphonePermission: false }],
+    // スクワット検知で加速度センサーを使用。NSMotionUsageDescription に具体的な目的を明記（Problem 47）
+    [
+      'expo-sensors',
+      {
+        motionPermission:
+          'アラーム停止のためのスクワット運動を検知するために、モーションセンサー（加速度センサー）を使用します。例: アラーム鳴動中に体の上下動を計測し、規定回数のスクワット完了を判定してアラームを止めます。',
+      },
+    ],
     '@react-native-firebase/app',
     '@react-native-firebase/messaging',
     [

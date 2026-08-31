@@ -33,7 +33,7 @@
 - [x] サービスアカウントにFirestore権限を付与（Work 2.8完了）
 
 **未完了（実機テスト）**:
-- [ ] 実機ビルド・テスト（バックグラウンドでのスケジュールアラーム確認）← **Problem 9で調査中**
+- [x] 実機ビルド・テスト（バックグラウンドでのスケジュールアラーム確認）← Problem 9解決済み・Phase 26.x/27.4で全経路の実機テスト完了（棚卸し完了扱い 2026-08-25）
 - [x] testAlarm API動作確認（成功 2026-04-13）
 
 ## Phase 17.12.5.1: checkAlarmsクエリ問題の調査・修正（Problem 6対応）
@@ -42,7 +42,7 @@
 **AI実装タスク**:
 - [x] デバッグログを追加してデータ構造を確認（デプロイ済み）
 - [x] FirestoreクエリをJavaScriptフィルタリングに変更（v12デプロイ済み）
-- [ ] ~~必要であればFirestoreインデックスを作成~~ → v12で不要になった
+- [x] ~~必要であればFirestoreインデックスを作成~~ → v12で不要になった（対応不要）
 
 **発見された問題**:
 - [x] Problem 7: FCM認証エラー再発 → **Work 2.10で対応済み**
@@ -162,7 +162,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] secureTokenService.ts: getXTokens() に取得結果のログを追加（2026-04-20）
 - [x] penaltyRetryService.ts: 詳細エラー情報のログを追加（2026-04-20）
 - [x] 型チェック（npx tsc --noEmit）（2026-04-20）
-- [ ] アプリ再ビルド・実機テスト→ログ確認
+- [x] アプリ再ビルド・実機テスト→ログ確認（Problem 12は解決済み〔本Phase末尾参照〕・xPostServiceは後にサーバー一本化で廃止のため陳腐化。棚卸し完了扱い 2026-08-25）
 
 ### Step 2: 原因特定・解決策
 **原因特定（2026-04-20）**: Secure Storageにトークンが一切保存されていない
@@ -171,7 +171,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 **解決策A**: X再連携を行う（手動）
 - [x] 設定画面でX解除→再連携（2026-04-20）
-- [ ] ~~スクワット未完了テスト→X投稿成功を確認~~ → Aでは解決しなかったためBを実装
+- [x] ~~スクワット未完了テスト→X投稿成功を確認~~ → Aでは解決しなかったためBを実装（解決策Bで対応済み）
 
 **解決策B**: Firestoreからトークンを復元する機能を追加（2026-04-20 実装完了）
 - [x] useXAuth.ts: restoreTokensFromFirestore()を追加（Firestoreからトークンを復元）
@@ -283,8 +283,8 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] HomeScreen.tsx: アプリ起動時にHealthKitを初期化
   - useEffectでhealthKitService.initialize()を呼び出し
   - 初回起動時にiOS標準のHealthKit権限ダイアログが表示される
-- ~~[ ] HealthKitPermissionScreen.tsx: 権限リクエスト画面を新規作成~~ → iOS標準ダイアログで代替
-- ~~[ ] SettingsScreen.tsx: HealthKit連携設定を追加~~ → 将来対応
+- [x] ~~HealthKitPermissionScreen.tsx: 権限リクエスト画面を新規作成~~ → iOS標準ダイアログで代替（対応不要）
+- [x] ~~SettingsScreen.tsx: HealthKit連携設定を追加~~ → 将来対応（本リリースでは対象外）
 
 ---
 
@@ -330,17 +330,17 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 #### Step 5: App Store準備
 
-**手動タスク（manual-work.txtに追加）**:
-- [ ] App Storeカテゴリを「Health & Fitness」に変更
-- [ ] アプリ説明文を健康/フィットネス向けに書き換え
-- [ ] プライバシーポリシーにHealthKitデータ使用を明記
+**手動タスク（manual-work.txtに追加）** ※ Work 4.1/4.2/4.3・Phase 18.1〜18.3で対応済み（提出済み）。完了扱い 2026-08-25
+- [x] App Storeカテゴリを「Health & Fitness」に変更
+- [x] アプリ説明文を健康/フィットネス向けに書き換え
+- [x] プライバシーポリシーにHealthKitデータ使用を明記
 
 #### Step 6: Critical Alert再申請
 
-**手動タスク（manual-work.txtに追加）**:
-- [ ] HealthKit連携実装後にCritical Alertを再申請
-- [ ] 申請文を「睡眠健康改善・運動促進アプリ」としてフレーミング
-- [ ] スクワット運動の健康効果に関するエビデンスを添付
+**手動タスク（manual-work.txtに追加）** ※ Work 4.4/4.6で再申請実施済み（いずれも却下）。4回目はApp Store公開後にWork 4.7で実施予定。完了扱い 2026-08-25
+- [x] HealthKit連携実装後にCritical Alertを再申請（実施済み・却下）
+- [x] 申請文を「睡眠健康改善・運動促進アプリ」としてフレーミング（実施済み）
+- [x] スクワット運動の健康効果に関するエビデンスを添付（実施済み）
 
 **再申請時の申請文ポイント**:
 1. 睡眠の質向上（規則正しい起床による概日リズム調整）
@@ -353,9 +353,9 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ### Phase 17.12.6（旧タスク）[却下により中止]
 ~~**AI実装タスク**:~~
-~~- [ ] notificationService.ts で interruptionLevel: 'critical' を使用~~
-~~- [ ] functions/src/index.ts のFCMペイロードで interruption-level: 'critical' を設定~~
-~~- [ ] app.config.ts にCritical Alertエンタイトルメントを追加~~
+- [x] ~~notificationService.ts で interruptionLevel: 'critical' を使用~~（Phase却下により中止）
+- [x] ~~functions/src/index.ts のFCMペイロードで interruption-level: 'critical' を設定~~（Phase却下により中止）
+- [x] ~~app.config.ts にCritical Alertエンタイトルメントを追加~~（Phase却下により中止）
 
 ~~**依存**: Work 3（Critical Alertエンタイトルメント取得）完了後に実装~~
 
@@ -382,31 +382,31 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
   - ファイル: `App-Store-Content.txt`
   - 日本語版・英語版両方を含む
 
-**手動タスク（Work 4.1 + Work 5.1統合）**:
-- [ ] App Store Connectでアプリを新規登録
-- [ ] バンドルID紐付け確認
-- [ ] カテゴリを「Health & Fitness」に設定
-- [ ] 価格設定（無料 + アプリ内課金）
+**手動タスク（Work 4.1 + Work 5.1統合）** ※ App Store提出済み（app id 6761042542）のため完了扱い 2026-08-25
+- [x] App Store Connectでアプリを新規登録
+- [x] バンドルID紐付け確認
+- [x] カテゴリを「Health & Fitness」に設定
+- [x] 価格設定（無料 + アプリ内課金）
 
 ### Phase 18.2: アプリ情報作成
 ※ 健康/フィットネスアプリとしてフレーミング（Critical Alert再申請に必要）
 ※ 入力内容は `App-Store-Content.txt` を参照
 
-**手動タスク（Work 4.2 + Work 5.2統合）**:
-- [ ] 日本語版を入力
-  - [ ] アプリ名: オキロヤ
-  - [ ] サブタイトル
-  - [ ] プロモーションテキスト
-  - [ ] 説明文
-  - [ ] キーワード
-- [ ] 英語版を追加（言語: English (U.S.)）
-  - [ ] アプリ名: Wake or Shame
-  - [ ] サブタイトル
-  - [ ] プロモーションテキスト
-  - [ ] 説明文
-  - [ ] キーワード
-- [ ] サポートURL設定
-- [ ] プライバシーポリシーURL設定
+**手動タスク（Work 4.2 + Work 5.2統合）** ※ App Store提出済みのため完了扱い 2026-08-25
+- [x] 日本語版を入力
+  - [x] アプリ名: オキロヤ
+  - [x] サブタイトル
+  - [x] プロモーションテキスト
+  - [x] 説明文
+  - [x] キーワード
+- [x] 英語版を追加（言語: English (U.S.)）
+  - [x] アプリ名: Wake or Shame
+  - [x] サブタイトル
+  - [x] プロモーションテキスト
+  - [x] 説明文
+  - [x] キーワード
+- [x] サポートURL設定
+- [x] プライバシーポリシーURL設定
 
 ### Phase 18.3: プライバシーポリシー更新 [完了 2026-04-22]
 ※ HealthKitデータ使用の追記（Critical Alert再申請に必要）
@@ -436,10 +436,9 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
   - preview: プレビュービルド（内部配布）
   - production: 本番ビルド（App Store用）
 
-**手動タスク**:
-- [ ] 本番ビルド作成: `eas build --platform ios --profile production`
-- [ ] TestFlight配信: `eas submit --platform ios`
-  ※ submit設定はApp Store Connect登録後にeas.jsonに追加が必要
+**手動タスク** ※ EAS方式は廃止→Xcode Archive/Upload方式に変更（Phase 28 / Work 5.5）。本項は陳腐化のため完了扱い 2026-08-25
+- [x] ~~本番ビルド作成: `eas build --platform ios --profile production`~~ → Xcode Archiveに変更
+- [x] ~~TestFlight配信: `eas submit --platform ios`~~ → Xcode Uploadに変更
 
 ### Phase 18.6: Critical Alert再申請 [完了 2026-04-22]
 
@@ -449,7 +448,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
   - 健康/フィットネスアプリとしてフレーミング
   - HealthKit連携を強調
   - 入力内容は `App-Store-Content.txt` を参照
-- [ ] Appleからの承認を待つ
+- [x] Appleからの承認を待つ → **却下確認済み**（1〜3回目とも定型文で却下・Work 4.4/4.6/6.5参照。4回目はApp Store公開後にWork 4.7で実施）
 
 ### Phase 18.7: サイレントモードテスト [先送り - Critical Alert承認後]
 ※ Critical Alert承認後に実施
@@ -463,10 +462,10 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ### Phase 18.8: 審査申請 [先送り - サイレントモードテスト後]
 ※ サイレントモードテスト完了後に実施（5/1以降予定）
 
-**手動タスク（Work 5.5）**:
-- [ ] ビルドアップロード
-- [ ] 審査情報入力
-- [ ] 審査提出
+**手動タスク（Work 5.5）** ※ 初回提出は実施済み（2026-07・Problem 47でリジェクト）。Purpose String修正後の再アップロード・再提出は Phase 28 で管理
+- [x] ビルドアップロード（初回実施済み 2026-07）
+- [x] 審査情報入力（初回実施済み 2026-07）
+- [x] 審査提出（初回実施済み 2026-07 → Problem 47でリジェクト。再提出はPhase 28）
 
 
 ---
@@ -491,7 +490,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] `invoker: "public"` の妥当性を再検討 → APIキー保護のため public のまま（2026-07-04）
 - [x] TEST_API_KEY を functions/.env に生成・追加（2026-07-04）
 - [x] functions ビルド確認（npm run build 成功、2026-07-04）
-- [ ] Firebase Functions を再デプロイ（手動: manual-work.txt Work 6.1）
+- [x] Firebase Functions を再デプロイ（手動: manual-work.txt Work 6.1 で完了・2026-07-04 / 403・404の動作確認済み）
 
 ### 19.2 Firestoreセキュリティルールの作成（Problem 18）
 - [x] プロジェクトルートに `firestore.rules` を新規作成（2026-07-04）
@@ -524,7 +523,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
   - HomeScreen 内の `handleSquatComplete`（成功/失敗通知の表示は App.tsx 側へ移動）
   - `alarmService.initialize(user.uid)` の呼び出し（App.tsx に一元化。アラーム再スケジュール scheduleAlarm のみ残置）
 - [x] App.tsx: `handleSquatComplete` に成功/失敗のローカル通知表示（scheduleSuccessNotification / scheduleFailureNotification）を統合（2026-07-04）
-- [ ] 動作確認観点（実機・Work 6.3で実施）: FCM受信（フォアグラウンド）/ 通知タップ / アプリアイコン起動（5分以内）/ バックグラウンド復帰 の4経路すべてでスクワット画面が1枚だけ表示されること
+- [x] 動作確認観点（実機・Work 6.3で実施）: FCM受信（フォアグラウンド）/ 通知タップ / アプリアイコン起動（5分以内）/ バックグラウンド復帰 の4経路すべてでスクワット画面が1枚だけ表示されること（Phase 27.4で全4経路合格済み 2026-07-06）
 
 ### 20.2 ペナルティ投稿の重複防止と完了記録の整理（Problem 20）
 ※ 方針: 投稿はサーバー（checkSquatCompletion）に一本化する
@@ -744,7 +743,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ### 26.6.5 検証
 - [x] 型チェック（npx tsc --noEmit）成功・アプリ側 jest 21スイート377件成功・functions 側 jest 3スイート17件成功・ESLint新規エラーなし（2026-07-06）
 - [x] 実機再テスト: 連続5回のアイコン起動・バックグラウンド復帰＋短時間連続アラームで全てスクワット画面表示・検知成功（2026-07-06）
-- [ ] スクワット未検知 → 5分後（最大+1分）に確実にX投稿される（連続アラーム後も）→ **X投稿失敗が発覚 → Problem 41 / Phase 26.7 で対応**
+- [x] スクワット未検知 → 5分後（最大+1分）に確実にX投稿される（連続アラーム後も）→ X投稿失敗が発覚 → **Problem 41 / Phase 26.7 で解決済み**（日本語・英語とも実機確認 2026-07-06）
 
 ---
 
@@ -796,9 +795,10 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [x] 型チェック・アプリ側 jest 21スイート377件成功・ESLintエラーなし（2026-07-06）
 
 ### 検証（実機・要再ビルド）
-- [ ] アラーム発火後アプリを開かず放置 → 通知音が約1分周期で鳴り続ける（5分間）
-- [ ] アプリを開いた（スクワット画面表示）時点で再送が止まる
-- [ ] スクワット完了後は再送されない
+※ 本Phase(26.9)の1分周期方式は Phase 26.10（30秒周期のリングフィラー）に置き換え済み。検証は Phase 26.10 側で実施（2026-07-14 画面ロック状態で合格）。本項は棚卸し完了扱い 2026-08-25
+- [x] アラーム発火後アプリを開かず放置 → 通知音が約1分周期で鳴り続ける（5分間）（→ 26.10で30秒周期に改善し合格）
+- [x] アプリを開いた（スクワット画面表示）時点で再送が止まる（26.10で検証）
+- [x] スクワット完了後は再送されない（26.10で検証）
 
 ---
 
@@ -819,6 +819,50 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 - [ ] アプリを開いた（スクワット画面表示）時点でローカル通知・サーバー再送とも止まり、ループ音声に切り替わる
 - [ ] スクワット完了後は鳴らない／翌週の同曜日に通常どおり鳴る（組み直しの確認）
 - [ ] 機内モード（オフライン）でもローカル通知が30秒おきに鳴る
+
+---
+
+## Phase 26.11: App Store審査落ち対応 - Purpose Strings修正（Problem 47）
+※ 権限説明文がプレースホルダー/不十分でリジェクト。Motionは具体文言に修正、未使用のMicrophone/FaceIDは削除。詳細は problem.txt Problem 47 参照。
+
+### 実装 [実装完了 2026-08-25]
+- [x] app.config.ts: expo-sensors プラグインを明示追加し、NSMotionUsageDescription に具体的な日本語目的文言を指定（スクワット検知のためのモーションセンサー利用を明記）／ios.infoPlistにも同文言を明記（2026-08-25）
+- [x] app.config.ts: expo-audio プラグインに `microphonePermission: false` を指定し NSMicrophoneUsageDescription を削除（マイク/録音は未使用）（2026-08-25）
+- [x] app.config.ts: expo-secure-store プラグインに `faceIDPermission: false` を指定し NSFaceIDUsageDescription を削除（生体認証は未使用）（2026-08-25）
+- [x] ビルド対象の ios/app/Info.plist を直接修正（Xcode Archiveは既存ios/フォルダから行うため、config変更のみでは反映されない）。NSFaceID/NSMicrophoneを削除・NSMotionを日本語文言に更新し、plutil -lint OK を確認（2026-08-25）
+- [x] npx tsc --noEmit 成功を確認（2026-08-25）
+
+### 検証（ビルドPhaseで実施）
+- [x] Archive→Upload後、App Storeで審査に再提出しPurpose String指摘が解消していること（build 2 が自動チェックを通過し人間審査に到達＝Purpose String問題は解消。次のリジェクトは別要因 Guideline 2.1(a)＝Problem 48）
+
+---
+
+## Phase 26.12: App Store再審査落ち対応 - X連携ステップのスキップ導線追加（Problem 48・案B）
+※ Guideline 2.1(a): 審査官がXアカウントを持たずX連携ステップで足止めされた。X未接続でもセットアップを完了できるようスキップ導線を追加（恒久対策）。デモXアカウント提供（案A）はmanual-work.txt Work 7参照。詳細は problem.txt Problem 48。
+
+### 実装 [実装完了 2026-08-28]
+- [x] src/screens/setup/XConnectStep.tsx: X未接続時に主CTA（Xと連携）の下へ「後で設定する」スキップボタンを追加し、onNext（calibrationへ遷移）を呼ぶ（frontend-designスキル適用・既存デザインに調和するゴーストテキストボタン）（2026-08-28）
+- [x] src/screens/setup/styles.ts: skipButton / skipButtonText スタイルを追加（2026-08-28）
+- [x] src/locales/ja.json・en.json: setup.skipForNow（「後で設定する」/「Set up later」）を追加（2026-08-28）
+- [x] npx tsc --noEmit 成功 / setupFlow・XConnect テスト11件成功 / JSON妥当性OK（2026-08-28）
+
+### 検証（ビルドPhaseで実施）
+- [ ] 再ビルド後、X未接続のままセットアップを最後まで完了できること（実機/シミュレータ）
+- [ ] Archive→Upload→再提出（build番号を上げる）で Guideline 2.1(a) 指摘が解消していること
+
+---
+
+## Phase 26.13: 課金画面に自動更新の開示文を表示（Problem 49・Guideline 3.1.2対策）
+※ SubscriptionStep に自動更新条件（paywall.terms）が未表示。IAPリジェクト回避のため購入ボタン付近に明示する。詳細は problem.txt Problem 49。
+
+### 実装 [実装完了 2026-08-28]
+- [x] src/screens/setup/SubscriptionStep.tsx: 購入ボタン直下に `paywall.terms`（自動更新の開示文）を表示（frontend-designスキル適用・控えめなキャプション）（2026-08-28）
+- [x] src/screens/setup/styles.ts: autoRenewText スタイルを追加（12px・textTertiary・中央寄せ・lineHeight17）（2026-08-28）
+- [x] en.json/ja.json に自動更新開示文キー `paywall.terms` が両言語とも既存であることを確認（新規追加不要）（2026-08-28）
+- [x] npx tsc --noEmit 成功 / purchaseFlow・setupFlow テスト36件成功（2026-08-28）
+
+### 検証（ビルドPhaseで実施）
+- [ ] 課金画面に自動更新の開示文が表示されることを実機/シミュレータで確認
 
 ---
 

@@ -1762,3 +1762,97 @@ Archive成功後、Organizerの「Distribute App」→「App Store Connect」→
 1. Account HolderのApple IDで https://developer.apple.com/account にログインし、PLA更新に同意
 2. 数分待ってから Organizer で既存アーカイブから Distribute App を再実行（再Archive不要）
 3. 自動署名が証明書・プロファイルを自動生成し、エラー2・3も同時解消する見込み
+
+---
+
+## Problem 47: App Store審査落ち - Purpose Strings（権限説明文）がプレースホルダー/不十分 (2026-08-25)
+
+### 症状
+- App Store Connectにて審査が自動リジェクト
+- Appleメッセージ「App Review Guideline Issue」: "An automated analysis of the submission indicates the app includes placeholder or otherwise insufficient purpose strings, also called usage description strings."
+- "Purpose strings must clearly and completely describe your use of data."
+
+### 根本原因
+ビルドされた `ios/app/Info.plist` に、Expoの各config pluginが自動挿入したデフォルトの英語プレースホルダー文言が3つ残っていた。
+
+1. **NSMotionUsageDescription**: `Allow $(PRODUCT_NAME) to access your device motion`
+   - expo-sensors のデフォルト文言のまま
+   - この権限は**実際に使用中**（accelerometerService.ts が expo-sensors の Accelerometer でスクワット検知）だが、目的が説明されていない
+2. **NSMicrophoneUsageDescription**: `Allow $(PRODUCT_NAME) to access your microphone`
+   - expo-audio が自動挿入したデフォルト文言
+   - アプリは**マイク/録音を一切使用していない**（アラーム音の再生のみ）→ 権限自体が不要
+3. **NSFaceIDUsageDescription**: `Allow $(PRODUCT_NAME) to access your Face ID biometric data.`
+   - expo-secure-store が自動挿入したデフォルト文言
+   - アプリは**生体認証(requireAuthentication)を使用していない** → 権限自体が不要
+
+Appleのメッセージが例示した "App needs microphone access" と同型のプレースホルダーであり、かつ Mic/FaceID は実際には未使用の権限。
+
+### 影響範囲
+- `app.config.ts` の ios.infoPlist / plugins 設定のみ（アプリのロジック変更なし）
+- 再prebuild → 再Archive → 再アップロードが必要
+
+### 解決策
+1. **NSMotionUsageDescription**: expo-sensors プラグインに具体的な日本語 motionPermission を明示指定
+2. **NSMicrophoneUsageDescription**: expo-audio プラグインに `microphonePermission: false` を指定して削除
+3. **NSFaceIDUsageDescription**: expo-secure-store プラグインに `faceIDPermission: false` を指定して削除
+   - （@expo/config-plugins の applyPermissions は値が false の場合、Info.plistから該当キーを delete する仕様を確認済み）
+
+### 修正完了 (2026-08-25)
+- app.config.ts を修正（expo-sensors明示追加+motionPermission日本語、expo-audio microphonePermission:false、expo-secure-store faceIDPermission:false、ios.infoPlistにNSMotion日本語を明記）
+- ビルド対象の ios/app/Info.plist を直接修正（NSFaceID/NSMicrophone削除、NSMotion日本語化）。plutil -lint OK / npx tsc --noEmit 成功
+- 残: Archive→Upload→審査再提出（Phase 28 / Work 5.x）で指摘解消を確認
+
+---
+
+## Problem 48: App Store再審査で Guideline 2.1(a) リジェクト - 審査官がXアカウントを持たずX連携ステップで足止め (2026-08-28)
+
+### 症状
+- Purpose String修正版（1.0 build 2）を再提出 → 2026-08-26 に Guideline 2.1(a) - Information Needed で却下
+- Apple: "We are unable to successfully access all or part of the app... Please provide us a X account to continue our review."
+- Review Device: iPad Air 11-inch (M3) / Version reviewed: 1.0 (2)
+
+### 根本原因
+1. セットアップフロー（SetupScreen.tsx）のステップ順は alarm_time → alarm_days → **x_connect** → calibration → subscription
+2. x_connect（X連携）はセットアップ3番目の必須ステップ
+3. `src/screens/setup/XConnectStep.tsx`（41-60行）: `isXConnected === false` のとき表示されるボタンは「Xと連携する」の1つのみで、**スキップ/後で設定する導線が存在しない**
+4. 審査官はXアカウントを持たない（または持ち込めない）ため、この画面から先へ進めず、アプリの主要機能（アラーム・スクワット検知・ペナルティ投稿）を検証できなかった
+
+### 影響範囲
+- コード修正は必須ではない（Guideline 2.1(a) は「情報提供」で解決可能）
+- 解決方法は2案（下記）
+
+### 解決策
+**案A（Appleの明示要求・新ビルド不要・即対応）**: 審査用のデモXアカウントを作成し、App Store Connect > App Review Information（審査情報）に認証情報と操作手順を登録 → 審査官へ返信。課金ステップはSandboxで通過可能な旨も明記する。
+**案B（コード修正・恒久対策・要新ビルド）**: XConnectStep に「後で設定する（スキップ）」導線を追加し、X未接続でもセットアップを完了できるようにする。実ユーザーの離脱防止・将来の審査リスク低減にもなる。X連携は設定画面からいつでも可能なため機能的にも整合。
+→ 推奨: 案Aを即実施（最速）。加えて案Bを次ビルドに入れてX OAuth依存の審査リスクを恒久的に排除する。
+
+---
+
+## Problem 49: 課金画面に自動更新の開示文が未表示（Guideline 3.1.2の潜在リスク）(2026-08-28)
+
+### 症状
+- セットアップの課金ステップ（src/screens/setup/SubscriptionStep.tsx）に、サブスクの自動更新条件を明示するテキストが表示されていない
+- 自動更新の開示文言 `paywall.terms`（"購読は自動更新されます。キャンセルはいつでも可能です。" / en: 該当キー）はi18nに存在するが、コンポーネント内でレンダリングされていない
+
+### 根本原因
+- SubscriptionStep.tsx はプラン価格・購入ボタン・復元ボタン・利用規約/プライバシーリンクは描画しているが、`paywall.terms`（自動更新開示）を描画する要素がない
+
+### 影響範囲
+- App Store審査 Guideline 3.1.2（Auto-renewable Subscriptions）で指摘されうる（IAPのリジェクト定番）
+- コード修正のみ（SubscriptionStep.tsx にテキスト追加＋styles）
+
+### 現状の課金画面 Guideline 3.1.2 点検（2026-08-28）
+- サブスク名・期間: OK ／ 価格: OK ／ 復元: OK ／ 利用規約(EULA)リンク: OK（Linking.openURL(TERMS_URL)）／ プライバシーリンク: OK
+- 自動更新の開示文: NG（本Problem）
+- 補足（低優先・別件）: 価格が i18n ハードコード（¥2000 等）で StoreKit/RevenueCat の priceString 動的取得ではない。単一ストアフロント前提なら許容範囲だが、将来的には offerings の priceString 参照が望ましい
+
+### 解決策
+- SubscriptionStep.tsx の購入ボタン付近（購入ボタンの直下または復元ボタン付近）に `paywall.terms` を明示表示する。styles に開示文用の控えめなスタイルを追加。UI修正のためルール2（frontend-designスキル）に従う
+
+### 備考
+- App Store Connect側の確認（あなたの作業）: サブスク2商品（com.okiroya.app.monthly / com.okiroya.app.yearly）が今回のバージョンに紐付いて同時提出されているか、各商品のメタデータ（表示名・説明・審査用スクショ・価格）が揃っているか。これらはコードからは確認不可
+
+### 修正完了 (2026-08-28)
+- SubscriptionStep.tsx の購入ボタン直下に `paywall.terms`（自動更新開示文）を表示。styles.ts に autoRenewText（12px・textTertiary・中央寄せ）を追加。paywall.terms は ja/en とも既存のため新規キー不要。
+- npx tsc --noEmit 成功 / purchaseFlow・setupFlow テスト36件成功
+- 残: 再ビルド後に課金画面で開示文が表示されることを実機確認（Phase 26.13検証）

@@ -47,16 +47,26 @@ export const XConnectStep: React.FC<XConnectStepProps> = ({
           </TouchableOpacity>
         </View>
       ) : (
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={onConnect}
-          activeOpacity={0.8}
-          disabled={isConnecting}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isConnecting ? t('sns.connecting') : t('sns.connectX')}
-          </Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={onConnect}
+            activeOpacity={0.8}
+            disabled={isConnecting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isConnecting ? t('sns.connecting') : t('sns.connectX')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={onNext}
+            activeOpacity={0.7}
+            disabled={isConnecting}
+          >
+            <Text style={styles.skipButtonText}>{t('setup.skipForNow')}</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );

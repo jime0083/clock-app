@@ -32,12 +32,13 @@
 ### Work 2.7: 実機テスト [保留]
 ※ Critical Alert対応後に実施
 
-- [ ] 実機ビルド（EAS Build または Xcodeから直接）
-- [ ] アプリ起動・アラーム設定
-- [ ] 通常モードでのアラーム動作テスト
-- [ ] サイレントモードでのアラーム動作テスト（Critical Alert承認後）
-- [ ] ロック画面状態でのアラーム動作テスト
-- [ ] アプリ終了状態でのアラーム動作テスト
+※ 本Workは後続の Work 2.16/2.17（2026-04-16〜18）および Phase 27.4/Work 6.3 の実機テストで実施済み。棚卸し完了扱い 2026-08-25。サイレントモードのみCritical Alert承認待ちのため残置
+- [x] 実機ビルド（EAS Build または Xcodeから直接）
+- [x] アプリ起動・アラーム設定
+- [x] 通常モードでのアラーム動作テスト
+- [ ] サイレントモードでのアラーム動作テスト（Critical Alert承認後）※ Critical Alert未承認のため保留
+- [x] ロック画面状態でのアラーム動作テスト（Work 6.7 手順2で合格 2026-07-14）
+- [x] アプリ終了状態でのアラーム動作テスト（Work 2.17.0で合格 2026-04-18）
 
 ---
 
@@ -57,33 +58,33 @@
 ### Work 2.9.1: Firestoreインデックスの確認
 **確認URL**: https://console.firebase.google.com/project/okiroya-9af3f/firestore/indexes
 
-**手順**:
-- [ ] Firebase Console > Firestore > インデックスを確認
-- [ ] `settings.alarmTime`に対するインデックスがあるか確認
-- [ ] 必要であれば単一フィールドインデックスを作成
+**手順** ※ Problem 6は Work 2.14（開発用APNsキー追加）で根本解決済み。本診断タスクは不要になったため完了扱い 2026-08-25
+- [x] Firebase Console > Firestore > インデックスを確認（インデックス起因ではなかった）
+- [x] `settings.alarmTime`に対するインデックスがあるか確認（不要と判明）
+- [x] 必要であれば単一フィールドインデックスを作成（不要）
 
 ### Work 2.9.2: Firestoreのデータ構造を確認
 **確認URL**: https://console.firebase.google.com/project/okiroya-9af3f/firestore/data/~2Fusers
 
-**手順**:
-- [ ] `users`コレクションで自分のドキュメントを開く
-- [ ] `settings`フィールドがマップ（オブジェクト）として表示されているか確認
-- [ ] `settings.alarmTime`の値が正しいフォーマット（`"HH:mm"`）か確認
+**手順** ※ Problem 6解決（Work 2.14）に伴い不要。完了扱い 2026-08-25
+- [x] `users`コレクションで自分のドキュメントを開く
+- [x] `settings`フィールドがマップ（オブジェクト）として表示されているか確認
+- [x] `settings.alarmTime`の値が正しいフォーマット（`"HH:mm"`）か確認
 
 ### Work 2.9.3: FCMトークンの更新
-**手順**:
-- [ ] iPhoneからオキロヤアプリを削除
-- [ ] Xcodeから再インストール
-- [ ] アプリを起動してログイン
-- [ ] Firebase Console > Firestore で `fcmToken` が更新されたことを確認
+**手順** ※ Problem 6解決（Work 2.14）に伴い不要。完了扱い 2026-08-25
+- [x] iPhoneからオキロヤアプリを削除
+- [x] Xcodeから再インストール
+- [x] アプリを起動してログイン
+- [x] Firebase Console > Firestore で `fcmToken` が更新されたことを確認
 
 ### Work 2.9.4: 追加のサービスアカウント権限（方法2）
 **確認URL**: https://console.cloud.google.com/iam-admin/iam?project=okiroya-9af3f
 
-**手順**:
-- [ ] `385341847803-compute@developer.gserviceaccount.com`を編集
-- [ ] 「Cloud Datastore User」ロールを追加
-- [ ] 保存して数分待つ
+**手順** ※ Work 2.8/2.9.4 でCloud Datastore Userロールは付与済み。完了扱い 2026-08-25
+- [x] `385341847803-compute@developer.gserviceaccount.com`を編集
+- [x] 「Cloud Datastore User」ロールを追加
+- [x] 保存して数分待つ
 
 ### Work 2.9.5: アラーム時間変更によるテスト（方法1）
 **手順**:
@@ -209,11 +210,11 @@ curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
 
 **確認URL**: https://console.firebase.google.com/project/okiroya-9af3f/settings/cloudmessaging
 
-**手順**:
-- [ ] 上記URLにアクセス
-- [ ] 「Apple アプリの構成」セクションを確認
-- [ ] 「APNs認証キー」が設定されているか確認
-- [ ] 設定されていない場合は以下の手順で追加
+**手順** ※ Work 2.13/2.14 で本番用・開発用ともAPNs認証キー設定済み（2026-04-13）。本項は参考情報のため完了扱い 2026-08-25
+- [x] 上記URLにアクセス
+- [x] 「Apple アプリの構成」セクションを確認
+- [x] 「APNs認証キー」が設定されているか確認（設定済み）
+- [x] 設定されていない場合は以下の手順で追加（対応済み）
 
 **APNs認証キーの取得方法（未設定の場合）**:
 1. Apple Developer Portal (https://developer.apple.com/account/resources/authkeys/list) にアクセス
@@ -314,13 +315,12 @@ curl -X POST https://testalarm-va3sumff3q-an.a.run.app \
 - [x] スクワットを10回完了
 - [x] アラーム音が停止することを確認
 
-### Work 2.17.3: X自動投稿テスト [未実施]
-**手順**:
-- [ ] Xアカウントを連携
-- [ ] アラームを設定
-- [ ] 通知を受信後、意図的にスクワットを**しない**
-- [ ] 5分後にXに自動投稿されることを確認
-※ Phase 17.12.5.6実装後にテスト予定
+### Work 2.17.3: X自動投稿テスト [完了 2026-07-06（Work 6.6で実施）]
+**手順** ※ Work 6.6 / Phase 26.7 でX自動投稿を実機確認済み（日本語・英語とも成功）。完了扱い 2026-08-25
+- [x] Xアカウントを連携
+- [x] アラームを設定
+- [x] 通知を受信後、意図的にスクワットを**しない**
+- [x] 5分後にXに自動投稿されることを確認
 
 ---
 
@@ -387,8 +387,8 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - アラームアプリとしての申請は承認されない
 
 ### Work 3.2〜3.3: [中止]
-~~- [ ] Appleからの承認メールを待つ~~
-~~- [ ] Provisioning Profile更新~~
+- [x] ~~Appleからの承認メールを待つ~~（Work 3却下により中止）
+- [x] ~~Provisioning Profile更新~~（Work 3却下により中止）
 
 → Work 4 (HealthKit連携後の再申請) へ移行
 
@@ -421,27 +421,27 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 
 ---
 
-### Work 4.1: App Storeカテゴリ変更
-**手順**:
-- [ ] App Store Connect にログイン
-- [ ] アプリのカテゴリを「Health & Fitness」に変更
-- [ ] 保存
+### Work 4.1: App Storeカテゴリ変更 [完了]
+**手順** ※ App Store提出済み（app id 6761042542）＝カテゴリ設定済み。完了扱い 2026-08-25
+- [x] App Store Connect にログイン
+- [x] アプリのカテゴリを「Health & Fitness」に変更
+- [x] 保存
 
-### Work 4.2: アプリ説明文の更新
-**手順**:
-- [ ] 以下の要素を強調した説明文に書き換え:
+### Work 4.2: アプリ説明文の更新 [完了]
+**手順** ※ App-Store-Content.txt の内容で提出済み。完了扱い 2026-08-25
+- [x] 以下の要素を強調した説明文に書き換え:
   - 睡眠の質向上（規則正しい起床による概日リズム調整）
   - 身体活動の促進（毎朝のスクワット運動）
   - HealthKitとの連携（運動記録の保存）
-- [ ] 「アラームアプリ」ではなく「睡眠健康改善・運動促進アプリ」としてフレーミング
+- [x] 「アラームアプリ」ではなく「睡眠健康改善・運動促進アプリ」としてフレーミング
 
-### Work 4.3: プライバシーポリシーの更新
-**手順**:
-- [ ] HealthKitデータの使用について追記
+### Work 4.3: プライバシーポリシーの更新 [完了 2026-04-22]
+**手順** ※ progress.txt Phase 18.3 で対応済み（HealthKit使用を追記・GitHub Pages再デプロイ）。完了扱い 2026-08-25
+- [x] HealthKitデータの使用について追記
   - 収集するデータ: ワークアウト（スクワット運動）
   - 使用目的: 運動記録の保存、ヘルスケアアプリとの連携
   - 第三者への提供: なし
-- [ ] GitHub Pagesにデプロイ
+- [x] GitHub Pagesにデプロイ
 
 ### Work 4.4: Critical Alert 再申請（HealthKit連携完了後）[却下 2026-07-06]
 **申請URL**: https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/
@@ -529,22 +529,25 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 
 ## Work 5: App Store申請準備
 
-### Work 5.1: App Store Connect設定
-- [ ] バンドルID紐付け確認
-- [ ] 価格設定（無料 + アプリ内課金）
+### Work 5.1: App Store Connect設定 [完了]
+※ App Store提出済みのため完了扱い 2026-08-25
+- [x] バンドルID紐付け確認
+- [x] 価格設定（無料 + アプリ内課金）
 
-### Work 5.2: アプリ情報作成
-- [ ] アプリ説明文（日本語）
-- [ ] アプリ説明文（英語）
-- [ ] キーワード設定（日本語）
-- [ ] キーワード設定（英語）
-- [ ] サポートURL準備
-- [ ] カテゴリ選択
+### Work 5.2: アプリ情報作成 [完了]
+※ App Store提出済みのため完了扱い 2026-08-25
+- [x] アプリ説明文（日本語）
+- [x] アプリ説明文（英語）
+- [x] キーワード設定（日本語）
+- [x] キーワード設定（英語）
+- [x] サポートURL準備
+- [x] カテゴリ選択
 
-### Work 5.3: スクリーンショット作成
-- [ ] 6.7インチ（iPhone 15 Pro Max）
-- [ ] 6.5インチ（iPhone 11 Pro Max）
-- [ ] 5.5インチ（iPhone 8 Plus）
+### Work 5.3: スクリーンショット作成 [完了 2026-04-22]
+※ progress.txt Phase 18.4 で作成済み・提出済み。完了扱い 2026-08-25
+- [x] 6.7インチ（iPhone 15 Pro Max）
+- [x] 6.5インチ（iPhone 11 Pro Max）
+- [x] 5.5インチ（iPhone 8 Plus）
 
 ### Work 5.4: プライバシーポリシー・利用規約作成
 - [x] プライバシーポリシー文書作成
@@ -557,10 +560,11 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 ※ 現在のプロジェクト状態（2026-07-14 確認済み）: version 1.0.0 / build 1 / bundle com.okiroya.app / Team GK79P6R4DF / 署名Automatic / エンタイトルメントにCritical Alertなし（署名エラーの心配なし）
 ⚠️ **`npx expo prebuild` は絶対に実行しないこと**: ios/ ディレクトリには手動変更（HealthKitケイパビリティ・RCTNewArchEnabled=false等）が含まれており、prebuildで上書き消失する
 
-**事前準備（App Store Connect にアプリレコードが無い場合のみ）**:
-- [ ] https://appstoreconnect.apple.com → マイApp → 「+」→ 新規App
+⚠️ **2026-08-25 追記**: 初回提出は完了し、Problem 47（Purpose Stringsプレースホルダー）で自動リジェクトされた。app.config.ts と ios/app/Info.plist を修正済み（Phase 26.11）。以下のアップロード〜提出手順は**修正版ビルドでの再実行**に使う（Phase 28）。
+
+**事前準備（App Store Connect にアプリレコードが無い場合のみ）** ※ アプリレコード作成済み（app id 6761042542）
+- [x] https://appstoreconnect.apple.com → マイApp → 「+」→ 新規App（作成済み）
   - プラットフォーム: iOS / 名前: オキロヤ / プライマリ言語: 日本語 / バンドルID: com.okiroya.app / SKU: okiroya
-  ※ これが無いとXcodeからのアップロードが失敗する
 
 **ビルド→アップロード手順**:
 - [x] Xcodeで `ios/app.xcworkspace` を開く（**.xcodeproj ではなく .xcworkspace**。CocoaPods利用のため）（2026-07-15）
@@ -570,11 +574,10 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
   - 署名は「Automatically manage signing」のまま進める（Distribution証明書はXcodeが自動生成）
   - 2026-07-15 初回実行時に3エラーで失敗（Problem 46）→ 下記の対処後に再実行
 
-**Problem 46 の対処（2026-07-15 追加・アップロード再実行の前に実施）**:
-- [ ] Account Holder（アカウント所有者）のApple IDで https://developer.apple.com/account にログイン
-- [ ] ページ上部に表示される Program License Agreement 更新の同意バナーから「Review Agreement」→ 内容確認 → **Agree（同意）**
-  ※ バナーが見当たらない場合: https://developer.apple.com/account → 「Agreements」/「契約」セクションを確認
-- [ ] （推奨）https://appstoreconnect.apple.com → 「契約 / Business」も開き、未同意の契約（特にPaid Applications）が無いか確認
+**Problem 46 の対処（2026-07-15 追加）** ※ 解決済み（PLA同意後アップロード成功・初回提出まで到達）。完了扱い 2026-08-25
+- [x] Account Holder（アカウント所有者）のApple IDで https://developer.apple.com/account にログイン
+- [x] ページ上部に表示される Program License Agreement 更新の同意バナーから「Review Agreement」→ 内容確認 → **Agree（同意）**
+- [x] （推奨）https://appstoreconnect.apple.com → 「契約 / Business」も開き、未同意の契約（特にPaid Applications）が無いか確認
 - [ ] 同意後2〜3分待ち、Xcodeの Window > Organizer → 既存アーカイブを選択 → 「Distribute App」を再実行（**再Archiveは不要**）
   ※ 自動署名がDistribution証明書とApp Storeプロファイルを自動生成するため、エラー2・3（プロファイル/証明書なし）も同時に解消される見込み
   ※ それでも証明書エラーが残る場合: Xcode > Settings > Accounts → Apple IDを選択 → 「Manage Certificates...」→ 左下「+」→「Apple Distribution」で手動作成してから再実行
@@ -640,9 +643,10 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
    - 拒否の場合は「シミュレートされた読み取り（書き込み）が拒否されました」と赤く表示され、ルールの該当行がハイライトされる
 4. 4ケースの結果が期待どおりならこのWorkの残り2項目にチェックを付けて完了
 
-### Work 6.3: 実機E2Eテスト（Phase 27.4）
-- [ ] progress.txt Phase 27.4 のチェックリストを実機で実施
-- [ ] X API のクレジット残量を事前に確認（https://developer.twitter.com/en/portal/dashboard）
+### Work 6.3: 実機E2Eテスト（Phase 27.4）[完了 2026-07-06]
+※ progress.txt Phase 27.4 の全項目が実機で合格済み。完了扱い 2026-08-25
+- [x] progress.txt Phase 27.4 のチェックリストを実機で実施
+- [x] X API のクレジット残量を事前に確認（https://developer.twitter.com/en/portal/dashboard）
 
 ### Work 6.4: RevenueCat 復元動作・管理者バイパスの確認（Phase 22.1）
 - [x] App Store ConnectでSandboxテスターアカウント作成済み（2026-07-04 確認・6件）
@@ -681,3 +685,62 @@ curl -X POST https://testpenalty-va3sumff3q-an.a.run.app \
 - [x] 同画面でXを再連携する → Firestoreに新しいaccessToken/refreshTokenが保存される（2026-07-06）
 - [x] スクワット未検知テスト: アラーム発火→スクワットせず5分待つ→Xにペナルティ投稿が1件されることを確認（2026-07-06 日本語・英語とも成功。さらに約17時間後の再投稿＝401→リフレッシュ経路も成功 2026-07-07）
   ※ 事前にX APIクレジット残量も確認（https://developer.twitter.com/en/portal/dashboard）。残量ゼロの場合は402エラーで投稿されない（Problem 13参照）
+
+---
+
+## Work 7: 審査用デモXアカウントの提供（Problem 48 / Guideline 2.1(a)・2026-08-28 追加・案A）
+※ 審査官がXアカウントを持たずX連携ステップで足止め。App Store Connectの審査情報にデモXアカウントを登録し、審査官へ返信する。**新ビルド不要**（Information Needed は情報提供で解決可能）
+
+### 手順1: 審査用のXアカウント（既存のテスト用アカウントを使用）
+- [x] 審査用Xアカウントは既存のテスト用アカウントを使用（2026-08-28 ユーザー決定）
+  - **ユーザー名: @yagyo8888888888**（URL: https://x.com/yagyo8888888888）
+  - [x] **2段階認証（2FA）は無効**であることを確認済み（審査官がコードなしでログインできる）
+- [ ] 提出直前にブラウザ等で一度ログインしてアクティブ状態にしておく（新デバイス/IPからの不審ログイン判定・ロック回避のため。X側の "verify it's you" が出ると審査官がログインできない恐れ）
+  - ※ このアカウントには審査中にペナルティ投稿（寝坊投稿）が自動でされる。テスト用のため問題なし
+  - ⚠️ **パスワードはこのファイル（Git管理下）には書かない**。手順2でApp Store Connectの審査情報欄に直接入力する
+
+### 手順2: App Store Connect の審査情報に登録
+- [ ] App Store Connect → オキロヤ → 該当バージョン → 「App Review Information（審査情報）」
+- [ ] サインインが必要: 本アプリのログインはGoogle/Appleのみ（メール/パスワードのログインなし）。審査官は「Sign in with Apple」で自身のApple IDでログイン可能。その旨を「メモ」に記載
+- [ ] 「メモ（Notes）」欄に下記の返信文案（英語）を貼り付け、Xのユーザー名・パスワードを記入
+- [ ] （課金の壁対策）初回審査にサブスク2商品（月額200円/年額2,000円）が**このバージョンに紐付いている**ことを確認（紐付いていないと審査官が課金ステップを越えられず再リジェクトの恐れ）。審査官はSandboxで購入して通過できる
+
+### 手順3: 審査官へ返信
+- [ ] 却下メッセージの「App Reviewに返信」から、下記文案（Xの認証情報を記入したもの）を送信
+  ※ 案B（スキップ導線）を入れた新ビルドを上げる場合は build 番号を上げてUpload後、この文案も添えて再提出する
+
+### 審査官への返信文案（英語・そのまま貼り付け可。<>部分を記入）
+```
+Thank you for reviewing our app.
+
+Our app requires connecting an X (Twitter) account to demonstrate its core
+feature (an automatic "penalty" post when the user fails to complete the
+morning squat routine). Please use the following demo X account:
+
+X (Twitter) demo account
+- Username: @yagyo8888888888
+- Password: <App Store Connectの審査情報欄に直接入力。このメモ貼り付け時に記入>
+(Two-factor authentication is disabled on this account, so no code is required.)
+
+How to sign in to the app:
+The app offers only "Sign in with Apple" and "Sign in with Google" (there is
+no email/password login). You can sign in using "Sign in with Apple" with your
+own Apple ID.
+
+Steps to verify all features:
+1. Launch the app and sign in with "Sign in with Apple".
+2. Set an alarm time and days.
+3. On the "Connect with X" step, tap "Connect with X" and log in with the demo
+   X account above, then authorize.
+4. Complete the short squat calibration.
+5. On the subscription step, complete the Sandbox purchase to proceed.
+6. To verify the core feature, set the alarm to a time about 1-2 minutes ahead,
+   lock the device, and wait. When the alarm rings, either perform squats to
+   stop it, or ignore it - after 5 minutes a penalty post is automatically
+   published to the connected X account.
+
+Please let us know if you need any further information. Thank you.
+```
+
+### 補足（案B・恒久対策）
+- コード側で X連携ステップに「後で設定する」スキップ導線を実装済み（progress.txt Phase 26.12）。次ビルドに含めればXアカウントなしでもセットアップ完了でき、将来の同種リジェクトを恒久的に回避できる
