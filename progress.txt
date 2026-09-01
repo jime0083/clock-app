@@ -848,7 +848,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ### 検証（ビルドPhaseで実施）
 - [ ] 再ビルド後、X未接続のままセットアップを最後まで完了できること（実機/シミュレータ）
-- [ ] Archive→Upload→再提出（build番号を上げる）で Guideline 2.1(a) 指摘が解消していること
+- [x] Archive→Upload→再提出で対応（build 3 を 2026-08-31 提出。デモXアカウント提供〔Work 7〕＋サブスク同時提出も実施）。Guideline 2.1(a) 解消は審査結果待ち
 
 ---
 
@@ -909,6 +909,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ## Phase 28: ビルド・リリース ※ Phase 27 完了後
 - [x] npx tsc --noEmit / npx jest / ESLint が全て通ることを最終確認（2026-07-14: tsc成功 / jest 21スイート379件全成功 / ESLintは既存ベースライン69件（20エラー・49警告、Phase 26.2以降不変・主にテストファイルのno-explicit-any）と同数で新規指摘ゼロ。ビルドには影響しない）
-- [ ] 本番ビルド作成: ~~eas build~~ → **Xcodeで Archive→Upload に変更（2026-07-14 ユーザー決定・手順は manual-work.txt Work 5.5）**
-- [ ] TestFlight 配信・App Store 審査申請（手動: 既存 Phase 18.1〜18.8 / Work 5.x を実施）
+- [x] 本番ビルド作成: Xcodeで Archive→Upload（build 3 / 1.0.0 を 2026-08-31 アップロード）
+- [x] App Store 審査申請（build 3 を 2026-08-31 再提出。デモXアカウント〔Work 7〕＋サブスク2商品同時提出。Purpose String/2.1(a)/3.1.2 の3点を同時対応）→ **審査結果待ち**
+- [ ] 審査承認・App Store公開を確認
 - [ ] App Store公開後: Critical Alert 4回目再申請（手動: Work 4.7・公開直後の提出を推奨）

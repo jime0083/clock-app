@@ -80,7 +80,10 @@
       "Bash(npx firebase-tools *)",
       "Bash(plutil -lint ios/app.xcodeproj/project.pbxproj)",
       "Bash(java -version)",
-      "Bash(sort -u -t= -k2)"
+      "Bash(sort -u -t= -k2)",
+      "Bash(awk '/## Problem 45/,0' problem.txt)",
+      "Bash(plutil -lint ios/app/Info.plist)",
+      "Bash(git check-ignore *)"
     ]
   }
 }
