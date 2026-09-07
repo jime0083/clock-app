@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   SafeAreaView,
   Platform,
   Dimensions,
@@ -15,12 +16,21 @@ import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAppleAuth } from '@/hooks/useAppleAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppUser } from '@/types/auth';
+import { signInDemo, isDemoSignInAvailable } from '@/services/authService';
+import { logger } from '@/utils/logger';
 
 const { width } = Dimensions.get('window');
+
+// 審査用デモ導線: アニメーションを規定回数タップで起動（審査メモで審査官に伝える隠しジェスチャー）
+const DEMO_TAP_THRESHOLD = 7;
+const DEMO_TAP_WINDOW_MS = 3000;
 
 const LoginScreen: React.FC = () => {
   const { t } = useTranslation();
   const { setUser } = useAuth();
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const demoTapCountRef = useRef(0);
+  const demoTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAuthSuccess = (user: AppUser) => {
     setUser(user);
@@ -41,20 +51,53 @@ const LoginScreen: React.FC = () => {
     isAvailable: isAppleAvailable,
   } = useAppleAuth(handleAuthSuccess, handleAuthError);
 
-  const isLoading = isGoogleLoading || isAppleLoading;
+  const isLoading = isGoogleLoading || isAppleLoading || isDemoLoading;
+
+  const handleDemoSignIn = async () => {
+    if (isDemoLoading) return;
+    setIsDemoLoading(true);
+    try {
+      const user = await signInDemo();
+      handleAuthSuccess(user);
+    } catch (error) {
+      logger.error('Demo sign in failed:', error);
+      handleAuthError('Demo sign in failed');
+    } finally {
+      setIsDemoLoading(false);
+    }
+  };
+
+  // 隠しジェスチャー: DEMO_TAP_WINDOW_MS 以内に DEMO_TAP_THRESHOLD 回タップでデモサインイン
+  const handleHiddenTap = () => {
+    if (!isDemoSignInAvailable() || isLoading) return;
+    demoTapCountRef.current += 1;
+    if (demoTapTimerRef.current) {
+      clearTimeout(demoTapTimerRef.current);
+    }
+    if (demoTapCountRef.current >= DEMO_TAP_THRESHOLD) {
+      demoTapCountRef.current = 0;
+      handleDemoSignIn();
+      return;
+    }
+    demoTapTimerRef.current = setTimeout(() => {
+      demoTapCountRef.current = 0;
+    }, DEMO_TAP_WINDOW_MS);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Animation Section */}
-        <View style={styles.animationContainer}>
-          <LottieView
-            source={require('@assets/animations/Alarm Clock.json')}
-            autoPlay
-            loop
-            style={styles.animation}
-          />
-        </View>
+        {/* Animation Section (審査用デモの隠しジェスチャー起点) */}
+        <TouchableWithoutFeedback onPress={handleHiddenTap} accessible={false}>
+          <View style={styles.animationContainer}>
+            <LottieView
+              source={require('@assets/animations/Alarm Clock.json')}
+              autoPlay
+              loop
+              style={styles.animation}
+            />
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Tagline Section */}
         <View style={styles.taglineContainer}>

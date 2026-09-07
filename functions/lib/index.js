@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUserData = exports.testPenalty = exports.checkSquatCompletion = exports.testAlarm = exports.checkAlarms = void 0;
+exports.demoPenaltyPost = exports.deleteUserData = exports.testPenalty = exports.checkSquatCompletion = exports.testAlarm = exports.checkAlarms = void 0;
 exports.getLocalTimeAndDay = getLocalTimeAndDay;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -661,5 +661,42 @@ exports.deleteUserData = (0, https_1.onCall)({
         console.error(`User ${uid}: Error deleting account data:`, error);
         throw new https_1.HttpsError("internal", "Failed to delete account data");
     }
+});
+/**
+ * On-demand penalty post used for the App Store review demonstration mode
+ * (Problem 50 / Guideline 2.1a). Lets a reviewer verify the core "penalty post
+ * to X" feature immediately, without waiting for the 5-minute oversleep window.
+ *
+ * Restricted to admin/demo accounts only (uid must exist in the adminUsers
+ * collection). The post is published to the account's own connected X account
+ * using the tokens already stored server-side, so no X login is required in the
+ * review environment.
+ */
+exports.demoPenaltyPost = (0, https_1.onCall)({
+    region: "asia-northeast1",
+    invoker: "public",
+}, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication required");
+    }
+    // Only admin/demo accounts may trigger an on-demand penalty post
+    const adminSnapshot = await db
+        .collection("adminUsers")
+        .where("uid", "==", uid)
+        .get();
+    if (adminSnapshot.empty) {
+        throw new https_1.HttpsError("permission-denied", "Not allowed");
+    }
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+        throw new https_1.HttpsError("not-found", "User not found");
+    }
+    const userData = userDoc.data();
+    if (!userData) {
+        throw new https_1.HttpsError("not-found", "User data not found");
+    }
+    const success = await postPenaltyTweetForUser(uid, userData);
+    return { success };
 });
 //# sourceMappingURL=index.js.map

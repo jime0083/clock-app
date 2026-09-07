@@ -1856,3 +1856,52 @@ Appleのメッセージが例示した "App needs microphone access" と同型�
 - SubscriptionStep.tsx の購入ボタン直下に `paywall.terms`（自動更新開示文）を表示。styles.ts に autoRenewText（12px・textTertiary・中央寄せ）を追加。paywall.terms は ja/en とも既存のため新規キー不要。
 - npx tsc --noEmit 成功 / purchaseFlow・setupFlow テスト36件成功
 - 残: 再ビルド後に課金画面で開示文が表示されることを実機確認（Phase 26.13検証）
+
+---
+
+## Problem 50: App Store再審査落ち Guideline 2.1(a) - Xログインに認証コードが必要で審査官がX連携を検証できない (2026-09-07)
+
+### 症状
+- build 3（1.0(3)）審査で Guideline 2.1(a) - Information Needed
+- Apple: "in addition to the demo account username and password you provided, we need an authentication code to access demo X account content and verify its functionality."
+- Review date: 2026-09-01 / Review Device: iPad Air 11-inch (M3) / Version: 1.0 (3)
+
+### 根本原因
+- アプリのコア機能（寝坊時のXペナルティ投稿）の検証にはX連携が必須
+- 審査官がデモXアカウント（@yagyo8888888888）でX OAuthログインを試みると、**Xが新規端末/IP（審査環境）からのログインに認証コード（verification code）を要求**する
+- 2FAをオフにしてもXは不審ログイン対策でコードを送信するため、審査官はコードを受け取れずX連携を完了できない
+- build 3にはXスキップ導線（Phase 26.12）があるためセットアップ自体は完了できるが、審査官はXペナルティ投稿機能そのものを検証できない
+
+### Appleが提示した選択肢（Next Steps）
+1. Apple担当者に電話でコードを伝える（要フォーム申請・非現実的/低速）
+2. デモアカウントがコード検証をバイパスできるようにする
+3. デモ用の固定認証コードを用意し審査メモに記載する
+4. デモモード（demonstration mode）でXログインなしに全機能を提示する
+
+### 影響範囲・解決策（案）
+- 案X-A（コード・恒久・推奨候補）: デモモードを実装。指定のデモ条件時にX OAuthを介さずX連携済み状態＋ペナルティ投稿デモを提示
+- 案X-B（運用・低コード）: デモ用アプリログイン（Googleアカウント）に事前にX（@yagyo8888888888）を連携済みにしておき（開発者が自端末で連携＝コード受信可能）、Firestoreに有効なXトークンを保存。審査官はそのGoogleアカウントでアプリにログイン→restoreTokensFromFirestoreでX連携済みとして復元→ペナルティ投稿（サーバー側トークン使用）を検証。X OAuth不要。リスク: Googleログインも審査環境で確認コードを要求する可能性／Xトークンのローテーション失効／X APIクレジット残量
+- ※ 方針はユーザー決定待ち
+
+## Problem 51: App Store再審査落ち Guideline 3.1.2(c) - サブスクが価格に対する提供内容を明確に説明していない (2026-09-07)
+
+### 症状
+- build 3 審査で Guideline 3.1.2(c) - Business - Payments - Subscriptions
+- Apple: "The app uses auto-renewable subscriptions, but it does not clearly describe what the user will receive for the price."
+- Next Steps: "revise the details of your subscription to clearly describe what the user will receive for the price."
+
+### 根本原因
+- サブスクリプションはセットアップ完了に必須（SetupScreen: 管理者・既存契約者以外は課金しないと完了不可）＝サブスクはアプリ全機能を解放するもの
+- しかし課金画面（SubscriptionStep.tsx）はキャッチコピー（tagline1-3）と価格・プランのみで、「この料金で何が使えるようになるか（提供内容/特典）」を明確に説明していない
+- App Store Connectのサブスク商品の「説明」も価格に対する提供内容を明確化する必要がある
+- ⚠️ 注意: i18nの paywall.feature1-4 には「カスタムアラーム音の設定」が含まれるが、これはCLAUDE.mdルール6でUI非実装＝虚偽表示になるため使用禁止。実装済みの実機能で説明すること（アラーム、起床時スクワット判定でしか止まらない目覚まし、寝坊時のX自動投稿、スクワット統計/履歴 等）
+
+### 影響範囲・解決策
+1. コード: SubscriptionStep.tsx に「サブスクで得られる内容」の説明（実機能ベースの箇条書き等）を追加（UI修正のためルール2 frontend-designスキル適用）
+2. App Store Connect: サブスク2商品（Monthly/Yearly）の「表示名」「説明」を、価格に対する提供内容が明確になるよう改訂（手動）
+
+### 修正完了: Problem 51 (2026-09-07)
+- SubscriptionStep.tsx にサブスク提供内容（実機能3項目）の説明節を追加。styles に benefits系スタイル追加。i18n pay.benefitsTitle/benefit1-3（ja/en）追加。
+- 非実装機能（カスタムアラーム音等）は記載せず、実装済み機能のみ記述（ルール6遵守）
+- npx tsc --noEmit 成功 / purchaseFlow・setupFlow 36件成功
+- 残: App Store Connectのサブスク2商品の説明改訂（manual-work.txt Work 8.1）／実機で表示確認

@@ -744,3 +744,50 @@ Please let us know if you need any further information. Thank you.
 
 ### 補足（案B・恒久対策）
 - コード側で X連携ステップに「後で設定する」スキップ導線を実装済み（progress.txt Phase 26.12）。次ビルドに含めればXアカウントなしでもセットアップ完了でき、将来の同種リジェクトを恒久的に回避できる
+
+---
+
+## Work 8: サブスク説明の改訂とX審査アクセスの提供（Problem 50, 51・2026-09-07 追加）
+※ build 3 審査で Guideline 2.1(a)（Xログインに認証コード必要）と 3.1.2(c)（サブスク提供内容が不明確）で却下
+
+### Work 8.1: サブスク商品の説明改訂（Problem 51 / Guideline 3.1.2(c)）
+- [ ] App Store Connect → 収益化 → サブスクリプション → Okiroya Premium
+- [ ] Monthly Plan / Yearly Plan それぞれの「ローカリゼーション（表示名・説明）」を、**価格に対して何が使えるようになるか**が明確になるよう改訂（アプリ全機能を解放する旨＝起床時スクワットでしか止まらないアラーム、寝坊時のX自動投稿、統計・履歴 等）
+  - ⚠️ 非実装機能（カスタムアラーム音等）は記載しない（虚偽表示リスク）
+- [ ] 変更後、次のアプリ提出に2商品を「審査用に追加」で紐付け直す
+
+### Work 8.2: 審査用デモモードのセットアップ（Problem 50 / Guideline 2.1(a)）
+※ ユーザー決定（2026-09-07）: 案X-A ハイブリッドデモモードを採用（コード実装は Phase 26.15 完了済み）。以下は提出前に必要な手動作業。
+※ 仕組み: 審査官はXログイン不要。ログイン画面でアニメーションを3秒以内に7回タップ→デモアカウント（Email/Password）でサインイン→ホームの「デモ: 寝坊ペナルティ投稿をテスト」ボタンで、事前連携済みXアカウントへ実際に投稿される。
+
+**Firebase / デモアカウント準備:**
+- [ ] Firebase Console → Authentication → Sign-in method で **Email/Password プロバイダを有効化**
+- [ ] デモアカウント（メール/パスワード）を作成（Authentication → ユーザーを追加）。※捨て可・2FA無関係
+- [ ] 作成したデモアカウントの **UID を adminUsers コレクションに登録**（課金バイパス＋demoPenaltyPost実行許可のため）
+- [ ] `.env` に `DEMO_ACCOUNT_EMAIL` / `DEMO_ACCOUNT_PASSWORD` を設定（Git管理外）
+
+**X事前連携（開発者が自端末で1回）:**
+- [ ] 開発者がアプリでデモサインイン（隠しジェスチャー）→セットアップを最後まで完了（アラーム設定・キャリブレーション。課金は管理者バイパスで自動スキップ）
+- [ ] SNS連携でX（@yagyo8888888888）を連携（自端末なので認証コードを受信できる）→Firestoreにトークン保存
+- [ ] X APIクレジット残量を確認（残ゼロだと投稿失敗・Problem 13）
+
+**デプロイ・提出:**
+- [ ] `cd functions && npm run build && firebase deploy --only functions`（demoPenaltyPost をデプロイ）
+- [ ] `DEMO_ACCOUNT_EMAIL/PASSWORD` を設定した状態で build 番号を上げて Archive→Upload
+- [ ] App Store Connect 審査情報のメモに**デモモードの入り方**を英語で記載（下記文案）
+- [ ] 提出直前にデモアカウントでX連携が生きているか再確認（トークン失効対策）
+
+**審査メモ文案（英語・そのまま貼り付け可）:**
+```
+To review the app's core feature (auto penalty post to X) without an X login,
+please use the built-in App Review demo mode:
+
+1. On the login screen, tap the alarm clock animation 7 times quickly
+   (within ~3 seconds). This signs you into a demo account.
+2. On the Home screen, tap "Demo: Test oversleep penalty post".
+3. A real penalty post is published to the pre-connected demo X account
+   (@yagyo8888888888). You can verify the post on X.
+
+No X login/authentication code is required in this flow.
+```
+※ リスク: X APIクレジット切れ・トークン失効の場合は投稿失敗するため、提出直前の再連携とクレジット確認を必ず行う

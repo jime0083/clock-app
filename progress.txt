@@ -866,6 +866,43 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ---
 
+## Phase 26.14: 課金画面にサブスク提供内容の説明を追加（Problem 51・Guideline 3.1.2(c)対策）
+※ サブスクが「価格に対して何が得られるか」を明示していない。サブスクはアプリ全機能を解放するもの。実装済みの実機能で説明する。詳細は problem.txt Problem 51。
+⚠️ paywall.feature1-4（「カスタムアラーム音」等）は非実装機能を含むため使用禁止（ルール6）。実機能ベースで記述する。
+
+### 実装 [実装完了 2026-09-07]
+- [x] src/screens/setup/SubscriptionStep.tsx: プランカードの上に「サブスクで使えるようになること」節（実機能3項目: スクワット完了まで止まらないアラーム／寝坊時のX自動投稿／スクワット・起床の統計と履歴）をチェックマーク付きで追加（frontend-designスキル適用・非実装機能は不記載）（2026-09-07）
+- [x] src/screens/setup/styles.ts: benefitsContainer / benefitsTitle / benefitRow / benefitText を追加（2026-09-07）
+- [x] src/locales/ja.json・en.json: pay.benefitsTitle / benefit1-3 を追加（両言語）（2026-09-07）
+- [x] npx tsc --noEmit 成功 / purchaseFlow・setupFlow テスト36件成功 / JSON妥当性OK（2026-09-07）
+- 手動: App Store Connect のサブスク2商品の説明改訂は manual-work.txt Work 8.1（提出前に実施）
+
+### 検証（ビルドPhaseで実施）
+- [ ] 課金画面にサブスク提供内容が明確に表示されることを実機/シミュレータで確認
+
+---
+
+## Phase 26.15: 審査用デモモード実装（Problem 50・Guideline 2.1(a)対策）
+※ ユーザー決定（2026-09-07）: ハイブリッド案（デモモードで入る＋実際にデモXへ投稿）。審査官はXログイン不要で、デモ用アプリアカウント（Email/Password・adminUsers登録で課金バイパス・X事前連携済み）でアプリに入り、ワンタップで実際のペナルティ投稿を確認できる。詳細は problem.txt Problem 50。
+
+### 実装 [実装完了 2026-09-07]
+- [x] functions/src/index.ts: onCall `demoPenaltyPost` を追加（呼び出し元uidがadminUsersにある場合のみ、そのユーザーのストア済みトークンで postPenaltyTweetForUser を実行）。functions build 成功（2026-09-07）
+- [x] app.config.ts / .env.example: extra.demo（DEMO_ACCOUNT_EMAIL / DEMO_ACCOUNT_PASSWORD）を追加（値は.env=Git管理外）（2026-09-07）
+- [x] src/services/authService.ts: signInDemo()（Email/Passwordでデモアカウントにサインイン）と isDemoSignInAvailable() を追加（2026-09-07）
+- [x] src/screens/LoginScreen.tsx: アニメーションを3秒以内に7回タップでデモサインインする隠しジェスチャーを追加（審査メモで審査官に伝達・通常ユーザーには不可視）（2026-09-07）
+- [x] src/screens/HomeScreen.tsx: user.isAdmin のときのみ「デモ: 寝坊ペナルティ投稿をテスト」ボタンを表示し demoPenaltyPost を呼ぶ（2026-09-07）
+- [x] src/locales/ja.json・en.json: demo.* 文言を追加（2026-09-07）
+- [x] npx tsc --noEmit 成功 / functions build 成功 / 全21スイート379テスト成功（2026-09-07）
+
+### 検証（ビルド・手動Phaseで実施）
+- [ ] 手動: Firebaseで Email/Password プロバイダ有効化＋デモアカウント作成→UIDをadminUsersに登録（manual-work.txt Work 8.2）
+- [ ] 手動: 開発者がデモアカウントでサインイン→セットアップ完了→X(@yagyo8888888888)を連携→X APIクレジット確認
+- [ ] 手動: functionsをデプロイ（demoPenaltyPost）
+- [ ] 実機/シミュレータ: 隠しジェスチャーでデモサインイン→ホームのデモボタンで実際にXへ投稿されることを確認
+- [ ] .env に DEMO_ACCOUNT_EMAIL / DEMO_ACCOUNT_PASSWORD を設定して再ビルド
+
+---
+
 ## Phase 27: テスト修復・拡充（Problem 25）※ 全実装タスクの最後に実施
 
 ### 27.1 テスト基盤の修復 [完了 2026-07-06]

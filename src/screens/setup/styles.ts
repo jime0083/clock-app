@@ -228,6 +228,28 @@ export const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  benefitsContainer: {
+    width: '100%',
+    marginBottom: 20,
+    gap: 10,
+  },
+  benefitsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  benefitText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textSecondary,
+  },
   planLabel: {
     fontSize: 14,
     fontWeight: '500',

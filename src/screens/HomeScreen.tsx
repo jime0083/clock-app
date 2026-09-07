@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, RefreshControl, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TouchableOpacity,
+  RefreshControl,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +30,8 @@ import CalibrationScreen from '@/screens/CalibrationScreen';
 import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { SquatDetectionConfig } from '@/services/accelerometerService';
 import { signOut, deleteAccount } from '@/services/authService';
-import { auth } from '@/services/firebase';
+import { auth, functions } from '@/services/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAppleAuth } from '@/hooks/useAppleAuth';
 import {
@@ -40,6 +50,8 @@ const HomeScreen: React.FC = () => {
   const { planType } = useSubscription();
   const [userData, setUserData] = useState<UserDocument | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // 審査用デモ: 寝坊ペナルティ投稿を即時実行（管理者/デモアカウントのみ）
+  const [isDemoPosting, setIsDemoPosting] = useState(false);
 
   // Modal states
   const [isMenuVisible, setIsMenuVisible] = useState(false);
@@ -190,6 +202,29 @@ const HomeScreen: React.FC = () => {
     setIsAlarmSettingVisible(true);
   };
 
+  // 審査用デモ: 寝坊ペナルティのX投稿を即時トリガー（管理者/デモアカウントのみ・Problem 50）
+  const handleDemoPenaltyPost = async () => {
+    if (isDemoPosting) return;
+    setIsDemoPosting(true);
+    try {
+      const demoPenaltyPost = httpsCallable<unknown, { success: boolean }>(
+        functions,
+        'demoPenaltyPost'
+      );
+      const result = await demoPenaltyPost();
+      if (result.data?.success) {
+        Alert.alert(t('demo.postSuccessTitle'), t('demo.postSuccessMessage'));
+      } else {
+        Alert.alert(t('demo.postFailTitle'), t('demo.postFailMessage'));
+      }
+    } catch (error) {
+      logger.error('Demo penalty post failed:', error);
+      Alert.alert(t('demo.postFailTitle'), t('demo.postFailMessage'));
+    } finally {
+      setIsDemoPosting(false);
+    }
+  };
+
   const handleSaveAlarm = async (time: string, days: number[]) => {
     if (!user?.uid) return;
     try {
@@ -323,6 +358,21 @@ const HomeScreen: React.FC = () => {
       >
         <AlarmCard alarmTime={settings?.alarmTime ?? null} onChangeAlarm={handleChangeAlarm} />
 
+        {/* 審査用デモ: 寝坊ペナルティのX投稿を即時確認（管理者/デモアカウントのみ表示） */}
+        {user?.isAdmin && (
+          <TouchableOpacity
+            style={styles.demoButton}
+            onPress={handleDemoPenaltyPost}
+            disabled={isDemoPosting}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="logo-twitter" size={18} color={Colors.textInverse} />
+            <Text style={styles.demoButtonText}>
+              {isDemoPosting ? t('demo.posting') : t('demo.postPenalty')}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>
             <StatCard
@@ -455,6 +505,23 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 8,
     paddingBottom: 32,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+  },
+  demoButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textInverse,
   },
   statsGrid: {
     paddingHorizontal: 10,

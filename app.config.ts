@@ -49,6 +49,10 @@ interface ExtendedExpoConfig {
     x: {
       clientId: string | undefined;
     };
+    demo: {
+      email: string | undefined;
+      password: string | undefined;
+    };
   };
 }
 
@@ -152,6 +156,13 @@ export default ({ config }: ConfigContext): ExtendedExpoConfig => ({
     },
     x: {
       clientId: process.env.X_CLIENT_ID,
+    },
+    // App Store審査用デモアカウント（Problem 50 / Guideline 2.1a）。
+    // ログイン画面の隠しジェスチャーからメール/パスワードでサインインする。
+    // 値は .env にのみ置き（Git管理外）、未設定ならデモ導線は無効。
+    demo: {
+      email: process.env.DEMO_ACCOUNT_EMAIL,
+      password: process.env.DEMO_ACCOUNT_PASSWORD,
     },
   },
 });

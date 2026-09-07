@@ -1,4 +1,12 @@
 {
+  "demo": {
+    "postPenalty": "デモ: 寝坊ペナルティ投稿をテスト",
+    "posting": "投稿中...",
+    "postSuccessTitle": "投稿しました",
+    "postSuccessMessage": "連携中のXアカウントに寝坊ペナルティ投稿を送信しました。Xで投稿をご確認ください。",
+    "postFailTitle": "投稿に失敗しました",
+    "postFailMessage": "Xへの投稿に失敗しました。X連携状態またはAPIクレジット残量をご確認ください。"
+  },
   "common": {
     "ok": "OK",
     "cancel": "キャンセル",
@@ -84,6 +92,10 @@
     "tagline1": "起きたら即スクワットで二度寝防止",
     "tagline2": "寝坊をフォロワーが監視!",
     "tagline3": "絶対に起きれる目覚ましアプリ",
+    "benefitsTitle": "サブスクリプションで使えるようになること",
+    "benefit1": "スクワットを完了するまで止まらないアラームで確実に起床",
+    "benefit2": "寝坊（スクワット未完了）するとX（旧Twitter）へ自動でペナルティ投稿",
+    "benefit3": "スクワット回数・起床実績の統計と履歴を記録",
     "plan": "プラン",
     "yearly": "12ヶ月",
     "monthly": "1ヶ月",

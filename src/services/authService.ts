@@ -1,5 +1,6 @@
 import {
   signInWithCredential,
+  signInWithEmailAndPassword,
   GoogleAuthProvider,
   OAuthProvider,
   signOut as firebaseSignOut,
@@ -8,9 +9,24 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import Constants from 'expo-constants';
 import { auth, db, functions } from './firebase';
 import { AppUser } from '@/types/auth';
 import { createUserDocument, migrateUserDocumentFields } from './userService';
+
+// App Store審査用デモアカウントの認証情報（.env → app.config extra 経由）
+const getDemoCredentials = (): { email: string; password: string } | null => {
+  const demo = Constants.expoConfig?.extra?.demo as
+    | { email?: string; password?: string }
+    | undefined;
+  if (!demo?.email || !demo?.password) {
+    return null;
+  }
+  return { email: demo.email, password: demo.password };
+};
+
+// 審査用デモ導線が利用可能か（認証情報が設定されているか）
+export const isDemoSignInAvailable = (): boolean => getDemoCredentials() !== null;
 
 // Check if user is admin
 export const checkIsAdmin = async (uid: string): Promise<boolean> => {
@@ -103,6 +119,26 @@ export const signInWithApple = async (identityToken: string, nonce: string): Pro
 
   if (!result.user) {
     throw new Error('No user returned from Apple sign in');
+  }
+
+  const appUser = await convertToAppUser(result.user);
+  await createOrUpdateUserProfile(appUser);
+  return appUser;
+};
+
+// Sign in with the App Store review demo account (Problem 50 / Guideline 2.1a).
+// Uses a dedicated Firebase Email/Password account so reviewers can verify the
+// full app (including the X penalty-post feature) without performing an X login.
+export const signInDemo = async (): Promise<AppUser> => {
+  const credentials = getDemoCredentials();
+  if (!credentials) {
+    throw new Error('Demo account is not configured');
+  }
+
+  const result = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+
+  if (!result.user) {
+    throw new Error('No user returned from demo sign in');
   }
 
   const appUser = await convertToAppUser(result.user);

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { styles } from './styles';
 
@@ -44,6 +45,17 @@ export const SubscriptionStep: React.FC<SubscriptionStepProps> = ({
             style={styles.metaAnimation}
           />
         </View>
+      </View>
+
+      {/* サブスクで得られる内容（App Store Guideline 3.1.2(c)） */}
+      <View style={styles.benefitsContainer}>
+        <Text style={styles.benefitsTitle}>{t('pay.benefitsTitle')}</Text>
+        {[t('pay.benefit1'), t('pay.benefit2'), t('pay.benefit3')].map((benefit, index) => (
+          <View key={index} style={styles.benefitRow}>
+            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+            <Text style={styles.benefitText}>{benefit}</Text>
+          </View>
+        ))}
       </View>
 
       <Text style={styles.planLabel}>{t('pay.plan')}</Text>

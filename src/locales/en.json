@@ -1,4 +1,12 @@
 {
+  "demo": {
+    "postPenalty": "Demo: Test oversleep penalty post",
+    "posting": "Posting...",
+    "postSuccessTitle": "Posted",
+    "postSuccessMessage": "An oversleep penalty post was sent to the connected X account. Please check the post on X.",
+    "postFailTitle": "Post failed",
+    "postFailMessage": "Failed to post to X. Please check the X connection status or the API credit balance."
+  },
   "common": {
     "ok": "OK",
     "cancel": "Cancel",
@@ -84,6 +92,10 @@
     "tagline1": "Prevent oversleeping with squats",
     "tagline2": "Your followers are watching!",
     "tagline3": "The alarm app that guarantees you wake up",
+    "benefitsTitle": "What you get with your subscription",
+    "benefit1": "An alarm that won't stop until you finish your squats, so you actually wake up",
+    "benefit2": "An automatic penalty post to X (Twitter) when you oversleep (squats not completed)",
+    "benefit3": "Stats and history of your squats and wake-ups",
     "plan": "Plan",
     "yearly": "12 months",
     "monthly": "1 month",
