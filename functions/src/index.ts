@@ -489,9 +489,24 @@ async function postPenaltyTweetForUser(
   const language = userData.settings?.language || "ja";
 
   // Get penalty message based on user's language
-  const penaltyMessage =
+  const baseMessage =
     PENALTY_MESSAGES[language as keyof typeof PENALTY_MESSAGES] ||
     PENALTY_MESSAGES.ja;
+
+  // X rejects tweets with duplicate content. Append the local timestamp (down to
+  // the second, in the user's timezone) so each penalty post is unique. This
+  // also reads naturally as "the time the user overslept" (Problem 52).
+  const timezone = userData.settings?.timezone || "Asia/Tokyo";
+  const timestamp = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date());
+  const penaltyMessage = `${baseMessage}\n${timestamp}`;
 
   // Try the stored access token first. X refresh tokens are single-use
   // (rotated on every refresh), so refreshing on every attempt risks
@@ -529,12 +544,14 @@ async function postPenaltyTweetForUser(
   if (postResult.success) {
     console.log(`User ${userId}: Penalty tweet posted successfully (${postResult.tweetId})`);
 
-    // Record penalty post
+    // Record penalty post. lastAlarmSentAt can be undefined (e.g. the App Review
+    // demo account never went through checkAlarms); Firestore rejects undefined,
+    // so fall back to null (Problem 52).
     await db.collection("penaltyPosts").add({
       userId: userId,
       tweetId: postResult.tweetId,
       postedAt: admin.firestore.FieldValue.serverTimestamp(),
-      alarmSentAt: userData.lastAlarmSentAt,
+      alarmSentAt: userData.lastAlarmSentAt ?? null,
     });
 
     // NOTE: Failure stats (stats.totalFailures / monthlyFailures) are recorded

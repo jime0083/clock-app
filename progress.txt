@@ -897,9 +897,21 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 ### 検証（ビルド・手動Phaseで実施）
 - [ ] 手動: Firebaseで Email/Password プロバイダ有効化＋デモアカウント作成→UIDをadminUsersに登録（manual-work.txt Work 8.2）
 - [ ] 手動: 開発者がデモアカウントでサインイン→セットアップ完了→X(@yagyo8888888888)を連携→X APIクレジット確認
-- [ ] 手動: functionsをデプロイ（demoPenaltyPost）
+- [x] functionsをデプロイ（demoPenaltyPost）→ 2026-09-08 デプロイ完了（新規作成成功）
 - [ ] 実機/シミュレータ: 隠しジェスチャーでデモサインイン→ホームのデモボタンで実際にXへ投稿されることを確認
 - [ ] .env に DEMO_ACCOUNT_EMAIL / DEMO_ACCOUNT_PASSWORD を設定して再ビルド
+
+---
+
+## Phase 26.16: ペナルティX投稿の重複コンテンツ対策（Problem 52）
+※ 固定文言のため同一内容の再投稿をXが拒否（"duplicate content"）。投稿文にローカル日時を付与しユニーク化。詳細は problem.txt Problem 52。
+
+### 実装 [実装完了 2026-09-08]
+- [x] functions/src/index.ts: postPenaltyTweetForUser の投稿文に、ユーザーのtimezoneでのローカル日時（秒まで）を末尾付与してユニーク化（2026-09-08）
+- [x] functions/src/index.ts: penaltyPosts.add の alarmSentAt を `?? null` にフォールバック（デモアカウントのlastAlarmSentAt undefined対策）（2026-09-08）
+- [x] functions ビルド成功・firebase deploy --only functions 完了（2026-09-08・2回）
+- [x] testPenalty（デモUID）で "Penalty tweet posted successfully" を確認＝投稿経路正常（2026-09-08）
+- [x] アプリのデモボタンで「投稿しました」表示＝実機で最終確認完了（@yagyo8888888888へ投稿・2026-09-08）
 
 ---
 

@@ -761,18 +761,18 @@ Please let us know if you need any further information. Thank you.
 ※ 仕組み: 審査官はXログイン不要。ログイン画面でアニメーションを3秒以内に7回タップ→デモアカウント（Email/Password）でサインイン→ホームの「デモ: 寝坊ペナルティ投稿をテスト」ボタンで、事前連携済みXアカウントへ実際に投稿される。
 
 **Firebase / デモアカウント準備:**
-- [ ] Firebase Console → Authentication → Sign-in method で **Email/Password プロバイダを有効化**
-- [ ] デモアカウント（メール/パスワード）を作成（Authentication → ユーザーを追加）。※捨て可・2FA無関係
-- [ ] 作成したデモアカウントの **UID を adminUsers コレクションに登録**（課金バイパス＋demoPenaltyPost実行許可のため）
-- [ ] `.env` に `DEMO_ACCOUNT_EMAIL` / `DEMO_ACCOUNT_PASSWORD` を設定（Git管理外）
+- [ ] Firebase Console → Authentication → Sign-in method で **Email/Password プロバイダを有効化**（※サインインに必須・要確認）
+- [x] デモアカウント作成（2026-09-07）: メール `review-demo@okiroya.app` / UID `cjRI5efbcRTe4P7u267xeYADjan1`（パスワードは .env のみに保存）
+- [x] UID `cjRI5efbcRTe4P7u267xeYADjan1` を adminUsers に登録済み（2026-09-07。新規ドキュメント isvIcH8sMCn0QFcSISdi・フィールド `uid`(string)）
+- [x] `.env` に `DEMO_ACCOUNT_EMAIL` / `DEMO_ACCOUNT_PASSWORD` を設定（Git管理外）（2026-09-07）
 
-**X事前連携（開発者が自端末で1回）:**
-- [ ] 開発者がアプリでデモサインイン（隠しジェスチャー）→セットアップを最後まで完了（アラーム設定・キャリブレーション。課金は管理者バイパスで自動スキップ）
-- [ ] SNS連携でX（@yagyo8888888888）を連携（自端末なので認証コードを受信できる）→Firestoreにトークン保存
-- [ ] X APIクレジット残量を確認（残ゼロだと投稿失敗・Problem 13）
+**X事前連携（開発者が自端末で1回）:** [完了 2026-09-08]
+- [x] 開発者がアプリでデモサインイン（隠しジェスチャー）→セットアップ完了（実機で確認）（2026-09-08）
+- [x] SNS連携でX（@yagyo8888888888）を連携→Firestoreにトークン保存（2026-09-08）
+- [x] X APIクレジット残量を確認（2026-09-08）
 
 **デプロイ・提出:**
-- [ ] `cd functions && npm run build && firebase deploy --only functions`（demoPenaltyPost をデプロイ）
+- [x] `firebase deploy --only functions`（demoPenaltyPost をデプロイ）→ 2026-09-08 デプロイ完了（demoPenaltyPost 新規作成・他5関数更新成功）
 - [ ] `DEMO_ACCOUNT_EMAIL/PASSWORD` を設定した状態で build 番号を上げて Archive→Upload
 - [ ] App Store Connect 審査情報のメモに**デモモードの入り方**を英語で記載（下記文案）
 - [ ] 提出直前にデモアカウントでX連携が生きているか再確認（トークン失効対策）

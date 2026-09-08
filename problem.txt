@@ -1905,3 +1905,29 @@ Appleのメッセージが例示した "App needs microphone access" と同型�
 - 非実装機能（カスタムアラーム音等）は記載せず、実装済み機能のみ記述（ルール6遵守）
 - npx tsc --noEmit 成功 / purchaseFlow・setupFlow 36件成功
 - 残: App Store Connectのサブスク2商品の説明改訂（manual-work.txt Work 8.1）／実機で表示確認
+
+---
+
+## Problem 52: ペナルティX投稿が「重複コンテンツ」で失敗する（固定文言のため）(2026-09-08)
+
+### 症状
+- 審査用デモボタン（demoPenaltyPost）でペナルティ投稿をテストすると「投稿に失敗しました」
+- Cloud Functionログ: `X connection status - connected: true, hasAccessToken: true, hasRefreshToken: true` かつ `Failed to post penalty tweet: You are not allowed to create a Tweet with duplicate content.`
+
+### 根本原因（5ステップ）
+1. 具体ケース: デモアカウントでペナルティ投稿を2回目以降実行すると失敗（X連携・トークンは正常）
+2. データフロー: demoPenaltyPost → postPenaltyTweetForUser → postTweet(accessToken, penaltyMessage)
+3. 問題ステップ: postTweet でXが 403 "duplicate content" を返す
+4. 原因: `PENALTY_MESSAGES`（ja/en）が固定文言で、同一内容の再投稿をXが重複として拒否する（Xの仕様）
+5. 影響: 審査官がデモボタンを押しても、同一文言が既に投稿済みなら失敗する。実ユーザーでも同一文言の再投稿（連日の寝坊等）で失敗しうる
+
+### 影響範囲
+- functions/src/index.ts の postPenaltyTweetForUser（checkSquatCompletion の実投稿とデモの両方が同経路）
+- トークン・クレジットは無関係（ログで確認済み）
+
+### 解決策
+- 投稿文の末尾にローカル日時（ユーザーのtimezone・秒まで）を付与し、各投稿をユニークにする。文面は「寝坊した日時」を示す自然な追記になり、実運用でも重複エラーを防げる。
+
+### 追記(2026-09-08): 第2の原因 — penaltyPostsのalarmSentAtがundefined
+- タイムスタンプ付与でX投稿自体は成功（tweetId確認）したが、直後の penaltyPosts.add で `alarmSentAt: userData.lastAlarmSentAt` が undefined（デモアカウントはcheckAlarms未経由でlastAlarmSentAtを持たない）→ Firestoreがundefinedを拒否して例外→関数が失敗扱い→アプリに「投稿に失敗しました」表示（実際はツイート済み）
+- 修正: `alarmSentAt: userData.lastAlarmSentAt ?? null` にフォールバック
