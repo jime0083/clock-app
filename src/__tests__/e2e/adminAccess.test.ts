@@ -81,6 +81,7 @@ describe('E2E: Admin Free Access Flow', () => {
       language: 'ja',
       setupCompleted: true,
       timezone: null,
+      autoPostConsent: false,
     },
     snsConnections: {
       x: {

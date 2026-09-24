@@ -750,11 +750,11 @@ Please let us know if you need any further information. Thank you.
 ## Work 8: サブスク説明の改訂とX審査アクセスの提供（Problem 50, 51・2026-09-07 追加）
 ※ build 3 審査で Guideline 2.1(a)（Xログインに認証コード必要）と 3.1.2(c)（サブスク提供内容が不明確）で却下
 
-### Work 8.1: サブスク商品の説明改訂（Problem 51 / Guideline 3.1.2(c)）
-- [ ] App Store Connect → 収益化 → サブスクリプション → Okiroya Premium
-- [ ] Monthly Plan / Yearly Plan それぞれの「ローカリゼーション（表示名・説明）」を、**価格に対して何が使えるようになるか**が明確になるよう改訂（アプリ全機能を解放する旨＝起床時スクワットでしか止まらないアラーム、寝坊時のX自動投稿、統計・履歴 等）
-  - ⚠️ 非実装機能（カスタムアラーム音等）は記載しない（虚偽表示リスク）
-- [ ] 変更後、次のアプリ提出に2商品を「審査用に追加」で紐付け直す
+### Work 8.1: サブスク商品の説明改訂（Problem 51 / Guideline 3.1.2(c)）[完了 2026-09-08]
+- [x] Monthly Plan / Yearly Plan のローカリゼーション（表示名・説明）を提供内容が明確になるよう改訂（2026-09-08）
+- [x] 各商品に審査用スクリーンショット追加・配信可否（配信状況）設定（2026-09-08）
+- [x] build 4 提出時に2商品を「審査用に追加」で紐付け＝「4項目が提出されました」（アプリ本体＋グループ＋Monthly＋Yearly）（2026-09-08）
+  - ※初回は誤ってアプリ単独で提出→キャンセルし、アプリ＋サブスクを1提出にまとめ直して再提出
 
 ### Work 8.2: 審査用デモモードのセットアップ（Problem 50 / Guideline 2.1(a)）
 ※ ユーザー決定（2026-09-07）: 案X-A ハイブリッドデモモードを採用（コード実装は Phase 26.15 完了済み）。以下は提出前に必要な手動作業。
@@ -791,3 +791,88 @@ please use the built-in App Review demo mode:
 No X login/authentication code is required in this flow.
 ```
 ※ リスク: X APIクレジット切れ・トークン失効の場合は投稿失敗するため、提出直前の再連携とクレジット確認を必ず行う
+
+### Work 8.3: アプリ説明文に利用規約(EULA)リンクを追記（Problem 53 / Guideline 3.1.2）[2026-09-10 追加]
+※ build 4 が「説明文にEULAリンクが無い」で自動却下。メタデータのみ・新ビルド不要。
+- [ ] App Store Connect → オキロヤ → 配信 → バージョン1.0 → 「アプリの説明」（Description）
+- [ ] 日本語の説明文の末尾に下記ブロックを追記（利用規約リンク必須）
+- [ ] 英語ローカリゼーションがある場合は英語説明文にも同等の内容を追記
+- [ ] 保存 → build 4 の提出物を再提出（サブスク2商品は紐付け済み）
+
+**日本語 説明文に追記するブロック（コピペ用）:**
+```
+【サブスクリプションについて】
+オキロヤ 月額プラン（¥200/月）／ 年額プラン（¥2,000/年）
+・お支払いは購入確定時にApple IDアカウントに請求されます。
+・購読は自動更新されます。現在の期間終了の24時間前までに自動更新をオフにしない限り、期間が自動的に更新され、更新料金が請求されます。
+・購読の管理・自動更新の解除は、購入後にApp Storeアカウント設定から行えます。
+利用規約（EULA）: https://jime0083.github.io/okiroya-support/terms-of-service.html
+プライバシーポリシー: https://jime0083.github.io/okiroya-support/privacy-policy.html
+```
+
+**英語 説明文に追記するブロック（コピペ用）:**
+```
+Subscriptions
+Okiroya Monthly Plan (¥200/month) / Yearly Plan (¥2,000/year)
+- Payment will be charged to your Apple ID account at confirmation of purchase.
+- The subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period; your account will be charged for renewal within 24 hours prior to the end of the current period.
+- You can manage subscriptions and turn off auto-renewal in your App Store account settings after purchase.
+Terms of Use (EULA): https://jime0083.github.io/okiroya-support/terms-of-service.html
+Privacy Policy: https://jime0083.github.io/okiroya-support/privacy-policy.html
+```
+
+### Work 8.4: 審査官がIAPを発見できるようにする（Problem 54 / Guideline 2.1(b)）[2026-09-18 追加]
+※ デモアカウント(admin)は課金画面をスキップするため、審査官がIAPを発見できなかった。2.1(b) Information Needed は返信で審査継続（新ビルド不要）。
+
+**① 有料App契約（Paid Apps Agreement）の同意を確認（最優先）**
+- [x] App Store Connect → 「ビジネス」→ 契約 で **有料アプリ契約が「有効」** を確認（2026-09-18・すべての国または地域／銀行口座・納税フォームも設定済み）。※適用期間の表示が 2026-09-25 まで＝定期更新される期間表示。契約自体は有効
+
+**② 審査官へ返信（App Reviewに返信）: IAP発見手順を提供** [完了 2026-09-18 返信送信済み]
+- [x] 却下メッセージの「App Reviewに返信」から下記英文を送信（2026-09-18・新ビルド不要・同じ審査が継続）
+
+```
+Thank you for the review.
+
+The In-App Purchases (Monthly Plan / Yearly Plan) are shown on the subscription
+screen at the end of the app's onboarding. Please use a NORMAL account (not the
+demo mode) to reach it:
+
+1. Launch the app and sign in with "Sign in with Apple" using your own Apple ID
+   (this creates a normal user account).
+2. Set an alarm time and days.
+3. On the "Connect with X" step, tap "Set up later" to skip it.
+4. Proceed through the short squat calibration (if it cannot be completed on the
+   review device, tap OK on the dialog to continue).
+5. You will reach the subscription screen showing "Monthly Plan (¥200/month)"
+   and "Yearly Plan (¥2,000/year)". You can complete a Sandbox purchase here.
+
+Note: The demo mode (tapping the animation 7 times on the login screen) is only
+for verifying the X auto-post feature and intentionally bypasses the paywall for
+admin/demo accounts. To locate and test the In-App Purchases, please use a normal
+account as described above.
+
+We have also confirmed the Paid Apps Agreement is active.
+```
+- [ ] 返信後、審査官がsandboxで購入できるか（＝Paid Apps Agreement同意済み・商品がsandboxで有効）を担保
+
+### Work 8.5: マーケティング/メタデータのshame表現除去・英語名変更（Problem 55 / Guideline 1.1.1）[2026-09-24 追加]
+※ 寝坊の自動SNS投稿が「mean-spirited」と却下（Extended Review=アカウント除名警告付き）。コードは是正済み（Phase 26.17）。App Store Connect側も是正が必須。新バイナリ提出が必要。
+
+**① 英語アプリ名の変更（Shame除去）**
+- [ ] App Store Connect → アプリ情報 → 英語(U.S.)ローカリゼーションの「名前」を **Wake or Shame → WakeCheck** に変更
+- [ ] サブタイトル・キーワードに "shame" 等があれば中立化
+
+**② 説明文（概要）の是正（日本語・英語とも）**
+- [ ] "監視" "バレる" "shame" "ペナルティ(罰)" 等の圧力・中傷を想起させる表現を削除し、「寝坊していないかをフォロワーがチェック」「起床の習慣化をサポート」等の前向き表現に置換
+- [ ] 「自動投稿はユーザーの同意（オプトイン）に基づき、設定でいつでもオフにできる」旨を明記（Appleの"without opt-out"懸念に先回り）
+- [ ] 利用規約(EULA)/プライバシーポリシーのリンクは維持（Problem 53対応済み）
+
+**③ スクリーンショットの是正**
+- [ ] "絶対に寝坊しない" 等はOKだが、"寝坊がフォロワーにバレる" "監視" 等のshame表現が写っているスクショを差し替え（「フォロワーがチェック」等の中立表現へ）
+
+**④ 再ビルド・再提出**
+- [ ] build番号を上げて Xcode Archive→Upload（Phase 26.17のコード反映）
+- [ ] 審査メモ: デモモード手順（Problem 50）＋通常アカウントでのIAP到達手順（Problem 54）に加え、「寝坊時の自動投稿はオンボーディングの同意画面でオプトインし、設定でオプトアウト可能」である旨を明記
+- [ ] build選択＋サブスク2商品紐付け＋審査提出
+
+**⚠️ 重要**: Extended Review（アカウント除名）警告下のため、上記①〜③（メタデータ）とコード是正（Phase 26.17）を漏れなく反映してから提出すること。同種問題の再提出繰り返しは厳禁。

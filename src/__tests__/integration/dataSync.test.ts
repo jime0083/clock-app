@@ -161,6 +161,7 @@ describe('Data Sync Integration', () => {
         language: 'ja',
         setupCompleted: true,
         timezone: null,
+        autoPostConsent: false,
       },
       snsConnections: {
         x: {
@@ -266,6 +267,7 @@ describe('Data Sync Integration', () => {
         language: 'ja',
         setupCompleted: true,
         timezone: null,
+        autoPostConsent: false,
       },
       snsConnections: {
         x: {

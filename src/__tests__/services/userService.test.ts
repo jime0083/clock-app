@@ -49,6 +49,7 @@ const fullUserDoc: UserDocument = {
     language: 'ja',
     setupCompleted: true,
     timezone: 'Asia/Tokyo',
+    autoPostConsent: false,
   },
   snsConnections: {
     x: {

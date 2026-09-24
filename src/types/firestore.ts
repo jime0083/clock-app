@@ -30,6 +30,9 @@ export interface UserSettings {
   language: 'ja' | 'en';
   setupCompleted: boolean;
   timezone: string | null; // IANA timezone (e.g. "Asia/Tokyo") for server-side alarm checks
+  // 寝坊時のX自動投稿へのユーザー同意（オプトイン）。オンボーディングの同意画面で設定し、
+  // 設定画面でいつでもオフにできる（オプトアウト）。サーバーはこれがtrueの時のみ自動投稿する（Problem 55）
+  autoPostConsent: boolean;
 }
 
 export interface SNSConnection {
@@ -115,6 +118,7 @@ export const defaultUserSettings: UserSettings = {
   language: 'ja',
   setupCompleted: false,
   timezone: null,
+  autoPostConsent: false,
 };
 
 export const defaultSNSConnection: SNSConnection = {

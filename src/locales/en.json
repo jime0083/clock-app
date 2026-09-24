@@ -1,4 +1,14 @@
 {
+  "autoPost": {
+    "title": "About auto-posting when you oversleep",
+    "description": "If you can't stop the alarm and oversleep, a post like the one below is automatically made to your connected X account. Your followers can check whether you overslept, which helps keep you motivated to wake up.",
+    "exampleLabel": "Example of what will be posted",
+    "examplePost": "Good evening. I planned to wake up at {{time}} today, but I overslept.\nI'll do my best to start a better day tomorrow.",
+    "note": "You can turn this on or off anytime in Settings.",
+    "agree": "Agree and enable auto-posting",
+    "decline": "Don't agree (no auto-posting)",
+    "settingLabel": "Auto-post to X when I oversleep"
+  },
   "demo": {
     "postPenalty": "Demo: Test oversleep penalty post",
     "posting": "Posting...",
@@ -29,7 +39,7 @@
   },
   "auth": {
     "tagline1": "Prevent oversleeping with squats",
-    "tagline2": "Your followers are watching!",
+    "tagline2": "Your followers check whether you overslept!",
     "tagline3": "The alarm app that guarantees you wake up",
     "loginWithGoogle": "Sign in with Google",
     "loginWithApple": "Sign in with Apple",
@@ -65,7 +75,7 @@
   "sns": {
     "title": "Connect with X",
     "subtitle": "to prevent oversleeping",
-    "description": "If you oversleep, a post will be automatically made on X\nAll your followers will know you overslept",
+    "description": "If you oversleep, a post is automatically made on X\nYour followers can check whether you overslept",
     "connectX": "Connect with X",
     "connected": "Connected",
     "disconnect": "Disconnect",
@@ -90,11 +100,11 @@
   },
   "pay": {
     "tagline1": "Prevent oversleeping with squats",
-    "tagline2": "Your followers are watching!",
+    "tagline2": "Your followers check whether you overslept!",
     "tagline3": "The alarm app that guarantees you wake up",
     "benefitsTitle": "What you get with your subscription",
     "benefit1": "An alarm that won't stop until you finish your squats, so you actually wake up",
-    "benefit2": "An automatic penalty post to X (Twitter) when you oversleep (squats not completed)",
+    "benefit2": "A post is automatically made to X when you oversleep, so your followers can check on you",
     "benefit3": "Stats and history of your squats and wake-ups",
     "plan": "Plan",
     "yearly": "12 months",
@@ -129,7 +139,7 @@
     "oversleepPosted": "Oversleep post has been posted to X"
   },
   "penalty": {
-    "postText": "I overslept...\nI am a foolish person who cannot wake up on time and easily oversleeps.\n#WakeOrShame"
+    "postText": "Good evening. I planned to wake up today, but I overslept.\nI'll do my best to start a better day tomorrow.\n#WakeCheck"
   },
   "weekly": {
     "title": "Weekly Summary",
@@ -180,12 +190,12 @@
   },
   "setup": {
     "title": "Initial Setup",
-    "welcome": "Welcome to Wake or Shame",
+    "welcome": "Welcome to WakeCheck",
     "step": "Step {{current}}/{{total}}",
     "step1Title": "Set Wake-up Time",
     "step1Description": "Set the time and days you want to wake up",
     "step2Title": "Connect with X",
-    "step2Description": "If you oversleep, a post will be automatically made on X\nThis will help you wake up",
+    "step2Description": "If you oversleep, a post is automatically made on X\nThis will help you wake up",
     "step3Title": "Setup Complete!",
     "step3Description": "You're all set\nStart your early morning life from tomorrow!",
     "next": "Next",
@@ -197,7 +207,7 @@
     "uploadSound": "Upload sound",
     "saveSettings": "Save Settings",
     "connectXTitle": "Connect with X",
-    "connectXDescription": "If you oversleep, a post will be automatically made on X\nAll your followers will know you overslept",
+    "connectXDescription": "If you oversleep, a post is automatically made on X\nYour followers can check whether you overslept",
     "calibrationTitle": "Start Squat Calibration",
     "calibrationDescription": "We'll learn your squat pattern\nHold your phone in your right hand and cross your arms in front of your chest",
     "startCalibration": "Start Calibration"

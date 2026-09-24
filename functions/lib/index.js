@@ -59,9 +59,11 @@ function isAuthorizedTestRequest(req) {
 // Penalty post window: 5 minutes in milliseconds
 const PENALTY_WINDOW_MS = 5 * 60 * 1000;
 // Penalty messages
+// Penalty post templates. {time} is replaced with the user's scheduled alarm
+// time. Neutral, non-defamatory wording (Problem 55 / Guideline 1.1.1).
 const PENALTY_MESSAGES = {
-    ja: "寝坊しました...\n私は決まった時間に起床することができず平気で寝過ごしてしまう愚かな人間です\n#オキロヤ",
-    en: "I overslept...\nI am a foolish person who cannot wake up on time and easily oversleeps.\n#WakeOrShame",
+    ja: "こんばんは、今日は{time}に起きる予定でしたが寝坊しました\n明日はよい1日を始められるように頑張ります\n#オキロヤ",
+    en: "Good evening. I planned to wake up at {time} today, but I overslept.\nI'll do my best to start a better day tomorrow.\n#WakeCheck",
 };
 // Alarm notification messages (localized by user's language setting)
 const ALARM_MESSAGES = {
@@ -440,8 +442,10 @@ async function postPenaltyTweetForUser(userId, userData) {
     const refreshToken = xConnection.refreshToken;
     const language = userData.settings?.language || "ja";
     // Get penalty message based on user's language
-    const baseMessage = PENALTY_MESSAGES[language] ||
-        PENALTY_MESSAGES.ja;
+    // Insert the user's scheduled alarm time into the template ({time}).
+    const alarmTime = userData.settings?.alarmTime || "--:--";
+    const baseMessage = (PENALTY_MESSAGES[language] ||
+        PENALTY_MESSAGES.ja).replace("{time}", alarmTime);
     // X rejects tweets with duplicate content. Append the local timestamp (down to
     // the second, in the user's timezone) so each penalty post is unique. This
     // also reads naturally as "the time the user overslept" (Problem 52).
@@ -580,6 +584,13 @@ exports.checkSquatCompletion = (0, scheduler_1.onSchedule)({
                     console.log(`User ${userId}: Penalty already posted, skipping`);
                     continue;
                 }
+            }
+            // Auto-posting requires explicit user consent (opt-in). Users who have
+            // not consented (or turned it off in settings) are never auto-posted.
+            // This is the opt-out Apple requires (Guideline 1.1.1 / Problem 55).
+            if (userData.settings?.autoPostConsent !== true) {
+                console.log(`User ${userId}: auto-post not consented, skipping penalty`);
+                continue;
             }
             // User hasn't completed squats within 5 minutes - post penalty
             console.log(`User ${userId}: Squats not completed, posting penalty tweet`);

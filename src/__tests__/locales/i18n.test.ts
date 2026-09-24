@@ -35,7 +35,7 @@ const translations: Record<string, Record<string, string>> = {
     'alarm.wakeUp': '起床時間',
   },
   en: {
-    'common.appName': 'Wake or Shame',
+    'common.appName': 'WakeCheck',
     'common.cancel': 'Cancel',
     'common.save': 'Save',
     'home.title': 'Home',
@@ -143,7 +143,7 @@ describe('i18n Configuration', () => {
       state.language = 'en';
       mockI18n.language = 'en';
 
-      expect(mockI18n.t('common.appName')).toBe('Wake or Shame');
+      expect(mockI18n.t('common.appName')).toBe('WakeCheck');
       expect(mockI18n.t('common.cancel')).toBe('Cancel');
       expect(mockI18n.t('common.save')).toBe('Save');
     });
@@ -211,7 +211,7 @@ describe('Translation Files', () => {
     it('should have required common keys', () => {
       const translations = {
         common: {
-          appName: 'Wake or Shame',
+          appName: 'WakeCheck',
           cancel: 'Cancel',
           save: 'Save',
         },

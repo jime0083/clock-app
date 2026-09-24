@@ -1931,3 +1931,90 @@ Appleのメッセージが例示した "App needs microphone access" と同型�
 ### 追記(2026-09-08): 第2の原因 — penaltyPostsのalarmSentAtがundefined
 - タイムスタンプ付与でX投稿自体は成功（tweetId確認）したが、直後の penaltyPosts.add で `alarmSentAt: userData.lastAlarmSentAt` が undefined（デモアカウントはcheckAlarms未経由でlastAlarmSentAtを持たない）→ Firestoreがundefinedを拒否して例外→関数が失敗扱い→アプリに「投稿に失敗しました」表示（実際はツイート済み）
 - 修正: `alarmSentAt: userData.lastAlarmSentAt ?? null` にフォールバック
+
+---
+
+## Problem 53: App Store説明文に利用規約(EULA)リンクが無くGuideline 3.1.2で自動却下 (2026-09-10)
+
+### 症状
+- build 4（1.0）審査で自動メッセージ却下（人間審査前）: "This is an automated message. The review of this submission cannot proceed."
+- Apple: "The submission offers auto-renewable subscriptions, such as Yearly Plan, Monthly Plan, but does not include a functional link to the Terms of Use (EULA) in the app metadata that appears on the app's App Store product page."
+- 2026-09-08 提出分に対する却下（2026-09-08 19:39付メッセージ）
+
+### 根本原因
+- 自動更新サブスクを提供するアプリは、**App Storeの製品ページ（＝アプリ説明文/App Description）に利用規約(EULA)への機能リンク**を含める必要がある（Guideline 3.1.2）
+- アプリ内課金画面(SubscriptionStep)には利用規約リンクを実装済みだが、**App Store Connectのアプリ説明文（メタデータ）にEULAリンクが無かった**
+- Appleの指示: 標準EULAなら説明文に利用規約リンクを追加／カスタムEULAなら App Store Connect に追加
+
+### 影響範囲
+- App Store Connectのメタデータ（アプリ説明文）のみ。**コード・ビルド変更不要**。説明文を修正して再提出。
+- 日本語・英語の両ローカリゼーションの説明文に追記が必要
+
+### 解決策
+- アプリ説明文の末尾に、サブスクの自動更新開示＋利用規約(EULA)リンク＋プライバシーポリシーリンクを追記
+  - 利用規約: https://jime0083.github.io/okiroya-support/terms-of-service.html
+  - プライバシーポリシー: https://jime0083.github.io/okiroya-support/privacy-policy.html
+- 修正後、build 4 の提出物に対して再提出（サブスクは既に紐付け済み）
+
+---
+
+## Problem 54: App Store審査 Guideline 2.1(b) - 審査官がアプリ内で課金(サブスク)を見つけられない (2026-09-18)
+
+### 症状
+- build 4（1.0(4)）審査で Guideline 2.1(b) - Information Needed
+- Apple: "we cannot locate the In-App Purchases, such as 年額プラン and 月額プラン, within the app at this time."
+- Next Steps: アプリ内でIAPに到達する手順を返信で提供。IAPはApple提供のsandboxで審査される。さらに「Account Holderが Paid Apps Agreement に同意していないと有料IAPは機能しない」と注記
+- Review date: 2026-09-17 / Review Device: iPad Air 11-inch (M3) / Version: 1.0 (4)
+- ※前回の 3.1.2(EULAリンク) は解消し人間審査に到達
+
+### 根本原因
+1. 審査官に案内した「デモモード」は adminUsers 登録アカウントで入るが、**管理者は課金ステップを自動バイパスする**（SetupScreen: 管理者・既存契約者は subscription ステップをスキップ・Problem 23）。そのためデモモードでは課金画面（Monthly/Yearly）に到達できず、IAPを発見できなかった。デモモードは2.1(a)のX機能検証用としては有効だが、IAP発見には不適。
+2. 有料App契約（Paid Apps Agreement）が未同意の可能性（未同意だとsandboxでも課金が機能しない）。
+
+### 影響範囲
+- コード変更・新ビルド不要（課金画面は通常アカウントには表示される。X連携ステップは「後で設定する」でスキップ可）
+- 対応: ①審査官へ「通常アカウントで課金画面に到達する手順」を返信（2.1(b) Information Needed は返信で審査継続）②Paid Apps Agreement の同意状況を確認・同意
+
+### 解決策
+- 審査メモ/返信に、IAPの発見手順を明記:
+  - X機能の検証: デモモード（アニメ7回タップ→デモボタン）
+  - IAP（サブスク）の検証: 通常アカウント（Sign in with Apple・審査官自身のApple ID）でオンボーディングを進め、X連携ステップは「後で設定する」でスキップ→キャリブレーション→**サブスク画面にMonthly/Yearlyが表示**され、sandboxで購入可能
+- App Store Connect → ビジネス → 有料Appの契約（Paid Apps Agreement）に Account Holder が同意
+
+---
+
+## Problem 55: App Store審査 Guideline 1.1.1 - 寝坊の自動SNS投稿が中傷的/mean-spiritedと判断され却下 (2026-09-24)
+
+### 症状
+- build 4（1.0(4)）審査で Guideline 1.1.1 - Safety - Objectionable Content
+- Apple: "The app includes content that could be considered defamatory or mean-spirited. Specifically, the app automatically and without an opt-out posts a user's task failures to their social media followers, marketed as a social pressure mechanism."
+- Next Steps: "remove all potentially defamatory and mean-spirited content from the app and submit your revised binary for review."（＝新バイナリ必須）
+- **Extended Review 警告**: 同種問題の再提出繰り返しは審査長期化・Apple Developer Program からの除名リスク
+
+### 根本原因（アプリの中核機能への指摘）
+- オキロヤのコア機能「Xペナルティ機能」= 寝坊（スクワット未完了）時に、**オプトアウト不可・自動で**「寝坊報告」をXへ投稿する仕組みが、Guideline 1.1.1（中傷的・mean-spirited）に抵触
+- 具体的に問題となる要素:
+  1. **自動投稿・オプトアウト不可**（ユーザーが都度同意/拒否できない）
+  2. **失敗（寝坊）をフォロワーに晒す=社会的圧力/羞恥の仕組み**としての設計・マーケティング
+  3. 投稿文の自己卑下的表現（"平気で寝過ごしてしまう愚かな人間です" / "I am a foolish person..."）
+  4. マーケティング文言（"寝坊をフォロワーが監視!" "あなたの寝坊がフォロワーにバレる!" アプリ名 "Wake or Shame" "SNSペナルティ機能"）
+
+### 影響範囲（広範・要方針決定）
+- サーバー: functions/src/index.ts の checkSquatCompletion 自動ペナルティ投稿 / postPenaltyTweetForUser / PENALTY_MESSAGES / demoPenaltyPost
+- クライアント: X連携（XConnectStep, SNS連携設定）, 投稿文言, オンボーディングの文言
+- マーケティング: App Store説明文・スクリーンショット・アプリ内タグライン（pay.tagline2, sns.description 等）
+- ※新バイナリ提出が必要。方針は事業判断のためユーザー決定待ち
+
+### 解決方針（案・ユーザー決定待ち）
+- 案1（最も確実）: 寝坊の自動X投稿（ペナルティ/shame）機能を撤廃。アラーム＋スクワット＋ヘルスケアの健康アプリに再定義。任意で「起床成功をユーザーが手動で前向きに共有」する機能に置換。マーケティングからshame/圧力表現を全撤去。
+- 案2（社会的要素を残すが準拠）: 自動投稿を廃止し、投稿は完全にユーザー起点（都度オプトイン・明示同意）＋前向きな文面に変更。失敗の自動晒しは行わない。マーケティングも変更。
+- 案3（非推奨）: オプトアウト＋同意＋文言緩和で概念維持 → "remove all" 要求・除名警告下では再却下リスクが高く危険
+
+### 対応方針決定 (2026-09-24 ユーザー決定)
+自動投稿は維持。以下3点を是正:
+① 自動投稿への同意（オプトイン）を、課金フェーズ終了後に表示する（オンボーディング最終付近）
+② 投稿文を自己卑下的表現（"愚かな人間"）から皮肉/前向き方向へ変更:
+   「こんばんは、今日は◯:◯◯に起きる予定でしたが寝坊しました\n明日はよい1日を始められるように頑張ります」（◯:◯◯＝設定アラーム時刻を動的挿入）
+③ マーケティング/文言の "監視"/"バレる" を「寝坊していないかをフォロワーがチェック」に変更
+※ Apple指摘「without an opt-out」対応のため、同意(オプトイン)に加え設定でのオプトアウトも要検討（実装前にユーザー確認）
+※ 英語版投稿文・英語マーケティング文言、アプリ名/ハッシュタグの "Shame" 残存リスクは別途確認

@@ -88,6 +88,9 @@ export const migrateUserDocumentFields = async (
     if (settings.timezone === undefined) {
       updates['settings.timezone'] = defaultUserSettings.timezone;
     }
+    if (settings.autoPostConsent === undefined) {
+      updates['settings.autoPostConsent'] = defaultUserSettings.autoPostConsent;
+    }
     if (settings.calibration === undefined) {
       updates['settings.calibration'] = defaultUserSettings.calibration;
     }
@@ -200,6 +203,9 @@ export const updateUserSettings = async (
     }
     if (settings.timezone !== undefined) {
       updates['settings.timezone'] = settings.timezone;
+    }
+    if (settings.autoPostConsent !== undefined) {
+      updates['settings.autoPostConsent'] = settings.autoPostConsent;
     }
 
     await updateDoc(userRef, updates);

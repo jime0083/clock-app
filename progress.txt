@@ -915,6 +915,29 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ---
 
+## Phase 26.17: 寝坊自動SNS投稿の是正（Problem 55・Guideline 1.1.1）※方針決定待ち
+※ 寝坊の自動X投稿（ペナルティ/shame）が中傷的・mean-spiritedと判断され却下。Extended Review（アカウント除名）警告あり。中核機能の再設計が必要。新バイナリ提出が必須。詳細は problem.txt Problem 55。
+
+### 方針決定 [完了 2026-09-24]
+- [x] 自動投稿は維持。①課金後に同意（オプトイン）＋設定でオプトアウト ②投稿文を中立/前向きに ③"監視/バレる"→"チェック"、英語名 Wake or Shame→WakeCheck・#WakeOrShame→#WakeCheck
+
+### 実装 [実装完了 2026-09-24]
+- [x] 型: UserSettings に autoPostConsent 追加（default false・migrate/updateUserSettings対応）（2026-09-24）
+- [x] サーバー: checkSquatCompletion に同意ゲート追加（settings.autoPostConsent===true の時のみ自動投稿＝Apple「without opt-out」対策）。PENALTY_MESSAGES を新文面（{time}=アラーム時刻挿入）＋#WakeCheck に変更。重複回避の日時付与は維持（2026-09-24）
+- [x] クライアント: オンボーディング課金ステップ後に AutoPostConsentStep（同意/拒否）を新設。SetupScreen フロー変更（purchase/restore/admin-skip → 同意ステップ → 完了）（2026-09-24）
+- [x] クライアント: SNS連携モーダルに自動投稿ON/OFFトグル（オプトアウト）を追加（2026-09-24）
+- [x] 文言: ja/en の "監視"/"バレる"/"watching"/"know you overslept" を "チェック" 系へ、penalty.postText を新文面へ、setup.welcome を WakeCheck に、benefit2 を中立化（2026-09-24）
+- [x] npx tsc --noEmit 成功 / functions build 成功 / アプリ21スイート379件・functions 3スイート21件（同意ゲート回帰テスト追加）全成功（2026-09-24）
+- [x] functions 本番デプロイ完了（2026-09-24）
+
+### 検証（ビルド・手動Phaseで実施）
+- [ ] 実機: オンボーディングで課金後に同意画面が出る／拒否時は自動投稿されない／設定トグルでON/OFFできる
+- [ ] 実機: 同意ONで寝坊時に新文面がXへ投稿される（デモボタンで確認可）
+- [ ] 手動(App Store Connect): 説明文・スクリーンショットのshame/監視/バレる表現除去、英語アプリ名を WakeCheck に変更（manual-work.txt Work 8.5）
+- [ ] build番号を上げて Archive→Upload→再提出
+
+---
+
 ## Phase 27: テスト修復・拡充（Problem 25）※ 全実装タスクの最後に実施
 
 ### 27.1 テスト基盤の修復 [完了 2026-07-06]
@@ -958,7 +981,7 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ## Phase 28: ビルド・リリース ※ Phase 27 完了後
 - [x] npx tsc --noEmit / npx jest / ESLint が全て通ることを最終確認（2026-07-14: tsc成功 / jest 21スイート379件全成功 / ESLintは既存ベースライン69件（20エラー・49警告、Phase 26.2以降不変・主にテストファイルのno-explicit-any）と同数で新規指摘ゼロ。ビルドには影響しない）
-- [x] 本番ビルド作成: Xcodeで Archive→Upload（build 3 / 1.0.0 を 2026-08-31 アップロード）
-- [x] App Store 審査申請（build 3 を 2026-08-31 再提出。デモXアカウント〔Work 7〕＋サブスク2商品同時提出。Purpose String/2.1(a)/3.1.2 の3点を同時対応）→ **審査結果待ち**
+- [x] 本番ビルド作成: Xcodeで Archive→Upload（build 3 を 2026-08-31 / build 4 を 2026-09-08 アップロード）
+- [x] App Store 審査申請（build 3 を 2026-08-31 提出→2.1(a)/3.1.2(c)で却下。**build 4 を 2026-09-08 に再提出「4項目が提出されました」**＝アプリ本体＋サブスク2商品＋グループを1提出にまとめて審査へ。審査用デモモード〔Problem 50〕・サブスク説明改訂〔Problem 51〕・ペナルティ投稿の重複/undefined修正〔Problem 52〕を反映）→ **審査結果待ち（最大48時間）**
 - [ ] 審査承認・App Store公開を確認
 - [ ] App Store公開後: Critical Alert 4回目再申請（手動: Work 4.7・公開直後の提出を推奨）

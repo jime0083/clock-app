@@ -119,6 +119,7 @@ describe('E2E: Language Switch Flow', () => {
       language: 'ja',
       setupCompleted: true,
       timezone: null,
+      autoPostConsent: false,
     },
     snsConnections: {
       x: {

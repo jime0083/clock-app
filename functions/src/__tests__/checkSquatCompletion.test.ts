@@ -53,7 +53,7 @@ const userDoc = (id: string, data: Record<string, unknown>) => ({
 
 const connectedXUser = {
   snsConnections: { x: { connected: true, accessToken: 'tok', refreshToken: null } },
-  settings: { language: 'ja' },
+  settings: { language: 'ja', autoPostConsent: true },
 };
 
 describe('checkSquatCompletion - duplicate prevention (Problem 20/21/26)', () => {
@@ -126,6 +126,22 @@ describe('checkSquatCompletion - duplicate prevention (Problem 20/21/26)', () =>
     await wrapped();
 
     expect(mockPenaltyPostsAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT auto-post if the user has not consented (autoPostConsent !== true) (Problem 55)', async () => {
+    mockUsersGet.mockResolvedValue({
+      docs: [
+        userDoc('user-1', {
+          ...connectedXUser,
+          settings: { language: 'ja', autoPostConsent: false },
+          lastAlarmSentAt: { toMillis: () => NOW_MS - 6 * 60 * 1000 }, // 6 min ago, would otherwise post
+        }),
+      ],
+    });
+
+    await wrapped();
+
+    expect(mockPenaltyPostsAdd).not.toHaveBeenCalled();
   });
 
   it('should NOT post a penalty if squats were completed after the alarm', async () => {

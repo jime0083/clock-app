@@ -17,12 +17,19 @@ import { DaysStep } from './setup/DaysStep';
 import { XConnectStep } from './setup/XConnectStep';
 import { CalibrationStep } from './setup/CalibrationStep';
 import { SubscriptionStep } from './setup/SubscriptionStep';
+import { AutoPostConsentStep } from './setup/AutoPostConsentStep';
 
 interface SetupScreenProps {
   onComplete: () => void;
 }
 
-type SetupStep = 'alarm_time' | 'alarm_days' | 'x_connect' | 'calibration' | 'subscription';
+type SetupStep =
+  | 'alarm_time'
+  | 'alarm_days'
+  | 'x_connect'
+  | 'calibration'
+  | 'subscription'
+  | 'auto_post_consent';
 type CalibrationPhase = 'ready' | 'measuring' | 'complete';
 
 const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
@@ -245,7 +252,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
         const success = await purchase(fallbackPkg);
         if (success) {
           Alert.alert(t('paywall.successTitle'), t('paywall.successMessage'), [
-            { text: t('common.ok'), onPress: handleCompleteSetup },
+            { text: t('common.ok'), onPress: goToAutoPostConsent },
           ]);
         } else {
           Alert.alert(t('paywall.errorTitle'), t('paywall.errorMessage'));
@@ -256,7 +263,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
       const success = await purchase(pkg);
       if (success) {
         Alert.alert(t('paywall.successTitle'), t('paywall.successMessage'), [
-          { text: t('common.ok'), onPress: handleCompleteSetup },
+          { text: t('common.ok'), onPress: goToAutoPostConsent },
         ]);
       } else {
         Alert.alert(t('paywall.errorTitle'), t('paywall.errorMessage'));
@@ -267,6 +274,21 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
     } finally {
       setIsPurchasing(false);
     }
+  };
+
+  // After the subscription step, show the auto-post consent step (opt-in) before
+  // finishing setup. Consent governs the oversleep auto-post (Problem 55).
+  const goToAutoPostConsent = () => setCurrentStep('auto_post_consent');
+
+  const handleAutoPostConsent = async (agreed: boolean) => {
+    if (user?.uid) {
+      try {
+        await updateUserSettings(user.uid, { autoPostConsent: agreed });
+      } catch (error) {
+        console.error('Error saving auto-post consent:', error);
+      }
+    }
+    handleCompleteSetup();
   };
 
   const handleCompleteSetup = async () => {
@@ -285,7 +307,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   };
 
   // Admins (adminUsers collection) and already-subscribed users skip the
-  // purchase step automatically (Problem 23)
+  // purchase step automatically (Problem 23), then reach the consent step
   useEffect(() => {
     if (
       currentStep === 'subscription' &&
@@ -294,7 +316,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
       !hasAutoCompletedRef.current
     ) {
       hasAutoCompletedRef.current = true;
-      handleCompleteSetup();
+      goToAutoPostConsent();
     }
   }, [currentStep, isSubscribed, isSubscriptionLoading]);
 
@@ -306,7 +328,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
       const success = await restore();
       if (success) {
         Alert.alert(t('paywall.restoreSuccessTitle'), t('paywall.restoreSuccessMessage'), [
-          { text: t('common.ok'), onPress: handleCompleteSetup },
+          { text: t('common.ok'), onPress: goToAutoPostConsent },
         ]);
       } else {
         Alert.alert(t('paywall.restoreFailTitle'), t('paywall.restoreFailMessage'));
@@ -376,6 +398,14 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
             onRestore={handleRestore}
             onOpenTerms={openTermsOfService}
             onOpenPrivacy={openPrivacyPolicy}
+          />
+        );
+      case 'auto_post_consent':
+        return (
+          <AutoPostConsentStep
+            alarmTime={formatTime(alarmTime)}
+            onAgree={() => handleAutoPostConsent(true)}
+            onDecline={() => handleAutoPostConsent(false)}
           />
         );
     }

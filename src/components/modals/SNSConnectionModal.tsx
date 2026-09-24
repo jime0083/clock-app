@@ -8,6 +8,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import Animated, {
   FadeIn,
@@ -22,6 +23,8 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useXAuth } from '@/hooks/useXAuth';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserDocument, updateUserSettings } from '@/services/userService';
 import { SNSConnection, defaultSNSConnection } from '@/types/firestore';
 
 interface SNSConnectionModalProps {
@@ -38,10 +41,38 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
   onConnectionChange,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { isConnecting, isDisconnecting, error, connectX, disconnectX } = useXAuth();
 
   const isConnected = currentConnection?.connected ?? false;
   const username = currentConnection?.username;
+
+  // 寝坊時のX自動投稿のオプトアウト（設定でON/OFF・Problem 55）
+  const [autoPostEnabled, setAutoPostEnabled] = useState(false);
+
+  useEffect(() => {
+    const loadAutoPost = async () => {
+      if (!visible || !user?.uid) return;
+      try {
+        const userDoc = await getUserDocument(user.uid);
+        setAutoPostEnabled(userDoc?.settings?.autoPostConsent ?? false);
+      } catch (err) {
+        console.error('Error loading auto-post setting:', err);
+      }
+    };
+    loadAutoPost();
+  }, [visible, user?.uid]);
+
+  const handleToggleAutoPost = async (value: boolean) => {
+    if (!user?.uid) return;
+    setAutoPostEnabled(value);
+    try {
+      await updateUserSettings(user.uid, { autoPostConsent: value });
+    } catch (err) {
+      console.error('Error updating auto-post setting:', err);
+      setAutoPostEnabled(!value); // revert on failure
+    }
+  };
 
   const handleConnect = async () => {
     const success = await connectX();
@@ -118,6 +149,18 @@ export const SNSConnectionModal: React.FC<SNSConnectionModalProps> = ({
             </View>
           </View>
 
+          {/* Auto-post opt-out toggle (shown when X is connected) */}
+          {isConnected && (
+            <View style={styles.autoPostRow}>
+              <Text style={styles.autoPostLabel}>{t('autoPost.settingLabel')}</Text>
+              <Switch
+                value={autoPostEnabled}
+                onValueChange={handleToggleAutoPost}
+                trackColor={{ false: Colors.cardBorder, true: Colors.primary }}
+              />
+            </View>
+          )}
+
           {/* Error Message */}
           {error && (
             <View style={styles.errorContainer}>
@@ -185,6 +228,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 12,
+  },
+  autoPostRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  autoPostLabel: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.textPrimary,
+    marginRight: 12,
   },
   handle: {
     width: 40,
