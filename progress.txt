@@ -938,6 +938,32 @@ iOSのバックグラウンド制限により、アプリがバックグラウ�
 
 ---
 
+## Phase 26.18: AlarmKitでロック画面・マナーモード中のアラームを鳴らす（Problem 56）※方針決定待ち
+※ Critical Alerts却下（Problem 14）の代替。iOS 26以上のみ。詳細は problem.txt Problem 56。
+
+### 調査 [完了 2026-10-11]
+- [x] Apple公式ドキュメントで対応OS・Info.plistキー・entitlement・許可・マナーモード/集中モードでの動き・審査の注意点を確認し、出典を problem.txt に記録（2026-10-11）
+- [x] 現在のコードとの関係を確認（critical: true は使用されておらず timeSensitive に変更済み・通知は Notifee）（2026-10-11）
+
+### 方針決定 [完了 2026-10-11]
+- [x] iOS 26未満の端末は今の Notifee 通知（30秒おき最大10回の再通知）のままにする（2026-10-11 ユーザー決定）
+- [x] 停止ボタン対策: stopIntent でアプリを開かせてアプリ内でスクワット画面＋ループ音を継続＋予備アラームを複数予約、を前提に試作する（2026-10-11 ユーザー決定）
+
+### 試作（PoC）※方針決定後
+- [x] ローカルExpoモジュール（modules/alarm-kit・Swift）を作成し、requestAuthorization と1件のアラーム予約を JS から呼べるようにする（停止Intent=openAppWhenRun・予備アラーム予約 scheduleAlarmWithBackups・停止イベント取得を含む。iOS 26未満は isAvailable()=false で何もしない）（2026-10-11）
+- [x] NSAlarmKitUsageDescription を Info.plist に追加（app.config.ts・prebuild 後の Info.plist に反映を確認）（2026-10-11）
+- [x] 開発ビルド専用（__DEV__）の試作パネルをホーム画面に追加（src/components/dev/AlarmKitPocPanel.tsx。frontend-design 使用）（2026-10-11）
+- [x] JS ブリッジの単体テスト追加（12件）。npx tsc --noEmit 成功・全22スイート391件成功（2026-10-11）
+- [ ] alarm.caf を AlertSound.named で鳴らせるか確認
+- [x] シミュレータ（iOS 26.5）用 Debug ビルド成功・起動確認（App Intents のメタデータに OkiroyaAlarmStopIntent が含まれること、Info.plist の NSAlarmKitUsageDescription・alarm.caf の同梱を確認）（2026-10-12）
+- [ ] シミュレータ（iOS 26.5）で許可ダイアログ・予約・鳴動まで確認できるか記録（ログイン後のホーム画面の試作パネルから操作。ユーザー操作が必要）
+- [ ] 実機でロック画面・マナーモード中に鳴ること、鳴り続ける長さ、停止ボタン・音量ボタンでの挙動、stopIntent でアプリが開くかを確認
+
+### 実装（PoC結果を見て計画・承認後に追加）
+- [ ] （未定）
+
+---
+
 ## Phase 27: テスト修復・拡充（Problem 25）※ 全実装タスクの最後に実施
 
 ### 27.1 テスト基盤の修復 [完了 2026-07-06]

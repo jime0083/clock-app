@@ -876,3 +876,15 @@ We have also confirmed the Paid Apps Agreement is active.
 - [ ] build選択＋サブスク2商品紐付け＋審査提出
 
 **⚠️ 重要**: Extended Review（アカウント除名）警告下のため、上記①〜③（メタデータ）とコード是正（Phase 26.17）を漏れなく反映してから提出すること。同種問題の再提出繰り返しは厳禁。
+
+---
+
+## Work 9: AlarmKitの実機確認（Problem 56 / Phase 26.18・2026-10-11 追加）
+※ ロック画面・マナーモード・集中モードでの鳴動は実機でしか最終確認できない。iOS 26以上の iPhone が必要。Phase 26.18 の試作（PoC）完了後に実施。
+
+- [ ] iOS 26以上の実機に開発ビルドを入れる（`npx expo run:ios --device`）
+- [ ] 初回のAlarmKit許可ダイアログが出て、文言（NSAlarmKitUsageDescription）が正しく表示される
+- [ ] 画面ロック中・マナーモードON・集中モードONのそれぞれで、予約したアラームが alarm.caf で鳴る
+- [ ] アラームが鳴り続ける長さ（停止するまで鳴るか、一定時間で止まるか）を記録
+- [ ] 停止ボタン／音量ボタン／Live Activityの上スワイプのそれぞれで、アラームがどうなるか・アプリが開くか（stopIntent）を記録
+- [ ] 設定アプリでAlarmKitの許可をOFFにした時に、アプリ側で検知できる

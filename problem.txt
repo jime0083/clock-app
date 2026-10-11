@@ -2018,3 +2018,59 @@ Appleのメッセージが例示した "App needs microphone access" と同型�
 ③ マーケティング/文言の "監視"/"バレる" を「寝坊していないかをフォロワーがチェック」に変更
 ※ Apple指摘「without an opt-out」対応のため、同意(オプトイン)に加え設定でのオプトアウトも要検討（実装前にユーザー確認）
 ※ 英語版投稿文・英語マーケティング文言、アプリ名/ハッシュタグの "Shame" 残存リスクは別途確認
+
+## Problem 56: ロック画面・マナーモード中にアラームを確実に鳴らす手段がない（Critical Alerts却下の代替としてAlarmKitを調査）(2026-10-11)
+
+### 症状
+- ロック画面・マナーモード・集中モード中に、アラームが「通知音（Notifeeのローカル通知・timeSensitive）」としてしか鳴らない
+- マナーモードでは鳴らない／通知1件の音の長さしか鳴らない（30秒おきの再通知10件で補っている：notificationService.ts ALARM_REPEAT_COUNT/INTERVAL）
+- 本来の手段だったCritical Alertsは2026-04-22に却下された（Problem 14）。目覚ましアラームは対象外
+
+### 原因
+- iOSでは、他社アプリがマナーモード・集中モードを無視して音を鳴らすには、Critical Alerts（医療・ホームセキュリティ・公共安全のみ）か、iOS 26からのAlarmKitしかない
+- 現在のコードはどちらも使っていない
+  - ※引き継ぎメモ（alarmkit-handoff.md）では「notificationService.tsは critical: true を使っている」とあるが、現在のコードは interruptionLevel: 'timeSensitive' に変更済み（L210, L256, L316, L470, L540）。critical-alerts entitlementも app.config.ts に無い
+
+### 調査結果: AlarmKit（Apple公式ドキュメントで確認・2026-10-11）
+出典:
+- https://developer.apple.com/documentation/alarmkit
+- https://developer.apple.com/documentation/alarmkit/scheduling-an-alarm-with-alarmkit
+- https://developer.apple.com/documentation/bundleresources/information-property-list/nsalarmkitusagedescription
+- https://developer.apple.com/documentation/alarmkit/alarmmanager/requestauthorization()
+- https://developer.apple.com/documentation/alarmkit/alarmmanager/alarmconfiguration
+- WWDC25 Session 230 "Wake up to the AlarmKit API" https://developer.apple.com/videos/play/wwdc2025/230/
+
+1. 対応OS: iOS 26.0 / iPadOS 26.0 / Mac Catalyst 26.0 以上【確認済み】
+2. Info.plist: NSAlarmKitUsageDescription が必須。キーが無い・空文字だとアラームを予約できない【確認済み】
+3. entitlement: 公式ドキュメント・サンプルに特別なentitlementの記載なし（Critical Alertsのような申請は不要）【ドキュメント上は確認。実ビルドで要確認】
+4. 許可: AlarmManager.shared.requestAuthorization() で求める。呼ばない場合は最初のアラーム予約時に自動で求められる。拒否されると全ての予約が失敗する。ユーザーは設定アプリでいつでも変更可【確認済み】
+5. マナーモード・集中モード: "It overrides both a device's focus and silent mode, if necessary."（必要に応じて両方を無視して鳴る）【確認済み】
+6. 音: AlarmConfiguration の sound に AlertConfiguration.AlertSound.named("ファイル名") を指定可。ファイルはアプリのメインバンドルか Library/Sounds に置く【確認済み】→ 既存の alarm.caf（plugins/withAlarmSound.jsでバンドル済み）を流用できる見込み
+7. 画面: アラートUIはシステムが出す（タイトル・アプリ名・停止ボタン・任意の2つ目のボタン）。2つ目のボタンを .custom にして App Intent（LiveActivityIntent・openAppWhenRun = true）を付けるとアプリを開ける。stopIntent も指定可【確認済み】
+8. Widget拡張: カウントダウン表示を使う場合はLive Activity（Widget拡張）が必須。使わないと "the system may unexpectedly dismiss alarms and fail to alert"。カウントダウン無しの通常アラームなら Alert 表示のみで可【確認済み】
+9. 繰り返し: Schedule.relative で時刻＋weekly(曜日)の繰り返しが可能【確認済み】
+10. 審査・用途: WWDCで「起床アラームは適した用途」と明言。ただし "not a replacement for other prominent notifications, like critical alerts or time-sensitive notifications"【確認済み】
+11. Swift専用API。RNからは Expo Modules API の Swift モジュール経由で呼ぶ必要あり【確認済み（JS用の公式APIは無い）】
+
+### オキロヤ固有のリスク（要検証・ユーザー判断）
+- 【最重要】システムのアラートUIには必ず「停止」ボタンがあり、ユーザーはスクワットせずにアラーム音を止められる
+  - stopIntent に openAppWhenRun を付けてアプリを開かせ、アプリ側でスクワット画面＋ループ音を続ける構成が考えられる（未検証）
+  - 開発者フォーラムの報告（Apple未回答・未確認）: 音量ボタンでアラームが停止する（thread/805937）／画面ロック解除中の操作やLive Activityを上にスワイプして閉じると stopIntent が呼ばれない場合がある（thread/815064・iOS 26.2.1）
+  - 回避案（未検証）: 60秒おきの予備アラームを複数予約しておき、スクワット完了時にまとめてキャンセル（現在の再通知10件と同じ考え方）
+- iOS 26未満の端末は AlarmKit が使えない → 現在のNotifee通知を残す必要がある（扱いはユーザー確認）
+- 現在の通知は Notifee（@notifee/react-native）で出している（引き継ぎメモの expo-notifications ではない）。AlarmKit と同じ時刻に両方鳴ると二重になるため、iOS 26以上では Notifee のアラーム通知を予約しない等の切り替えが必要
+- アラーム音が鳴り続ける長さ（停止するまで鳴るか）は公式ドキュメントに記載なし【未確認・実機で確認】
+- シミュレータで鳴動・ロック画面表示まで確認できるかは不明【未確認】。ロック画面・マナーモードの最終確認は実機必須
+- iOSのデプロイターゲットは15.1のまま。AlarmKitは #available(iOS 26.0, *) で分岐し、ターゲットは上げない想定
+
+### 影響範囲
+- 新規: modules/（AlarmKit用ローカルExpoモジュール・Swift）、App Intent（Swift）、config plugin または app.config.ts の infoPlist（NSAlarmKitUsageDescription）
+- 変更: src/services/notificationService.ts / alarmService.ts（iOS 26以上の分岐）、オンボーディングの許可取得
+- 審査: 新しい許可ダイアログの文言（Purpose String。Problem 47 の指摘と同種の注意が必要）
+
+### 試作の経過（2026-10-12）
+- ローカルExpoモジュール modules/alarm-kit（Swift: OkiroyaAlarmKitModule / OkiroyaAlarmStopIntent）を作成。デプロイターゲット15.1のまま、AlarmKit・ActivityKit を弱リンクし #available(iOS 26.0, *) で分岐
+- App Intent を Pod（静的ライブラリ）内に置いても、アプリの Metadata.appintents に OkiroyaAlarmStopIntent が抽出されることをビルド成果物で確認【確認済み】（実際にシステムから呼ばれるかは実機で要確認）
+- iOS 26.1 以降は AlarmPresentation.Alert の stopButton が廃止され、停止ボタンはシステムが必ず出す（SDK の swiftinterface で確認）【確認済み】
+- ビルド時の注意: pod install 後に Debug でビルドすると React Native の prebuilt が Release 版のまま残り、リンクエラー（facebook::react::Sealable の未定義シンボル）になることがある。ios/Pods/React-Core-prebuilt/.last_build_configuration が無いと切り替えが行われないため、"Release" と書いてからビルドすると Debug 版に入れ替わる（ios/ は prebuild で生成・Git管理外）
+

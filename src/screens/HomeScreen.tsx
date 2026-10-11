@@ -20,6 +20,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AlarmCard } from '@/components/home/AlarmCard';
 import { StatCard } from '@/components/home/StatCard';
 import { SNSConnectionCard } from '@/components/home/SNSConnectionCard';
+import { AlarmKitPocPanel } from '@/components/dev/AlarmKitPocPanel';
 import AlarmSettingScreen from '@/screens/AlarmSettingScreen';
 import { LanguageSettingModal } from '@/components/modals/LanguageSettingModal';
 import { DeleteAccountModal } from '@/components/modals/DeleteAccountModal';
@@ -372,6 +373,9 @@ const HomeScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* AlarmKit 試作（Problem 56 / Phase 26.18）。開発ビルドのみ表示 */}
+        {__DEV__ && <AlarmKitPocPanel />}
 
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>
